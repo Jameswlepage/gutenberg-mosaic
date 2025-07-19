@@ -1877,3 +1877,14 @@ export const getPostTypeLabel = createRegistrySelector(
 export function isPublishSidebarOpened( state ) {
 	return state.publishSidebarActive;
 }
+
+/**
+ * Returns the current collaboration mode.
+ *
+ * @param {Object} state Global application state
+ *
+ * @return {string} The current collaboration mode ('edit' or 'suggest').
+ */
+export function getCollaborationMode( state ) {
+	return state.collaborationMode || 'edit';
+}

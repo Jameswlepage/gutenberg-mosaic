@@ -100,10 +100,18 @@ export { default as WordCount } from './word-count';
 export { default as TimeToRead } from './time-to-read';
 export { default as CharacterCount } from './character-count';
 
+// Collaboration Components.
+export { default as CollabModeSelector } from './collab-mode-selector';
+
 // State Related Components.
 export { default as EditorProvider } from './provider';
 
 export * from './deprecated';
+
+// Initialize suggestions system if experiment is enabled
+if ( typeof window !== 'undefined' && window.__experimentalSuggestionsMode ) {
+	require( './suggestions-system' ).default();
+}
 
 /**
  * Handles the keyboard shortcuts for the editor.

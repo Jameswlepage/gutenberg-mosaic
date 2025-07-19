@@ -23,6 +23,7 @@ import { unlock } from '../../lock-unlock';
 import { store as editorStore } from '../../store';
 import EditorHistoryRedo from '../editor-history/redo';
 import EditorHistoryUndo from '../editor-history/undo';
+import CollabModeSelector from '../collab-mode-selector';
 
 function DocumentTools( { className, disableBlockTools = false } ) {
 	const { setIsInserterOpened, setIsListViewOpened } =
@@ -117,6 +118,14 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 			variant="unstyled"
 		>
 			<div className="editor-document-tools__left">
+				{ window.__experimentalSuggestionsMode && (
+					<ToolbarItem
+						as={ CollabModeSelector }
+						showTooltip={ ! showIconLabels }
+						variant={ showIconLabels ? 'tertiary' : undefined }
+						size="compact"
+					/>
+				) }
 				{ ! isDistractionFree && (
 					<ToolbarButton
 						ref={ inserterSidebarToggleRef }

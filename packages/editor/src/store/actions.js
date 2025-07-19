@@ -1198,3 +1198,17 @@ export const insertDefaultBlock = getBlockEditorAction( 'insertDefaultBlock' );
 export const updateBlockListSettings = getBlockEditorAction(
 	'updateBlockListSettings'
 );
+
+/**
+ * Returns an action object used to set the collaboration mode.
+ *
+ * @param {string} mode The collaboration mode ('edit' or 'suggest').
+ *
+ * @return {Object} Action object.
+ */
+export function setCollaborationMode( mode ) {
+	return {
+		type: 'SET_COLLABORATION_MODE',
+		mode,
+	};
+}

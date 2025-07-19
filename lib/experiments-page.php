@@ -128,6 +128,18 @@ function gutenberg_initialize_experiments_settings() {
 	);
 
 	add_settings_field(
+		'gutenberg-suggestions-mode',
+		__( 'Collaboration: suggestions mode', 'gutenberg' ),
+		'gutenberg_display_experiment_field',
+		'gutenberg-experiments',
+		'gutenberg_experiments_section',
+		array(
+			'label' => __( 'Enables Google Docs-like suggestions mode for collaborative content editing and review.', 'gutenberg' ),
+			'id'    => 'gutenberg-suggestions-mode',
+		)
+	);
+
+	add_settings_field(
 		'gutenberg-color-randomizer',
 		__( 'Color randomizer', 'gutenberg' ),
 		'gutenberg_display_experiment_field',

@@ -384,6 +384,14 @@ export function publishSidebarActive( state = false, action ) {
 	return state;
 }
 
+export function collaborationMode( state = 'edit', action ) {
+	switch ( action.type ) {
+		case 'SET_COLLABORATION_MODE':
+			return action.mode || 'edit';
+	}
+	return state;
+}
+
 export default combineReducers( {
 	postId,
 	postType,
@@ -403,5 +411,6 @@ export default combineReducers( {
 	listViewPanel,
 	listViewToggleRef,
 	publishSidebarActive,
+	collaborationMode,
 	dataviews: dataviewsReducer,
 } );
