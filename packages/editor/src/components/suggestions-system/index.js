@@ -1,11 +1,10 @@
 /**
  * WordPress dependencies
  */
-import { __ } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { useSelect } from '@wordpress/data';
-import { useEffect, useState, useMemo } from '@wordpress/element';
+import { useEffect, useMemo } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -15,37 +14,6 @@ import { store as editorStore } from '../../store';
 // Global state to track suggestions per block
 const blockSuggestions = new Map();
 
-// Simple CSS injection for suggestion styles
-let stylesInjected = false;
-function injectSuggestionStyles() {
-	if ( stylesInjected ) return;
-	
-	const style = document.createElement( 'style' );
-	style.textContent = `
-		.suggestion-wrapper {
-			position: relative;
-		}
-		.suggestion-indicator {
-			position: absolute;
-			top: -2px;
-			right: -2px;
-			background: #28a745;
-			color: white;
-			font-size: 10px;
-			padding: 2px 4px;
-			border-radius: 2px;
-			font-weight: 500;
-			z-index: 100;
-			pointer-events: none;
-		}
-		.suggestion-highlight {
-			border: 2px solid #28a745 !important;
-			background-color: rgba(212, 237, 218, 0.1) !important;
-		}
-	`;
-	document.head.appendChild( style );
-	stylesInjected = true;
-}
 
 /**
  * Suggestions system HOC that wraps paragraph blocks
@@ -66,10 +34,6 @@ const withSuggestionsMode = createHigherOrderComponent( ( BlockEdit ) => {
 			};
 		}, [] );
 
-		// Inject styles once
-		useEffect( () => {
-			injectSuggestionStyles();
-		}, [] );
 
 		// Handle mode switching and suggestion tracking
 		useEffect( () => {
@@ -92,13 +56,8 @@ const withSuggestionsMode = createHigherOrderComponent( ( BlockEdit ) => {
 					} );
 					console.log( `[Suggestions] Detected change in ${clientId}` );
 				}
-			} else {
-				// Edit mode - clear suggestion state but don't modify content
-				if ( blockState.originalContent ) {
-					blockSuggestions.delete( clientId );
-					console.log( `[Suggestions] Cleared suggestions for ${clientId}` );
-				}
 			}
+			// Note: In edit mode, we keep suggestions data but just don't display them
 		}, [ collaborationMode, currentContent, clientId ] );
 
 		// Determine if this block should show suggestion styling
@@ -106,7 +65,13 @@ const withSuggestionsMode = createHigherOrderComponent( ( BlockEdit ) => {
 		const showAsSuggestion = collaborationMode === 'suggest' && blockState.hasSuggestions;
 		
 		// Debug logging
-		console.log( `[Suggestions] Block ${clientId}: mode=${collaborationMode}, original=${blockState.originalContent?.slice(0,20)}..., current=${currentContent?.slice(0,20)}..., hasSuggestions=${blockState.hasSuggestions}, showAsSuggestion=${showAsSuggestion}` );
+		// eslint-disable-next-line no-console
+		console.log( `[Suggestions] Block ${clientId}: mode=${collaborationMode}, original=${blockState.originalContent?.slice(0,20)}..., current=${currentContent?.slice(0,20)}..., hasSuggestions=${blockState.hasSuggestions}, showAsSuggestion=${showAsSuggestion}, persistent=${!!blockState.originalContent}` );
+		
+		if ( showAsSuggestion ) {
+			// eslint-disable-next-line no-console
+			console.log( `[Suggestions] Applying suggestion styles to block ${clientId}` );
+		}
 
 		// Create enhanced props with suggestion styling - but don't modify content attributes
 		const enhancedProps = useMemo( () => {
@@ -120,16 +85,18 @@ const withSuggestionsMode = createHigherOrderComponent( ( BlockEdit ) => {
 			};
 		}, [ props, showAsSuggestion ] );
 
-		return (
-			<div className={ showAsSuggestion ? 'suggestion-wrapper' : '' }>
-				<BlockEdit { ...enhancedProps } />
-				{ showAsSuggestion && (
+		if ( showAsSuggestion ) {
+			return (
+				<div className="suggestion-wrapper">
+					<BlockEdit { ...enhancedProps } />
 					<div className="suggestion-indicator">
 						Suggestion
 					</div>
-				) }
-			</div>
-		);
+				</div>
+			);
+		}
+
+		return <BlockEdit { ...props } />;
 	};
 }, 'withSuggestionsMode' );
 
@@ -142,21 +109,6 @@ export function initializeSuggestionsSystem() {
 		return;
 	}
 
-	// Clear suggestions when switching to edit mode globally
-	let lastMode = 'edit';
-	const checkModeChange = () => {
-		if ( window.wp?.data ) {
-			const currentMode = window.wp.data.select( editorStore ).getCollaborationMode?.() || 'edit';
-			if ( lastMode === 'suggest' && currentMode === 'edit' ) {
-				// Switched from suggest to edit - clear all suggestions
-				blockSuggestions.clear();
-				console.log( '[Suggestions] Cleared all suggestions on mode switch' );
-			}
-			lastMode = currentMode;
-		}
-		requestAnimationFrame( checkModeChange );
-	};
-	requestAnimationFrame( checkModeChange );
 
 	// Add block edit filter
 	addFilter(
