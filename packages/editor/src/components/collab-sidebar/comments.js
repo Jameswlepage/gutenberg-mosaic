@@ -249,15 +249,15 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, 
 				/>
 			) }
 
-			{/* User info WITHOUT avatar */}
+			{/* User info WITH avatar */}
 			<div className="editor-collab-sidebar-panel__comment-header">
-				{ thread.parent === 0 && (
-					<Icon
-						icon={ comment }
-						size={ 14 }
-						className="editor-collab-sidebar-panel__comment-icon"
-					/>
-				) }
+				<img
+					src={ thread?.author_avatar_urls?.[ 48 ] || thread?.author_avatar_urls?.[ 24 ] }
+					className="editor-collab-sidebar-panel__user-avatar"
+					alt="User avatar"
+					width="24"
+					height="24"
+				/>
 				<span className="editor-collab-sidebar-panel__user-name">
 					{ thread.author_name }
 				</span>

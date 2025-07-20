@@ -15,13 +15,45 @@
 	height: 100%;
 
 	&__tab-selector {
-		display: flex;
-		gap: $grid-unit-05;
 		margin-bottom: $grid-unit-15;
 		
-		.editor-collab-sidebar-panel__tab-button {
-			flex: 1;
-			justify-content: center;
+		.editor-collab-sidebar-panel__tab-panel {
+			.components-tab-panel__tabs {
+				display: flex;
+				gap: $grid-unit-05;
+				background: none;
+				border: none;
+				padding: 0;
+			}
+			
+			.components-tab-panel__tabs-item {
+				flex: 1;
+				justify-content: center;
+				background-color: $gray-100;
+				border: 1px solid $gray-300;
+				color: $gray-700;
+				border-radius: $radius-small;
+				padding: $grid-unit-05 $grid-unit-10;
+				margin: 0;
+				
+				&:hover {
+					background-color: $gray-200;
+					border-color: $gray-400;
+					color: $gray-900;
+				}
+				
+				&.is-active {
+					background-color: var(--wp-admin-theme-color, #3858e9);
+					border-color: var(--wp-admin-theme-color, #3858e9);
+					color: #fff;
+					
+					&:hover {
+						background-color: var(--wp-admin-theme-color, #3858e9);
+						border-color: var(--wp-admin-theme-color, #3858e9);
+						color: #fff;
+					}
+				}
+			}
 		}
 	}
 
@@ -35,13 +67,13 @@
 	}
 
 	&__active-thread {
-		border: 1px solid #3858e9;
+		border: 1px solid var(--wp-admin-theme-color, #3858e9);
 	}
 
 	&__focus-thread {
-		border: 1px solid #3858e9;
+		border: 1px solid var(--wp-admin-theme-color, #3858e9);
 		background-color: $white;
-		box-shadow: 0 5.5px 7.8px -0.3px rgba(0, 0, 0, 0.102);
+		/* No box shadow */
 	}
 
 	&__comment-field {
@@ -165,12 +197,7 @@
 			background-color: rgba(0, 0, 0, 0.05);
 		}
 		
-		.editor-collab-sidebar-panel__comment-header {
-			display: flex;
-			align-items: center;
-			gap: $grid-unit-10;
-			margin-bottom: $grid-unit-05;
-		}
+		// Remove duplicate header styling - will be handled below
 		
 		.editor-collab-sidebar-panel__comment-content {
 			margin-bottom: $grid-unit-05;
@@ -211,12 +238,8 @@
 		}
 	}
 
-	// Remove avatars in active state
+	// Active thread styling
 	&__focus-thread {
-		.editor-collab-sidebar-panel__user-avatar {
-			display: none;
-		}
-		
 		// Override collapsed comment padding in active state
 		.editor-collab-sidebar-panel__collapsed-comment {
 			padding: 0;
@@ -225,26 +248,33 @@
 
 	// Comment header styling for both collapsed and active states
 	&__comment-header {
-		display: flex;
-		align-items: center;
-		gap: $grid-unit-10;
-		margin-bottom: $grid-unit-05;
+		display: flex !important;
+		align-items: center !important;
+		gap: $grid-unit-10 !important;
+		margin-bottom: $grid-unit-05 !important;
+		justify-content: flex-start !important;
 	}
 
-	// Comment icon for top-level comments
-	&__comment-icon {
+	// User avatar styling
+	&__user-avatar {
 		flex-shrink: 0;
-		color: $gray-600;
+		border-radius: $radius-round;
+		width: 24px;
+		height: 24px;
 	}
 
 	// User name and time styling
 	&__user-name {
 		font-weight: 500;
+		font-size: 12px;
+		line-height: 16px;
+		color: $gray-700;
 	}
 
 	&__user-time {
 		color: $gray-600;
 		font-size: 12px;
+		line-height: 16px;
 		margin-left: auto; // Push time to the right
 	}
 

@@ -20,15 +20,15 @@ export function CollapsedComment({ thread, onActivate }) {
 			onClick={() => onActivate(thread.id)}
 			className="editor-collab-sidebar-panel__collapsed-comment"
 		>
-			{/* User name and time only */}
+			{/* User info with avatar */}
 			<div className="editor-collab-sidebar-panel__comment-header">
-				{ thread.parent === 0 && (
-					<Icon
-						icon={ comment }
-						size={ 14 }
-						className="editor-collab-sidebar-panel__comment-icon"
-					/>
-				) }
+				<img
+					src={ thread?.author_avatar_urls?.[ 48 ] || thread?.author_avatar_urls?.[ 24 ] }
+					className="editor-collab-sidebar-panel__user-avatar"
+					alt="User avatar"
+					width="24"
+					height="24"
+				/>
 				<span className="editor-collab-sidebar-panel__user-name">
 					{thread.author_name}
 				</span>

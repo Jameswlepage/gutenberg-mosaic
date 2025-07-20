@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Button } from '@wordpress/components';
+import { TabPanel } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -13,24 +13,28 @@ import { __ } from '@wordpress/i18n';
  * @return {React.ReactNode} The rendered CommentsTabSelector component.
  */
 export function CommentsTabSelector({ activeTab, onTabChange }) {
+	const tabs = [
+		{
+			name: 'open',
+			title: __('Open'),
+		},
+		{
+			name: 'resolved',
+			title: __('Resolved'),
+		},
+	];
+
 	return (
 		<div className="editor-collab-sidebar-panel__tab-selector">
-			<Button
-				variant={activeTab === 'open' ? 'primary' : 'secondary'}
-				onClick={() => onTabChange('open')}
-				size="small"
-				className="editor-collab-sidebar-panel__tab-button"
+			<TabPanel
+				className="editor-collab-sidebar-panel__tab-panel"
+				activeClass="is-active"
+				tabs={tabs}
+				initialTabName={activeTab}
+				onSelect={onTabChange}
 			>
-				{__('Open')}
-			</Button>
-			<Button
-				variant={activeTab === 'resolved' ? 'primary' : 'secondary'}
-				onClick={() => onTabChange('resolved')}
-				size="small"
-				className="editor-collab-sidebar-panel__tab-button"
-			>
-				{__('Resolved')}
-			</Button>
+				{() => null /* Content is handled by parent component */}
+			</TabPanel>
 		</div>
 	);
 }
