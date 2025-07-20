@@ -300,5 +300,8 @@
 	},
 	"workspaces": [
 		"packages/*"
-	]
+	],
+	"dependencies": {
+		"diff-match-patch": "1.0.5"
+	}
 }
