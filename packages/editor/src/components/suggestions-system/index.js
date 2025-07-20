@@ -4,7 +4,11 @@
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { useSelect } from '@wordpress/data';
-import { useEffect } from '@wordpress/element';
+import { useEffect, Fragment } from '@wordpress/element';
+import { ToolbarGroup, ToolbarButton } from '@wordpress/components';
+import { __ } from '@wordpress/i18n';
+import { BlockControls } from '@wordpress/block-editor';
+import { check, close } from '@wordpress/icons';
 
 /**
  * External dependencies
@@ -57,7 +61,7 @@ function ensureSuggestionsStyles() {
 		div.suggestion-indicator {
 			position: absolute !important;
 			top: -8px !important;
-			left: 8px !important;
+			right: 8px !important;
 			background: #28a745 !important;
 			color: white !important;
 			font-size: 10px !important;
@@ -121,19 +125,27 @@ function ensureSuggestionsStyles() {
 		/* Hover toolbar for accept/reject */
 		.suggestion-hover-toolbar {
 			position: absolute !important;
-			top: -40px !important;
-			right: 8px !important;
+			top: -45px !important;
+			left: 8px !important;
 			background: white !important;
 			border: 1px solid #ccc !important;
 			border-radius: 4px !important;
 			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 			display: flex !important;
-			gap: 4px !important;
-			padding: 4px !important;
+			align-items: center !important;
+			gap: 8px !important;
+			padding: 6px 8px !important;
 			z-index: 1000 !important;
 			opacity: 0 !important;
 			visibility: hidden !important;
 			transition: opacity 0.2s ease, visibility 0.2s ease !important;
+			white-space: nowrap !important;
+		}
+		
+		.suggestion-toolbar-text {
+			font-size: 11px !important;
+			color: #666 !important;
+			margin-right: 4px !important;
 		}
 		
 		.suggestion-wrapper:hover .suggestion-hover-toolbar {
@@ -169,6 +181,25 @@ function ensureSuggestionsStyles() {
 		
 		.suggestion-reject-button:hover {
 			background-color: #f8d7da !important;
+		}
+		
+		/* Block toolbar button styling */
+		.suggestion-accept-toolbar-button.components-toolbar-button {
+			color: #28a745 !important;
+		}
+		
+		.suggestion-accept-toolbar-button.components-toolbar-button:hover {
+			background-color: #d4edda !important;
+			color: #155724 !important;
+		}
+		
+		.suggestion-reject-toolbar-button.components-toolbar-button {
+			color: #dc3545 !important;
+		}
+		
+		.suggestion-reject-toolbar-button.components-toolbar-button:hover {
+			background-color: #f8d7da !important;
+			color: #721c24 !important;
 		}
 	`;
 	document.head.appendChild( style );
@@ -267,7 +298,7 @@ function createCustomDiffHtml( diffs ) {
 
 /**
  * Suggestion Hover Toolbar Component
- * Shows accept/reject buttons on hover
+ * Shows suggestion info and accept/reject buttons on hover
  *
  * @param {Object} props - Component props
  * @param {Object} props.suggestion - Suggestion data
@@ -288,8 +319,14 @@ const SuggestionHoverToolbar = ( { suggestion, onAccept, onReject } ) => {
 		onReject( suggestion.id );
 	};
 
+	const changeCount = suggestion.metadata?.editCount || 1;
+	const changeText = changeCount === 1 ? 'change' : 'changes';
+
 	return (
 		<div className="suggestion-hover-toolbar">
+			<span className="suggestion-toolbar-text">
+				{ `${ changeCount } ${ changeText } suggested by ${ suggestion.author.name }` }
+			</span>
 			<button
 				className="suggestion-action-button suggestion-accept-button"
 				onClick={ handleAccept }
@@ -307,6 +344,45 @@ const SuggestionHoverToolbar = ( { suggestion, onAccept, onReject } ) => {
 				✖
 			</button>
 		</div>
+	);
+};
+
+/**
+ * Suggestion Block Controls
+ * Adds accept/reject buttons to block toolbar when suggestions are present
+ *
+ * @param {Object} props - Component props
+ * @param {Object} props.suggestion - Suggestion data
+ * @param {Function} props.onAccept - Accept callback
+ * @param {Function} props.onReject - Reject callback
+ * @return {Object} React component
+ */
+const SuggestionBlockControls = ( { suggestion, onAccept, onReject } ) => {
+	const handleAccept = () => {
+		onAccept( suggestion.id );
+	};
+
+	const handleReject = () => {
+		onReject( suggestion.id );
+	};
+
+	return (
+		<BlockControls group="block">
+			<ToolbarGroup>
+				<ToolbarButton
+					icon={ check }
+					label={ __( 'Accept suggestion' ) }
+					onClick={ handleAccept }
+					className="suggestion-accept-toolbar-button"
+				/>
+				<ToolbarButton
+					icon={ close }
+					label={ __( 'Reject suggestion' ) }
+					onClick={ handleReject }
+					className="suggestion-reject-toolbar-button"
+				/>
+			</ToolbarGroup>
+		</BlockControls>
 	);
 };
 
@@ -357,9 +433,15 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 			const result = rejectSuggestion( suggestionId );
 			
 			if ( result.success ) {
-				// Force re-render by updating a timestamp (suggestion will no longer show)
+				// Keep the original content in the block (don't change anything)
+				// The suggestion storage removal will cause the component to re-render
+				// and no longer show the suggestion overlay
+				
 				// eslint-disable-next-line no-console
-				console.log( '[Suggestion] Rejected:', suggestionId );
+				console.log( '[Suggestion] Rejected - keeping original content:', suggestionId );
+			} else {
+				// eslint-disable-next-line no-console
+				console.error( '[Suggestion] Failed to reject:', result.error );
 			}
 		};
 
@@ -400,17 +482,24 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 				},
 			};
 
-			// Wrap in suggestion styling with hover toolbar
+			// Wrap in suggestion styling with toolbar controls and hover info
 			return (
-				<div className="suggestion-wrapper">
-					<div className="suggestion-indicator">Suggestion</div>
-					<SuggestionHoverToolbar
+				<Fragment>
+					<SuggestionBlockControls
 						suggestion={ suggestion }
 						onAccept={ handleAcceptSuggestion }
 						onReject={ handleRejectSuggestion }
 					/>
-					<BlockEdit { ...modifiedProps } />
-				</div>
+					<div className="suggestion-wrapper">
+						<div className="suggestion-indicator">Suggestion</div>
+						<SuggestionHoverToolbar
+							suggestion={ suggestion }
+							onAccept={ handleAcceptSuggestion }
+							onReject={ handleRejectSuggestion }
+						/>
+						<BlockEdit { ...modifiedProps } />
+					</div>
+				</Fragment>
 			);
 		}
 
