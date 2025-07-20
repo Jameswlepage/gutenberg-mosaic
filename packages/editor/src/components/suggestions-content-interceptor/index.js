@@ -354,17 +354,27 @@ export function updateSuggestionStatus( suggestionId, newStatus ) {
  * @return {Object|null} Result object with success status and content
  */
 export function acceptSuggestion( suggestionId ) {
-	const updatedSuggestion = updateSuggestionStatus( suggestionId, 'accepted' );
-	
-	if ( updatedSuggestion ) {
-		// TODO: Apply the suggested content to the actual block
-		// This will require integration with Gutenberg's block updating system
-		
-		return {
-			success: true,
-			suggestion: updatedSuggestion,
-			appliedContent: updatedSuggestion.suggestedContent,
-		};
+	// Find and update suggestion status
+	for ( const [ clientId, suggestion ] of suggestionStorage.entries() ) {
+		if ( suggestion.id === suggestionId ) {
+			const acceptedSuggestion = {
+				...suggestion,
+				status: 'accepted',
+				updated: new Date().toISOString(),
+			};
+			
+			// Remove the suggestion from storage since it's been applied
+			suggestionStorage.delete( clientId );
+			
+			// eslint-disable-next-line no-console
+			console.log( `[Suggestion] Accepted and removed: ${ suggestionId }` );
+			
+			return {
+				success: true,
+				suggestion: acceptedSuggestion,
+				appliedContent: acceptedSuggestion.suggestedContent,
+			};
+		}
 	}
 	
 	return { success: false, error: 'Suggestion not found' };
@@ -377,13 +387,26 @@ export function acceptSuggestion( suggestionId ) {
  * @return {Object|null} Result object with success status
  */
 export function rejectSuggestion( suggestionId ) {
-	const updatedSuggestion = updateSuggestionStatus( suggestionId, 'rejected' );
-	
-	if ( updatedSuggestion ) {
-		return {
-			success: true,
-			suggestion: updatedSuggestion,
-		};
+	// Find and reject suggestion
+	for ( const [ clientId, suggestion ] of suggestionStorage.entries() ) {
+		if ( suggestion.id === suggestionId ) {
+			const rejectedSuggestion = {
+				...suggestion,
+				status: 'rejected',
+				updated: new Date().toISOString(),
+			};
+			
+			// Remove the suggestion from storage since it's been rejected
+			suggestionStorage.delete( clientId );
+			
+			// eslint-disable-next-line no-console
+			console.log( `[Suggestion] Rejected and removed: ${ suggestionId }` );
+			
+			return {
+				success: true,
+				suggestion: rejectedSuggestion,
+			};
+		}
 	}
 	
 	return { success: false, error: 'Suggestion not found' };

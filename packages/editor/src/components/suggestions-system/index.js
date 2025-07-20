@@ -18,6 +18,8 @@ import { store as editorStore } from '../../store';
 import withContentInterception, {
 	getSuggestion,
 	hasSuggestions,
+	acceptSuggestion,
+	rejectSuggestion,
 } from '../suggestions-content-interceptor';
 
 // Force CSS injection with ultra-high specificity
@@ -115,6 +117,59 @@ function ensureSuggestionsStyles() {
 			display: block !important;
 			width: 100% !important;
 		}
+		
+		/* Hover toolbar for accept/reject */
+		.suggestion-hover-toolbar {
+			position: absolute !important;
+			top: -40px !important;
+			right: 8px !important;
+			background: white !important;
+			border: 1px solid #ccc !important;
+			border-radius: 4px !important;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+			display: flex !important;
+			gap: 4px !important;
+			padding: 4px !important;
+			z-index: 1000 !important;
+			opacity: 0 !important;
+			visibility: hidden !important;
+			transition: opacity 0.2s ease, visibility 0.2s ease !important;
+		}
+		
+		.suggestion-wrapper:hover .suggestion-hover-toolbar {
+			opacity: 1 !important;
+			visibility: visible !important;
+		}
+		
+		.suggestion-action-button {
+			border: none !important;
+			background: none !important;
+			padding: 4px 8px !important;
+			border-radius: 3px !important;
+			cursor: pointer !important;
+			font-size: 14px !important;
+			transition: background-color 0.2s ease !important;
+		}
+		
+		.suggestion-action-button:hover {
+			background-color: #f0f0f0 !important;
+		}
+		
+		.suggestion-accept-button {
+			color: #28a745 !important;
+		}
+		
+		.suggestion-accept-button:hover {
+			background-color: #d4edda !important;
+		}
+		
+		.suggestion-reject-button {
+			color: #dc3545 !important;
+		}
+		
+		.suggestion-reject-button:hover {
+			background-color: #f8d7da !important;
+		}
 	`;
 	document.head.appendChild( style );
 	stylesInjected = true;
@@ -211,12 +266,57 @@ function createCustomDiffHtml( diffs ) {
 }
 
 /**
+ * Suggestion Hover Toolbar Component
+ * Shows accept/reject buttons on hover
+ *
+ * @param {Object} props - Component props
+ * @param {Object} props.suggestion - Suggestion data
+ * @param {Function} props.onAccept - Accept callback
+ * @param {Function} props.onReject - Reject callback
+ * @return {Object} React component
+ */
+const SuggestionHoverToolbar = ( { suggestion, onAccept, onReject } ) => {
+	const handleAccept = ( event ) => {
+		event.preventDefault();
+		event.stopPropagation();
+		onAccept( suggestion.id );
+	};
+
+	const handleReject = ( event ) => {
+		event.preventDefault();
+		event.stopPropagation();
+		onReject( suggestion.id );
+	};
+
+	return (
+		<div className="suggestion-hover-toolbar">
+			<button
+				className="suggestion-action-button suggestion-accept-button"
+				onClick={ handleAccept }
+				title="Accept suggestion"
+				aria-label="Accept suggestion"
+			>
+				✔
+			</button>
+			<button
+				className="suggestion-action-button suggestion-reject-button"
+				onClick={ handleReject }
+				title="Reject suggestion"
+				aria-label="Reject suggestion"
+			>
+				✖
+			</button>
+		</div>
+	);
+};
+
+/**
  * Block Content Controller
  * Shows clean content in edit mode, diff overlay in suggest mode
  */
 const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 	return ( props ) => {
-		const { clientId } = props;
+		const { clientId, setAttributes } = props;
 
 		const { collaborationMode } = useSelect( ( select ) => {
 			return {
@@ -237,6 +337,32 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 		const showSuggestionOverlay =
 			collaborationMode === 'suggest' && blockHasSuggestions;
 
+		// Accept suggestion handler
+		const handleAcceptSuggestion = ( suggestionId ) => {
+			const result = acceptSuggestion( suggestionId );
+			
+			if ( result.success ) {
+				// Apply the suggested content to the actual block
+				setAttributes( {
+					content: result.appliedContent,
+				} );
+				
+				// eslint-disable-next-line no-console
+				console.log( '[Suggestion] Accepted and applied:', suggestionId );
+			}
+		};
+
+		// Reject suggestion handler
+		const handleRejectSuggestion = ( suggestionId ) => {
+			const result = rejectSuggestion( suggestionId );
+			
+			if ( result.success ) {
+				// Force re-render by updating a timestamp (suggestion will no longer show)
+				// eslint-disable-next-line no-console
+				console.log( '[Suggestion] Rejected:', suggestionId );
+			}
+		};
+
 		// Debug logging
 		useEffect( () => {
 			// eslint-disable-next-line no-console
@@ -250,9 +376,14 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 			clientId,
 		] );
 
-		// In suggest mode with suggestions, modify the block props to show diff content
+		// In suggest mode with suggestions, show diff with hover toolbar
 		if ( showSuggestionOverlay ) {
 			const suggestion = getSuggestion( clientId );
+
+			// Don't show if suggestion is no longer pending
+			if ( ! suggestion || suggestion.status !== 'pending' ) {
+				return <BlockEdit { ...props } />;
+			}
 
 			// Create diff HTML
 			const diffHtml = createDiffVisualization(
@@ -269,10 +400,15 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 				},
 			};
 
-			// Wrap in suggestion styling
+			// Wrap in suggestion styling with hover toolbar
 			return (
 				<div className="suggestion-wrapper">
 					<div className="suggestion-indicator">Suggestion</div>
+					<SuggestionHoverToolbar
+						suggestion={ suggestion }
+						onAccept={ handleAcceptSuggestion }
+						onReject={ handleRejectSuggestion }
+					/>
 					<BlockEdit { ...modifiedProps } />
 				</div>
 			);
