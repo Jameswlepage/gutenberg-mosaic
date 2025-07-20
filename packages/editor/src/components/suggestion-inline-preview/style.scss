@@ -1,0 +1,221 @@
+/**
+ * Inline suggestion preview styles
+ */
+.editor-suggestion-inline-preview-wrapper {
+	position: relative;
+}
+
+.editor-suggestion-inline-preview {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	background: #fff;
+	border: 1px solid #f0b849;
+	border-radius: 4px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	margin-top: 4px;
+	padding: 12px;
+	animation: slideDown 0.2s ease;
+
+	&__header {
+		margin-bottom: 8px;
+	}
+
+	&__label {
+		font-size: 11px;
+		font-weight: 500;
+		color: #d4a11e;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+
+	&__content {
+		font-size: 13px;
+		line-height: 1.4;
+		color: #1e1e1e;
+	}
+
+	// Triangle pointer
+	&::before {
+		content: '';
+		position: absolute;
+		top: -8px;
+		left: 16px;
+		width: 0;
+		height: 0;
+		border-left: 8px solid transparent;
+		border-right: 8px solid transparent;
+		border-bottom: 8px solid #f0b849;
+	}
+
+	&::after {
+		content: '';
+		position: absolute;
+		top: -7px;
+		left: 16px;
+		width: 0;
+		height: 0;
+		border-left: 8px solid transparent;
+		border-right: 8px solid transparent;
+		border-bottom: 8px solid #fff;
+	}
+}
+
+/**
+ * Diff visualization styles for inline preview
+ */
+.editor-suggestion-inline-preview {
+	.editor-suggestion-diff {
+		&__insertion {
+			background-color: #d4edda;
+			color: #155724;
+			text-decoration: none;
+			padding: 1px 3px;
+			border-radius: 2px;
+			font-weight: 500;
+			
+			&::before {
+				content: '+';
+				font-size: 10px;
+				margin-right: 2px;
+				opacity: 0.7;
+			}
+		}
+
+		&__deletion {
+			background-color: #f8d7da;
+			color: #721c24;
+			text-decoration: line-through;
+			padding: 1px 3px;
+			border-radius: 2px;
+			font-weight: 500;
+			
+			&::before {
+				content: '-';
+				font-size: 10px;
+				margin-right: 2px;
+				opacity: 0.7;
+			}
+		}
+
+		&__equal {
+			color: #757575;
+			font-weight: normal;
+		}
+	}
+}
+
+/**
+ * Animation for sliding down
+ */
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/**
+ * Responsive adjustments
+ */
+@media (max-width: 768px) {
+	.editor-suggestion-inline-preview {
+		padding: 8px;
+		margin-top: 2px;
+		font-size: 12px;
+
+		&__label {
+			font-size: 10px;
+		}
+
+		&__content {
+			font-size: 12px;
+		}
+	}
+}
+
+/**
+ * High contrast mode
+ */
+@media (prefers-contrast: high) {
+	.editor-suggestion-inline-preview {
+		border-width: 2px;
+		border-color: #000;
+
+		.editor-suggestion-diff {
+			&__insertion {
+				background-color: #000;
+				color: #fff;
+				border: 1px solid #000;
+			}
+
+			&__deletion {
+				background-color: #fff;
+				color: #000;
+				border: 1px solid #000;
+			}
+		}
+	}
+}
+
+/**
+ * Dark mode support
+ */
+@media (prefers-color-scheme: dark) {
+	.editor-suggestion-inline-preview {
+		background: #2a2a2a;
+		border-color: #f0b849;
+		color: #f0f0f0;
+
+		&__label {
+			color: #f0b849;
+		}
+
+		&__content {
+			color: #f0f0f0;
+		}
+
+		&::after {
+			border-bottom-color: #2a2a2a;
+		}
+
+		.editor-suggestion-diff {
+			&__insertion {
+				background-color: #1a4a1a;
+				color: #90ee90;
+			}
+
+			&__deletion {
+				background-color: #4a1a1a;
+				color: #ff9999;
+			}
+
+			&__equal {
+				color: #b0b0b0;
+			}
+		}
+	}
+}
+
+/**
+ * Focus states for accessibility
+ */
+.editor-suggestion-inline-preview:focus-within {
+	outline: 2px solid #3858e9;
+	outline-offset: 2px;
+}
+
+/**
+ * Print styles
+ */
+@media print {
+	.editor-suggestion-inline-preview {
+		display: none;
+	}
+}

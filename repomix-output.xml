@@ -1,0 +1,3611 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+packages/
+  editor/
+    src/
+      components/
+        collab-mode-selector/
+          index.js
+        simple-suggestion-capture/
+          index.js
+        simple-suggestion-display/
+          index.js
+        suggestion-block-renderer/
+          index.js
+        suggestion-capture/
+          index.js
+          style.scss
+        suggestion-data-structures/
+          index.js
+        suggestion-inline-preview/
+          index.js
+          style.scss
+        suggestion-sidebar/
+          index.js
+          style.scss
+          suggestion-actions.js
+          suggestion-preview.js
+        suggestion-visual-overlay/
+          index.js
+        suggestions-integration/
+          index.js
+      hooks/
+        suggestion-capture.js
+      store/
+        suggestions-middleware-registration.js
+        suggestions-middleware.js
+        suggestions-store.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="packages/editor/src/components/collab-mode-selector/index.js">
+/**
+ * WordPress dependencies
+ */
+import { DropdownMenu, MenuItemsChoice } from '@wordpress/components';
+import { __ } from '@wordpress/i18n';
+import { edit, comment } from '@wordpress/icons';
+import { useSelect, useDispatch } from '@wordpress/data';
+import { forwardRef } from '@wordpress/element';
+
+/**
+ * Internal dependencies
+ */
+import { store as editorStore } from '../../store';
+
+const COLLABORATION_MODES = [
+	{
+		value: 'edit',
+		label: __( 'Edit' ),
+		icon: edit,
+	},
+	{
+		value: 'suggest',
+		label: __( 'Suggest' ),
+		icon: comment,
+	},
+];
+
+const CollabModeSelector = forwardRef( function CollabModeSelector( { showTooltip = true, variant, size }, ref ) {
+	const { collaborationMode } = useSelect( ( select ) => {
+		const mode = select( editorStore ).getCollaborationMode?.() || 'edit';
+		console.log( '[CollabModeSelector] Current collaboration mode:', mode );
+		return {
+			collaborationMode: mode,
+		};
+	}, [] );
+
+	const { setCollaborationMode } = useDispatch( editorStore );
+
+	const handleModeChange = ( newMode ) => {
+		console.log( '[CollabModeSelector] Changing collaboration mode from', collaborationMode, 'to', newMode );
+		
+		// Update editor store
+		setCollaborationMode( newMode );
+		
+		// Try to update suggestions store if available
+		try {
+			const suggestionsDispatch = wp.data.dispatch( 'gutenberg/suggestions' );
+			if ( suggestionsDispatch && suggestionsDispatch.setSuggestionsMode ) {
+				suggestionsDispatch.setSuggestionsMode( newMode );
+				console.log( '[CollabModeSelector] Updated suggestions store mode to:', newMode );
+			}
+		} catch ( error ) {
+			console.warn( '[CollabModeSelector] Could not update suggestions store:', error );
+		}
+	};
+
+	const currentMode = COLLABORATION_MODES.find(
+		( mode ) => mode.value === collaborationMode
+	);
+
+	return (
+		<DropdownMenu
+			icon={ currentMode?.icon || edit }
+			label={ __( 'Collaboration Mode' ) }
+			toggleProps={ {
+				variant,
+				size,
+				showTooltip,
+				'aria-expanded': false,
+				'aria-label': __( 'Select collaboration mode' ),
+				ref,
+			} }
+			popoverProps={ {
+				placement: 'bottom-start',
+			} }
+		>
+			{ () => (
+				<MenuItemsChoice
+					choices={ COLLABORATION_MODES }
+					value={ collaborationMode }
+					onSelect={ handleModeChange }
+				/>
+			) }
+		</DropdownMenu>
+	);
+} );
+
+export default CollabModeSelector;
+</file>
+
+<file path="packages/editor/src/components/simple-suggestion-capture/index.js">
+/**
+ * WordPress dependencies
+ */
+import { useEffect, useRef } from '@wordpress/element';
+import { useSelect, useDispatch } from '@wordpress/data';
+import { addFilter } from '@wordpress/hooks';
+import { createHigherOrderComponent } from '@wordpress/compose';
+import { store as blockEditorStore } from '@wordpress/block-editor';
+
+/**
+ * Internal dependencies
+ */
+import { store as editorStore } from '../../store';
+
+/**
+ * Simple hook to capture text changes in suggest mode
+ */
+function useSimpleSuggestionCapture( blockClientId ) {
+	const previousContentRef = useRef( null );
+	
+	const { content, isInSuggestMode } = useSelect( ( select ) => {
+		if ( ! blockClientId ) {
+			return { content: '', isInSuggestMode: false };
+		}
+		
+		const block = select( blockEditorStore ).getBlock( blockClientId );
+		const mode = select( editorStore ).getCollaborationMode();
+		
+		return {
+			content: block?.attributes?.content || '',
+			isInSuggestMode: mode === 'suggest',
+		};
+	}, [ blockClientId ] );
+
+	const { dispatch } = useDispatch();
+	
+	useEffect( () => {
+		// Initialize previous content if not set
+		if ( previousContentRef.current === null ) {
+			previousContentRef.current = content;
+			return;
+		}
+		
+		// Only capture changes in suggest mode
+		if ( ! isInSuggestMode ) {
+			previousContentRef.current = content;
+			return;
+		}
+		
+		// Detect content changes
+		if ( content !== previousContentRef.current ) {
+			console.log( '[SimpleSuggestionCapture] Content changed from:', previousContentRef.current );
+			console.log( '[SimpleSuggestionCapture] Content changed to:', content );
+			
+			// Try to add suggestion to store
+			try {
+				const suggestionsDispatch = wp.data.dispatch( 'gutenberg/suggestions' );
+				if ( suggestionsDispatch && suggestionsDispatch.addSuggestion ) {
+					const suggestionId = `suggestion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+					
+					suggestionsDispatch.addSuggestion( blockClientId, suggestionId, {
+						id: suggestionId,
+						type: 'text_change',
+						status: 'pending',
+						originalContent: previousContentRef.current,
+						suggestedContent: content,
+						blockClientId,
+						timestamp: Date.now(),
+					} );
+					
+					console.log( '[SimpleSuggestionCapture] Added suggestion:', suggestionId );
+				}
+			} catch ( error ) {
+				console.warn( '[SimpleSuggestionCapture] Could not add suggestion:', error );
+			}
+			
+			previousContentRef.current = content;
+		}
+	}, [ content, isInSuggestMode, blockClientId ] );
+}
+
+/**
+ * Higher-order component that adds simple suggestion capture to paragraph blocks
+ */
+const withSimpleSuggestionCapture = createHigherOrderComponent(
+	( BlockEdit ) => ( props ) => {
+		const { name, clientId } = props;
+		
+		// Only apply to paragraph blocks
+		if ( name === 'core/paragraph' ) {
+			useSimpleSuggestionCapture( clientId );
+		}
+		
+		return <BlockEdit { ...props } />;
+	},
+	'withSimpleSuggestionCapture'
+);
+
+/**
+ * Add simple suggestion capture to paragraph blocks
+ */
+addFilter(
+	'editor.BlockEdit',
+	'gutenberg/simple-suggestion-capture',
+	withSimpleSuggestionCapture,
+	15 // Lower priority to run after other filters
+);
+
+export default useSimpleSuggestionCapture;
+</file>
+
+<file path="packages/editor/src/components/simple-suggestion-display/index.js">
+/**
+ * WordPress dependencies
+ */
+import { useSelect } from '@wordpress/data';
+import { addFilter } from '@wordpress/hooks';
+import { createHigherOrderComponent } from '@wordpress/compose';
+
+/**
+ * Internal dependencies
+ */
+import { store as editorStore } from '../../store';
+
+/**
+ * Simple component to show suggestion status
+ */
+function SimpleSuggestionDisplay( { blockClientId } ) {
+	const { hasSuggestions, isInSuggestMode } = useSelect( ( select ) => {
+		if ( ! blockClientId ) {
+			return { hasSuggestions: false, isInSuggestMode: false };
+		}
+		
+		const mode = select( editorStore ).getCollaborationMode();
+		
+		// Try to get suggestions from store
+		let suggestions = {};
+		try {
+			const suggestionsSelect = wp.data.select( 'gutenberg/suggestions' );
+			if ( suggestionsSelect && suggestionsSelect.getBlockSuggestions ) {
+				suggestions = suggestionsSelect.getBlockSuggestions( blockClientId );
+			}
+		} catch ( error ) {
+			// Store not available yet
+		}
+		
+		return {
+			hasSuggestions: Object.keys( suggestions ).length > 0,
+			isInSuggestMode: mode === 'suggest',
+		};
+	}, [ blockClientId ] );
+
+	// Only show in suggest mode with suggestions
+	if ( ! isInSuggestMode || ! hasSuggestions ) {
+		return null;
+	}
+
+	return (
+		<div
+			style={ {
+				position: 'absolute',
+				top: '-25px',
+				left: '0',
+				backgroundColor: '#007cba',
+				color: 'white',
+				padding: '4px 8px',
+				borderRadius: '4px',
+				fontSize: '12px',
+				zIndex: 1000,
+				pointerEvents: 'none',
+			} }
+		>
+			📝 Suggestion pending
+		</div>
+	);
+}
+
+/**
+ * Higher-order component that adds simple suggestion display to paragraph blocks
+ */
+const withSimpleSuggestionDisplay = createHigherOrderComponent(
+	( BlockEdit ) => ( props ) => {
+		const { name, clientId } = props;
+		
+		// Only apply to paragraph blocks
+		if ( name !== 'core/paragraph' ) {
+			return <BlockEdit { ...props } />;
+		}
+		
+		return (
+			<div style={ { position: 'relative' } }>
+				<BlockEdit { ...props } />
+				<SimpleSuggestionDisplay blockClientId={ clientId } />
+			</div>
+		);
+	},
+	'withSimpleSuggestionDisplay'
+);
+
+/**
+ * Add simple suggestion display to paragraph blocks
+ */
+addFilter(
+	'editor.BlockEdit',
+	'gutenberg/simple-suggestion-display',
+	withSimpleSuggestionDisplay,
+	20 // Higher priority to wrap other components
+);
+
+export default SimpleSuggestionDisplay;
+</file>
+
+<file path="packages/editor/src/components/suggestion-block-renderer/index.js">
+/**
+ * WordPress dependencies
+ */
+import { useSelect } from '@wordpress/data';
+import { useMemo } from '@wordpress/element';
+import { RichText } from '@wordpress/block-editor';
+import { store as coreStore } from '@wordpress/core-data';
+
+/**
+ * Internal dependencies
+ */
+import { store as editorStore } from '../../store';
+import { commentMetaToSuggestion, generateDiffVisualization } from '../suggestion-data-structures';
+
+/**
+ * Component that renders an overlay with diff visualization 
+ * when there are pending suggestions
+ */
+export function SuggestionBlockRenderer( { blockClientId } ) {
+	const { comments, collaborationMode } = useSelect( ( select ) => {
+		if ( ! blockClientId ) {
+			return {
+				comments: [],
+				collaborationMode: select( editorStore ).getCollaborationMode(),
+			};
+		}
+
+		const { getCurrentPostId, getCollaborationMode } = select( editorStore );
+		const { getEntityRecords } = select( coreStore );
+		
+		const postId = getCurrentPostId();
+		const commentsData = getEntityRecords( 'root', 'comment', {
+			post: postId,
+			type: 'block_suggestion',
+			per_page: 100,
+		} ) || [];
+
+		return {
+			comments: commentsData,
+			collaborationMode: getCollaborationMode(),
+		};
+	}, [ blockClientId ] );
+
+	// Memoize the pending suggestion to prevent unnecessary re-renders
+	const pendingSuggestion = useMemo( () => {
+		// Filter suggestions for this specific block
+		const blockSuggestions = comments.filter( 
+			( comment ) => comment.meta?.block_client_id === blockClientId 
+		);
+
+		// Find the first pending suggestion
+		return blockSuggestions.find( 
+			( comment ) => {
+				const suggestion = commentMetaToSuggestion( comment.meta );
+				return suggestion.status === 'pending';
+			}
+		);
+	}, [ comments, blockClientId ] );
+
+	const diffElements = useMemo( () => {
+		if ( ! pendingSuggestion ) {
+			return [];
+		}
+
+		const suggestion = commentMetaToSuggestion( pendingSuggestion.meta );
+		return generateDiffVisualization( suggestion.diff );
+	}, [ pendingSuggestion ] );
+
+	// Only show in suggestion mode with pending suggestions
+	if ( collaborationMode !== 'suggest' || ! diffElements.length ) {
+		return null;
+	}
+
+	return (
+		<div className="editor-suggestion-block-renderer">
+			<div className="editor-suggestion-block-content">
+				{ diffElements.map( ( element, index ) => {
+					if ( element.type === 'deletion' ) {
+						return (
+							<span
+								key={ index }
+								className="editor-suggestion-diff editor-suggestion-diff__deletion"
+								style={ {
+									backgroundColor: '#f8d7da',
+									color: '#721c24',
+									textDecoration: 'line-through',
+									padding: '0 2px',
+									borderRadius: '2px',
+								} }
+							>
+								{ element.content }
+							</span>
+						);
+					}
+					
+					if ( element.type === 'insertion' ) {
+						return (
+							<span
+								key={ index }
+								className="editor-suggestion-diff editor-suggestion-diff__insertion"
+								style={ {
+									backgroundColor: '#d4edda',
+									color: '#155724',
+									textDecoration: 'underline',
+									padding: '0 2px',
+									borderRadius: '2px',
+								} }
+							>
+								{ element.content }
+							</span>
+						);
+					}
+					
+					// Equal content (unchanged)
+					return (
+						<span
+							key={ index }
+							className="editor-suggestion-diff editor-suggestion-diff__equal"
+						>
+							{ element.content }
+						</span>
+					);
+				} ) }
+			</div>
+		</div>
+	);
+}
+
+/**
+ * Higher-order component that wraps paragraph blocks with suggestion rendering
+ */
+export function withSuggestionBlockRenderer( WrappedComponent ) {
+	return function SuggestionBlockRendererComponent( props ) {
+		const { clientId } = props;
+		
+		const { collaborationMode } = useSelect( ( select ) => {
+			return {
+				collaborationMode: select( editorStore ).getCollaborationMode(),
+			};
+		}, [] );
+
+		// Only apply to paragraph blocks in suggestion mode
+		if ( props.name !== 'core/paragraph' || collaborationMode !== 'suggest' ) {
+			return <WrappedComponent { ...props } />;
+		}
+
+		return (
+			<div className="editor-suggestion-block-wrapper">
+				<WrappedComponent { ...props } />
+				<SuggestionBlockRenderer blockClientId={ clientId } />
+			</div>
+		);
+	};
+}
+
+export default SuggestionBlockRenderer;
+</file>
+
+<file path="packages/editor/src/components/suggestion-capture/index.js">
+/**
+ * WordPress dependencies
+ */
+import { useSelect, useDispatch } from '@wordpress/data';
+import { useEffect, useRef, useMemo } from '@wordpress/element';
+import { store as blockEditorStore } from '@wordpress/block-editor';
+
+/**
+ * Internal dependencies
+ */
+import { store as editorStore } from '../../store';
+import { 
+	createTextSuggestion, 
+	suggestionToCommentMeta,
+	SUGGESTION_STATUS 
+} from '../suggestion-data-structures';
+
+/**
+ * Hook to capture text changes in paragraph blocks during suggestion mode
+ *
+ * @param {string|null} blockClientId - The block client ID to monitor, or null to disable
+ * @return {Object} Suggestion capture utilities
+ */
+export function useSuggestionCapture( blockClientId ) {
+	const previousContentRef = useRef( null );
+	const isCapturingRef = useRef( false );
+	const timeoutRef = useRef( null );
+
+	const {
+		collaborationMode,
+		blockContent,
+		blockName,
+		postId,
+	} = useSelect( ( select ) => {
+		if ( ! blockClientId ) {
+			return {
+				collaborationMode: select( editorStore ).getCollaborationMode(),
+				blockContent: '',
+				blockName: '',
+				postId: select( editorStore ).getCurrentPostId(),
+			};
+		}
+
+		const { getBlock } = select( blockEditorStore );
+		const { getCollaborationMode, getCurrentPostId } = select( editorStore );
+
+		const block = getBlock( blockClientId );
+
+		return {
+			collaborationMode: getCollaborationMode(),
+			blockContent: block?.attributes?.content || '',
+			blockName: block?.name || '',
+			postId: getCurrentPostId(),
+		};
+	}, [ blockClientId ] );
+
+	const { saveEntityRecord } = useDispatch( 'core' );
+	const { dispatch } = useDispatch();
+
+	/**
+	 * Creates a suggestion from the current text changes
+	 */
+	const createSuggestion = useMemo( () => async ( originalText, suggestedText ) => {
+		if ( originalText === suggestedText || ! blockClientId ) {
+			return;
+		}
+
+		const blockData = {
+			clientId: blockClientId,
+			name: blockName,
+		};
+
+		// Create suggestion data
+		const suggestion = createTextSuggestion( originalText, suggestedText, blockData );
+		const commentMeta = suggestionToCommentMeta( suggestion, `Text suggestion for ${ blockName }` );
+
+		try {
+			// Create suggestion comment
+			const commentArgs = {
+				post: postId,
+				content: `Suggested change: "${ originalText }" → "${ suggestedText }"`,
+				comment_type: 'block_suggestion',
+				comment_approved: 0,
+				meta: commentMeta,
+			};
+
+			const savedComment = await saveEntityRecord( 'root', 'comment', commentArgs );
+			
+			// Store suggestion in the dedicated suggestions store
+			// instead of polluting block attributes
+			const suggestionId = `suggestion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+			
+			// Add to suggestions store
+			dispatch( 'gutenberg/suggestions' ).addSuggestion( blockClientId, suggestionId, {
+				...suggestion,
+				id: suggestionId,
+				status: 'pending',
+				commentId: savedComment?.id,
+				timestamp: Date.now(),
+			} );
+		} catch ( error ) {
+			console.error( 'Failed to create suggestion:', error );
+			// Still store the suggestion in suggestions store even if comment creation fails
+			const suggestionId = `suggestion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+			
+			dispatch( 'gutenberg/suggestions' ).addSuggestion( blockClientId, suggestionId, {
+				...suggestion,
+				id: suggestionId,
+				status: 'pending',
+				timestamp: Date.now(),
+			} );
+		}
+	}, [ blockClientId, blockName, postId, saveEntityRecord, dispatch ] );
+
+	/**
+	 * Handles text change events with debouncing
+	 */
+	const handleTextChange = useMemo( () => ( newContent ) => {
+		console.log( '[SuggestionCapture] handleTextChange called', {
+			blockClientId,
+			collaborationMode,
+			blockName,
+			newContent: newContent?.substring( 0, 50 ) + '...',
+			previousContent: previousContentRef.current?.substring( 0, 50 ) + '...'
+		} );
+
+		if ( ! blockClientId || collaborationMode !== 'suggest' || !blockName?.includes( 'paragraph' ) ) {
+			console.log( '[SuggestionCapture] Skipping - not in suggest mode or not paragraph block' );
+			return;
+		}
+
+		// Clear existing timeout
+		if ( timeoutRef.current ) {
+			clearTimeout( timeoutRef.current );
+		}
+
+		console.log( '[SuggestionCapture] Setting timeout for suggestion creation' );
+
+		// Set new timeout for debounced suggestion creation
+		timeoutRef.current = setTimeout( () => {
+			if ( previousContentRef.current && previousContentRef.current !== newContent ) {
+				console.log( '[SuggestionCapture] Creating suggestion:', {
+					from: previousContentRef.current,
+					to: newContent
+				} );
+				createSuggestion( previousContentRef.current, newContent );
+			} else {
+				console.log( '[SuggestionCapture] No change detected, not creating suggestion' );
+			}
+		}, 1000 ); // 1 second debounce
+	}, [ blockClientId, collaborationMode, blockName, createSuggestion ] );
+
+	/**
+	 * Starts capturing suggestions for the block
+	 */
+	const startCapture = useMemo( () => () => {
+		if ( blockClientId && collaborationMode === 'suggest' && blockName?.includes( 'paragraph' ) ) {
+			previousContentRef.current = blockContent;
+			isCapturingRef.current = true;
+		}
+	}, [ blockClientId, collaborationMode, blockName, blockContent ] );
+
+	/**
+	 * Stops capturing suggestions for the block
+	 */
+	const stopCapture = useMemo( () => () => {
+		isCapturingRef.current = false;
+		if ( timeoutRef.current ) {
+			clearTimeout( timeoutRef.current );
+		}
+	}, [] );
+
+	// Monitor content changes
+	useEffect( () => {
+		if ( isCapturingRef.current && blockContent !== previousContentRef.current ) {
+			handleTextChange( blockContent );
+		}
+	}, [ blockContent, handleTextChange ] );
+
+	// Start/stop capture based on mode
+	useEffect( () => {
+		if ( blockClientId && collaborationMode === 'suggest' ) {
+			startCapture();
+		} else {
+			stopCapture();
+		}
+
+		return () => {
+			stopCapture();
+		};
+	}, [ collaborationMode, blockClientId, startCapture, stopCapture ] );
+
+	// Cleanup on unmount
+	useEffect( () => {
+		return () => {
+			if ( timeoutRef.current ) {
+				clearTimeout( timeoutRef.current );
+			}
+		};
+	}, [] );
+
+	return {
+		isCapturing: isCapturingRef.current,
+		startCapture,
+		stopCapture,
+		createSuggestion,
+	};
+}
+
+/**
+ * Component that wraps paragraph blocks to capture suggestions
+ */
+export function SuggestionCaptureWrapper( { children, blockClientId } ) {
+	const { isCapturing } = useSuggestionCapture( blockClientId );
+
+	const { collaborationMode } = useSelect( ( select ) => {
+		return {
+			collaborationMode: select( editorStore ).getCollaborationMode(),
+		};
+	}, [] );
+
+	// Only wrap if in suggestion mode
+	if ( collaborationMode !== 'suggest' ) {
+		return children;
+	}
+
+	return (
+		<div
+			className={ `editor-suggestion-capture ${ isCapturing ? 'is-capturing' : '' }` }
+			data-block-id={ blockClientId }
+		>
+			{ children }
+		</div>
+	);
+}
+
+/**
+ * Higher-order component to add suggestion capture to paragraph blocks
+ */
+export function withSuggestionCapture( WrappedComponent ) {
+	return function SuggestionCaptureComponent( props ) {
+		const { clientId } = props;
+		
+		return (
+			<SuggestionCaptureWrapper blockClientId={ clientId }>
+				<WrappedComponent { ...props } />
+			</SuggestionCaptureWrapper>
+		);
+	};
+}
+
+export default useSuggestionCapture;
+</file>
+
+<file path="packages/editor/src/components/suggestion-capture/style.scss">
+/**
+ * Suggestion capture styles - minimal and non-intrusive
+ */
+.editor-suggestion-capture-active {
+	// Subtle visual indication that suggestion mode is active
+	&::before {
+		content: "";
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		border: 1px solid transparent;
+		border-radius: 2px;
+		pointer-events: none;
+		transition: border-color 0.2s ease;
+	}
+
+	&:hover::before {
+		border-color: rgba(56, 88, 233, 0.3);
+	}
+
+	&.has-pending-suggestions {
+		&::before {
+			border-color: rgba(240, 184, 73, 0.5);
+		}
+
+		&:hover::before {
+			border-color: rgba(240, 184, 73, 0.7);
+		}
+	}
+
+	&.suggestion-pending {
+		position: relative;
+
+		&::after {
+			content: "Pending";
+			position: absolute;
+			top: -8px;
+			right: -8px;
+			background: #f0b849;
+			color: #1e1e1e;
+			padding: 2px 4px;
+			border-radius: 2px;
+			font-size: 10px;
+			font-weight: 500;
+			z-index: 10;
+			opacity: 0.8;
+		}
+	}
+}
+
+/**
+ * Suggestion diff visualization
+ */
+.editor-suggestion-diff {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	line-height: 1.5;
+	
+	&__insertion {
+		background-color: #d4edda !important;
+		color: #155724 !important;
+		text-decoration: underline !important;
+		padding: 0 2px !important;
+		border-radius: 2px !important;
+	}
+
+	&__deletion {
+		background-color: #f8d7da !important;
+		color: #721c24 !important;
+		text-decoration: line-through !important;
+		padding: 0 2px !important;
+		border-radius: 2px !important;
+	}
+
+	&__equal {
+		// No special styling for unchanged text
+	}
+}
+
+// Global styles for suggestion diff spans
+.suggestion-diff-insertion {
+	background-color: #d4edda !important;
+	color: #155724 !important;
+	text-decoration: underline !important;
+	padding: 0 2px !important;
+	border-radius: 2px !important;
+	margin: 0 1px !important;
+}
+
+.suggestion-diff-deletion {
+	background-color: #f8d7da !important;
+	color: #721c24 !important;
+	text-decoration: line-through !important;
+	padding: 0 2px !important;
+	border-radius: 2px !important;
+	margin: 0 1px !important;
+}
+
+/**
+ * Suggestion inline preview
+ */
+.editor-suggestion-inline-preview {
+	margin-top: 8px;
+	padding: 12px;
+	background: #f8f9fa;
+	border: 1px solid #e2e4e7;
+	border-radius: 4px;
+	
+	&__header {
+		margin-bottom: 8px;
+		font-weight: 600;
+		color: #1e1e1e;
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+	
+	&__content {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+		line-height: 1.5;
+		font-size: 14px;
+		
+		// Ensure proper spacing between diff elements
+		.editor-suggestion-diff {
+			display: inline;
+			white-space: pre-wrap;
+		}
+	}
+}
+
+/**
+ * Suggestion mode indicator
+ */
+.editor-collaboration-mode-indicator {
+	position: fixed;
+	top: 60px;
+	right: 20px;
+	background: #3858e9;
+	color: white;
+	padding: 8px 12px;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 500;
+	z-index: 100;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	transition: all 0.2s ease;
+
+	&.is-suggest-mode {
+		background: #f0b849;
+		color: #1e1e1e;
+	}
+
+	&.is-edit-mode {
+		background: #10ac84;
+		color: white;
+	}
+}
+
+/**
+ * Suggestion capture toolbar
+ */
+.editor-suggestion-capture-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px;
+	background: #f8f9fa;
+	border: 1px solid #e2e4e7;
+	border-radius: 4px;
+	margin-bottom: 8px;
+
+	&__label {
+		font-size: 12px;
+		font-weight: 500;
+		color: #1e1e1e;
+	}
+
+	&__status {
+		font-size: 11px;
+		color: #757575;
+		padding: 2px 6px;
+		background: #fff;
+		border-radius: 2px;
+		border: 1px solid #e2e4e7;
+
+		&.is-capturing {
+			background: #f0b849;
+			color: #1e1e1e;
+			border-color: #f0b849;
+		}
+	}
+}
+
+/**
+ * Responsive adjustments
+ */
+@media (max-width: 768px) {
+	.editor-suggestion-capture-wrapper {
+		&.is-suggestion-mode {
+			.wp-block-paragraph {
+				padding: 6px;
+				margin: 2px 0;
+			}
+		}
+	}
+
+	.editor-collaboration-mode-indicator {
+		top: 50px;
+		right: 10px;
+		padding: 6px 10px;
+		font-size: 11px;
+	}
+}
+
+/**
+ * Animation for suggestion state changes
+ */
+@keyframes suggestionHighlight {
+	0% {
+		background-color: rgba(56, 88, 233, 0.3);
+	}
+	100% {
+		background-color: rgba(56, 88, 233, 0.1);
+	}
+}
+
+.editor-suggestion-capture-wrapper.suggestion-created {
+	.wp-block-paragraph {
+		animation: suggestionHighlight 0.5s ease;
+	}
+}
+
+/**
+ * Focus states for accessibility
+ */
+.editor-suggestion-capture-wrapper:focus-within {
+	outline: 2px solid #3858e9;
+	outline-offset: 2px;
+}
+
+/**
+ * High contrast mode support
+ */
+@media (prefers-contrast: high) {
+	.editor-suggestion-capture-wrapper {
+		&.is-suggestion-mode {
+			.wp-block-paragraph {
+				border-width: 2px;
+				border-style: solid;
+			}
+		}
+	}
+
+	.editor-suggestion-diff {
+		&__insertion {
+			background-color: #000;
+			color: #fff;
+		}
+
+		&__deletion {
+			background-color: #fff;
+			color: #000;
+			border: 1px solid #000;
+		}
+	}
+}
+</file>
+
+<file path="packages/editor/src/components/suggestion-data-structures/index.js">
+/**
+ * External dependencies
+ */
+import { makeDiff, makePatches, applyPatches } from '@sanity/diff-match-patch';
+
+/**
+ * WordPress dependencies
+ */
+import { __ } from '@wordpress/i18n';
+
+/**
+ * Suggestion status constants
+ */
+export const SUGGESTION_STATUS = {
+	PENDING: 'pending',
+	ACCEPTED: 'accepted',
+	REJECTED: 'rejected',
+	DRAFT: 'draft',
+};
+
+/**
+ * Suggestion types
+ */
+export const SUGGESTION_TYPES = {
+	TEXT_CHANGE: 'text_change',
+	ATTRIBUTE_CHANGE: 'attribute_change',
+	CONTENT_CHANGE: 'content_change',
+};
+
+/**
+ * Creates a text diff suggestion for paragraph blocks
+ *
+ * @param {string} originalText - Original block content
+ * @param {string} suggestedText - Suggested block content
+ * @param {Object} blockData - Block information
+ * @return {Object} Suggestion data structure
+ */
+export function createTextSuggestion( originalText, suggestedText, blockData ) {
+	const diff = makeDiff( originalText, suggestedText );
+	const patches = makePatches( originalText, suggestedText );
+
+	return {
+		type: SUGGESTION_TYPES.TEXT_CHANGE,
+		blockClientId: blockData.clientId,
+		blockType: blockData.name,
+		originalContent: originalText,
+		suggestedContent: suggestedText,
+		diff,
+		patches,
+		timestamp: Date.now(),
+		status: SUGGESTION_STATUS.PENDING,
+	};
+}
+
+/**
+ * Creates an attribute change suggestion for blocks
+ *
+ * @param {Object} originalAttributes - Original block attributes
+ * @param {Object} suggestedAttributes - Suggested block attributes
+ * @param {Object} blockData - Block information
+ * @return {Object} Suggestion data structure
+ */
+export function createAttributeSuggestion( originalAttributes, suggestedAttributes, blockData ) {
+	const changes = [];
+	
+	// Find attribute differences
+	Object.keys( suggestedAttributes ).forEach( ( key ) => {
+		if ( originalAttributes[ key ] !== suggestedAttributes[ key ] ) {
+			changes.push( {
+				attribute: key,
+				from: originalAttributes[ key ],
+				to: suggestedAttributes[ key ],
+			} );
+		}
+	} );
+
+	return {
+		type: SUGGESTION_TYPES.ATTRIBUTE_CHANGE,
+		blockClientId: blockData.clientId,
+		blockType: blockData.name,
+		originalAttributes,
+		suggestedAttributes,
+		changes,
+		timestamp: Date.now(),
+		status: SUGGESTION_STATUS.PENDING,
+	};
+}
+
+/**
+ * Creates a complete content change suggestion
+ *
+ * @param {Object} originalBlock - Original block data
+ * @param {Object} suggestedBlock - Suggested block data
+ * @return {Object} Suggestion data structure
+ */
+export function createContentSuggestion( originalBlock, suggestedBlock ) {
+	return {
+		type: SUGGESTION_TYPES.CONTENT_CHANGE,
+		blockClientId: originalBlock.clientId,
+		blockType: originalBlock.name,
+		originalBlock,
+		suggestedBlock,
+		timestamp: Date.now(),
+		status: SUGGESTION_STATUS.PENDING,
+	};
+}
+
+/**
+ * Applies a text suggestion to content
+ *
+ * @param {Object} suggestion - Suggestion data
+ * @param {string} currentContent - Current content to apply to
+ * @return {Array} Array containing [newContent, success]
+ */
+export function applyTextSuggestion( suggestion, currentContent ) {
+	try {
+		const [ newContent, success ] = applyPatches( suggestion.patches, currentContent );
+		return [ newContent, success ];
+	} catch ( error ) {
+		return [ currentContent, false ];
+	}
+}
+
+/**
+ * Applies an attribute suggestion to block attributes
+ *
+ * @param {Object} suggestion - Suggestion data
+ * @param {Object} currentAttributes - Current block attributes
+ * @return {Object} New attributes with suggestion applied
+ */
+export function applyAttributeSuggestion( suggestion, currentAttributes ) {
+	const newAttributes = { ...currentAttributes };
+	
+	suggestion.changes.forEach( ( change ) => {
+		newAttributes[ change.attribute ] = change.to;
+	} );
+
+	return newAttributes;
+}
+
+/**
+ * Generates a visual diff representation for text changes
+ *
+ * @param {Array} diff - Diff array from makeDiff
+ * @return {Array} Array of diff elements with type and content
+ */
+export function generateDiffVisualization( diff ) {
+	return diff.map( ( [ operation, text ] ) => {
+		let type;
+		switch ( operation ) {
+			case -1:
+				type = 'deletion';
+				break;
+			case 1:
+				type = 'insertion';
+				break;
+			case 0:
+				type = 'equal';
+				break;
+			default:
+				type = 'equal';
+		}
+
+		return {
+			type,
+			content: text,
+		};
+	} );
+}
+
+/**
+ * Converts suggestion data to comment meta format
+ *
+ * @param {Object} suggestion - Suggestion data
+ * @param {string} description - Human-readable description
+ * @return {Object} Comment meta object
+ */
+export function suggestionToCommentMeta( suggestion, description = '' ) {
+	return {
+		suggestion_type: suggestion.type,
+		suggestion_status: suggestion.status,
+		block_client_id: suggestion.blockClientId,
+		block_type: suggestion.blockType,
+		original_content: JSON.stringify( suggestion.originalContent || suggestion.originalAttributes || suggestion.originalBlock ),
+		suggested_content: JSON.stringify( suggestion.suggestedContent || suggestion.suggestedAttributes || suggestion.suggestedBlock ),
+		diff_data: JSON.stringify( suggestion.diff || suggestion.changes || {} ),
+		patches_data: JSON.stringify( suggestion.patches || [] ),
+		timestamp: suggestion.timestamp.toString(),
+		description,
+	};
+}
+
+/**
+ * Converts comment meta to suggestion data format
+ *
+ * @param {Object} commentMeta - Comment meta object
+ * @return {Object} Suggestion data
+ */
+export function commentMetaToSuggestion( commentMeta ) {
+	return {
+		type: commentMeta.suggestion_type,
+		status: commentMeta.suggestion_status,
+		blockClientId: commentMeta.block_client_id,
+		blockType: commentMeta.block_type,
+		originalContent: JSON.parse( commentMeta.original_content || '{}' ),
+		suggestedContent: JSON.parse( commentMeta.suggested_content || '{}' ),
+		diff: JSON.parse( commentMeta.diff_data || '[]' ),
+		patches: JSON.parse( commentMeta.patches_data || '[]' ),
+		timestamp: parseInt( commentMeta.timestamp, 10 ),
+		description: commentMeta.description || '',
+	};
+}
+
+/**
+ * Validates if a suggestion can be applied to the current block state
+ *
+ * @param {Object} suggestion - Suggestion data
+ * @param {Object} currentBlock - Current block data
+ * @return {Object} Validation result with success flag and message
+ */
+export function validateSuggestion( suggestion, currentBlock ) {
+	if ( suggestion.blockClientId !== currentBlock.clientId ) {
+		return {
+			success: false,
+			message: __( 'Suggestion is for a different block.' ),
+		};
+	}
+
+	if ( suggestion.blockType !== currentBlock.name ) {
+		return {
+			success: false,
+			message: __( 'Block type has changed since suggestion was created.' ),
+		};
+	}
+
+	// For text suggestions, validate that the original content matches
+	if ( suggestion.type === SUGGESTION_TYPES.TEXT_CHANGE ) {
+		const currentContent = currentBlock.attributes.content || '';
+		if ( suggestion.originalContent !== currentContent ) {
+			return {
+				success: false,
+				message: __( 'Block content has changed since suggestion was created.' ),
+			};
+		}
+	}
+
+	return {
+		success: true,
+		message: __( 'Suggestion can be applied.' ),
+	};
+}
+
+/**
+ * Default suggestion data structure
+ */
+export const DEFAULT_SUGGESTION = {
+	type: SUGGESTION_TYPES.TEXT_CHANGE,
+	blockClientId: '',
+	blockType: '',
+	originalContent: '',
+	suggestedContent: '',
+	diff: [],
+	patches: [],
+	timestamp: Date.now(),
+	status: SUGGESTION_STATUS.PENDING,
+};
+</file>
+
+<file path="packages/editor/src/components/suggestion-inline-preview/index.js">
+/**
+ * WordPress dependencies
+ */
+import { useSelect } from '@wordpress/data';
+import { useMemo } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
+import { store as coreStore } from '@wordpress/core-data';
+import { store as blockEditorStore } from '@wordpress/block-editor';
+
+/**
+ * Internal dependencies
+ */
+import { store as editorStore } from '../../store';
+import { commentMetaToSuggestion, generateDiffVisualization } from '../suggestion-data-structures';
+
+// Stable empty array reference to prevent unnecessary re-renders
+const EMPTY_ARRAY = [];
+
+/**
+ * Component that renders inline suggestion previews within paragraph blocks
+ */
+function SuggestionInlinePreview( { blockClientId } ) {
+	const { postId, collaborationMode, isBlockSelected } = useSelect( ( select ) => {
+		const { getCurrentPostId, getCollaborationMode } = select( editorStore );
+		const { getSelectedBlockClientId } = select( blockEditorStore );
+		
+		return {
+			postId: getCurrentPostId(),
+			collaborationMode: getCollaborationMode(),
+			isBlockSelected: getSelectedBlockClientId() === blockClientId,
+		};
+	}, [ blockClientId ] );
+
+	const { comments } = useSelect( ( select ) => {
+		if ( ! blockClientId || ! postId || typeof postId !== 'number' ) {
+			return {
+				comments: EMPTY_ARRAY,
+			};
+		}
+
+		const { getEntityRecords } = select( coreStore );
+		const commentsData = getEntityRecords( 'root', 'comment', {
+			post: postId,
+			type: 'block_suggestion',
+			per_page: 100,
+		} );
+
+		return {
+			comments: commentsData || EMPTY_ARRAY,
+		};
+	}, [ blockClientId, postId ] );
+
+	// Memoize the filtered suggestions to prevent unnecessary re-renders
+	const suggestions = useMemo( () => {
+		return comments.filter( 
+			( comment ) => comment.meta?.block_client_id === blockClientId 
+		);
+	}, [ comments, blockClientId ] );
+
+	const diffElements = useMemo( () => {
+		if ( ! suggestions.length ) {
+			return [];
+		}
+
+		// For now, show the first pending suggestion
+		const pendingSuggestion = suggestions.find( 
+			( comment ) => {
+				const suggestion = commentMetaToSuggestion( comment.meta );
+				return suggestion.status === 'pending';
+			}
+		);
+
+		if ( ! pendingSuggestion ) {
+			return [];
+		}
+
+		const suggestion = commentMetaToSuggestion( pendingSuggestion.meta );
+		return generateDiffVisualization( suggestion.diff );
+	}, [ suggestions ] );
+
+	// Show preview in suggestion mode when there are suggestions
+	if ( collaborationMode !== 'suggest' || ! diffElements.length ) {
+		return null;
+	}
+
+	return (
+		<div className="editor-suggestion-inline-preview">
+			<div className="editor-suggestion-inline-preview__header">
+				<span className="editor-suggestion-inline-preview__label">
+					{ __( 'Suggested Change:' ) }
+				</span>
+			</div>
+			<div className="editor-suggestion-inline-preview__content">
+				{ diffElements.map( ( element, index ) => {
+					if ( element.type === 'deletion' ) {
+						return (
+							<span
+								key={ index }
+								className="editor-suggestion-diff editor-suggestion-diff__deletion"
+								style={ {
+									backgroundColor: '#f8d7da',
+									color: '#721c24',
+									textDecoration: 'line-through',
+									padding: '0 2px',
+									borderRadius: '2px',
+								} }
+							>
+								{ element.content }
+							</span>
+						);
+					}
+					
+					if ( element.type === 'insertion' ) {
+						return (
+							<span
+								key={ index }
+								className="editor-suggestion-diff editor-suggestion-diff__insertion"
+								style={ {
+									backgroundColor: '#d4edda',
+									color: '#155724',
+									textDecoration: 'underline',
+									padding: '0 2px',
+									borderRadius: '2px',
+								} }
+							>
+								{ element.content }
+							</span>
+						);
+					}
+					
+					// Equal content (unchanged)
+					return (
+						<span
+							key={ index }
+							className="editor-suggestion-diff editor-suggestion-diff__equal"
+						>
+							{ element.content }
+						</span>
+					);
+				} ) }
+			</div>
+		</div>
+	);
+}
+
+/**
+ * Hook that provides inline preview functionality for a block
+ */
+export function useInlinePreview( blockClientId ) {
+	const { postId, collaborationMode } = useSelect( ( select ) => {
+		const { getCurrentPostId, getCollaborationMode } = select( editorStore );
+		
+		return {
+			postId: getCurrentPostId(),
+			collaborationMode: getCollaborationMode(),
+		};
+	}, [ blockClientId ] );
+
+	const { comments } = useSelect( ( select ) => {
+		if ( ! blockClientId || ! postId || typeof postId !== 'number' ) {
+			return {
+				comments: EMPTY_ARRAY,
+			};
+		}
+
+		const { getEntityRecords } = select( coreStore );
+		const commentsData = getEntityRecords( 'root', 'comment', {
+			post: postId,
+			type: 'block_suggestion',
+			per_page: 100,
+		} );
+
+		return {
+			comments: commentsData || EMPTY_ARRAY,
+		};
+	}, [ blockClientId, postId ] );
+
+	// Memoize the suggestions check to prevent unnecessary re-renders
+	const hasSuggestions = useMemo( () => {
+		return comments.some( 
+			( comment ) => comment.meta?.block_client_id === blockClientId 
+		);
+	}, [ comments, blockClientId ] );
+
+	return {
+		hasSuggestions,
+		showPreview: collaborationMode === 'suggest' && hasSuggestions,
+	};
+}
+
+/**
+ * Higher-order component that adds inline preview to blocks
+ */
+export function withInlinePreview( WrappedComponent ) {
+	return function InlinePreviewComponent( props ) {
+		const { clientId } = props;
+		const { showPreview } = useInlinePreview( clientId );
+
+		if ( ! showPreview ) {
+			return <WrappedComponent { ...props } />;
+		}
+
+		return (
+			<div className="editor-suggestion-inline-preview-wrapper">
+				<WrappedComponent { ...props } />
+				<SuggestionInlinePreview blockClientId={ clientId } />
+			</div>
+		);
+	};
+}
+
+export default SuggestionInlinePreview;
+</file>
+
+<file path="packages/editor/src/components/suggestion-inline-preview/style.scss">
+/**
+ * Inline suggestion preview styles
+ */
+.editor-suggestion-inline-preview-wrapper {
+	position: relative;
+}
+
+.editor-suggestion-inline-preview {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	background: #fff;
+	border: 1px solid #f0b849;
+	border-radius: 4px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	margin-top: 4px;
+	padding: 12px;
+	animation: slideDown 0.2s ease;
+
+	&__header {
+		margin-bottom: 8px;
+	}
+
+	&__label {
+		font-size: 11px;
+		font-weight: 500;
+		color: #d4a11e;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+
+	&__content {
+		font-size: 13px;
+		line-height: 1.4;
+		color: #1e1e1e;
+	}
+
+	// Triangle pointer
+	&::before {
+		content: '';
+		position: absolute;
+		top: -8px;
+		left: 16px;
+		width: 0;
+		height: 0;
+		border-left: 8px solid transparent;
+		border-right: 8px solid transparent;
+		border-bottom: 8px solid #f0b849;
+	}
+
+	&::after {
+		content: '';
+		position: absolute;
+		top: -7px;
+		left: 16px;
+		width: 0;
+		height: 0;
+		border-left: 8px solid transparent;
+		border-right: 8px solid transparent;
+		border-bottom: 8px solid #fff;
+	}
+}
+
+/**
+ * Diff visualization styles for inline preview
+ */
+.editor-suggestion-inline-preview {
+	.editor-suggestion-diff {
+		&__insertion {
+			background-color: #d4edda;
+			color: #155724;
+			text-decoration: none;
+			padding: 1px 3px;
+			border-radius: 2px;
+			font-weight: 500;
+			
+			&::before {
+				content: '+';
+				font-size: 10px;
+				margin-right: 2px;
+				opacity: 0.7;
+			}
+		}
+
+		&__deletion {
+			background-color: #f8d7da;
+			color: #721c24;
+			text-decoration: line-through;
+			padding: 1px 3px;
+			border-radius: 2px;
+			font-weight: 500;
+			
+			&::before {
+				content: '-';
+				font-size: 10px;
+				margin-right: 2px;
+				opacity: 0.7;
+			}
+		}
+
+		&__equal {
+			color: #757575;
+			font-weight: normal;
+		}
+	}
+}
+
+/**
+ * Animation for sliding down
+ */
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/**
+ * Responsive adjustments
+ */
+@media (max-width: 768px) {
+	.editor-suggestion-inline-preview {
+		padding: 8px;
+		margin-top: 2px;
+		font-size: 12px;
+
+		&__label {
+			font-size: 10px;
+		}
+
+		&__content {
+			font-size: 12px;
+		}
+	}
+}
+
+/**
+ * High contrast mode
+ */
+@media (prefers-contrast: high) {
+	.editor-suggestion-inline-preview {
+		border-width: 2px;
+		border-color: #000;
+
+		.editor-suggestion-diff {
+			&__insertion {
+				background-color: #000;
+				color: #fff;
+				border: 1px solid #000;
+			}
+
+			&__deletion {
+				background-color: #fff;
+				color: #000;
+				border: 1px solid #000;
+			}
+		}
+	}
+}
+
+/**
+ * Dark mode support
+ */
+@media (prefers-color-scheme: dark) {
+	.editor-suggestion-inline-preview {
+		background: #2a2a2a;
+		border-color: #f0b849;
+		color: #f0f0f0;
+
+		&__label {
+			color: #f0b849;
+		}
+
+		&__content {
+			color: #f0f0f0;
+		}
+
+		&::after {
+			border-bottom-color: #2a2a2a;
+		}
+
+		.editor-suggestion-diff {
+			&__insertion {
+				background-color: #1a4a1a;
+				color: #90ee90;
+			}
+
+			&__deletion {
+				background-color: #4a1a1a;
+				color: #ff9999;
+			}
+
+			&__equal {
+				color: #b0b0b0;
+			}
+		}
+	}
+}
+
+/**
+ * Focus states for accessibility
+ */
+.editor-suggestion-inline-preview:focus-within {
+	outline: 2px solid #3858e9;
+	outline-offset: 2px;
+}
+
+/**
+ * Print styles
+ */
+@media print {
+	.editor-suggestion-inline-preview {
+		display: none;
+	}
+}
+</file>
+
+<file path="packages/editor/src/components/suggestion-sidebar/index.js">
+/**
+ * WordPress dependencies
+ */
+import { useSelect, useDispatch } from '@wordpress/data';
+import { __ } from '@wordpress/i18n';
+import { Button, Panel, PanelBody, PanelRow } from '@wordpress/components';
+import { useState, useMemo } from '@wordpress/element';
+import { dateI18n, format, getSettings } from '@wordpress/date';
+import { store as coreStore } from '@wordpress/core-data';
+
+/**
+ * Internal dependencies
+ */
+import { store as editorStore } from '../../store';
+import { commentMetaToSuggestion, applyTextSuggestion, validateSuggestion } from '../suggestion-data-structures';
+import SuggestionPreview from './suggestion-preview';
+import SuggestionActions from './suggestion-actions';
+
+/**
+ * Component for displaying a single suggestion
+ */
+function SuggestionItem( { suggestion, comment, onAccept, onReject } ) {
+	const [ isExpanded, setIsExpanded ] = useState( false );
+
+	const formattedDate = useMemo( () => {
+		const dateFormat = getSettings().formats.date;
+		return format( dateFormat, comment.date );
+	}, [ comment.date ] );
+
+	const authorName = comment.author_name || __( 'Anonymous' );
+
+	return (
+		<div className="editor-suggestion-item">
+			<div className="editor-suggestion-item__header">
+				<div className="editor-suggestion-item__author">
+					<strong>{ authorName }</strong>
+				</div>
+				<div className="editor-suggestion-item__date">
+					{ formattedDate }
+				</div>
+			</div>
+			
+			<div className="editor-suggestion-item__content">
+				<div className="editor-suggestion-item__description">
+					{ comment.content.rendered }
+				</div>
+				
+				<Button
+					variant="tertiary"
+					size="small"
+					onClick={ () => setIsExpanded( ! isExpanded ) }
+				>
+					{ isExpanded ? __( 'Hide Preview' ) : __( 'Show Preview' ) }
+				</Button>
+			</div>
+
+			{ isExpanded && (
+				<div className="editor-suggestion-item__preview">
+					<SuggestionPreview suggestion={ suggestion } />
+				</div>
+			) }
+
+			<div className="editor-suggestion-item__actions">
+				<SuggestionActions
+					suggestion={ suggestion }
+					comment={ comment }
+					onAccept={ onAccept }
+					onReject={ onReject }
+				/>
+			</div>
+		</div>
+	);
+}
+
+/**
+ * Component for displaying suggestions grouped by block
+ */
+function SuggestionBlock( { blockId, suggestions, onAccept, onReject } ) {
+	const { block } = useSelect( ( select ) => {
+		const { getBlock } = select( 'core/block-editor' );
+		return {
+			block: getBlock( blockId ),
+		};
+	}, [ blockId ] );
+
+	if ( ! block ) {
+		return null;
+	}
+
+	const blockTitle = block.name.split( '/' )[ 1 ] || 'Block';
+
+	return (
+		<PanelBody
+			title={ `${ blockTitle } Suggestions (${ suggestions.length })` }
+			initialOpen={ false }
+			className="editor-suggestion-block"
+		>
+			<div className="editor-suggestion-block__content">
+				{ suggestions.map( ( { suggestion, comment } ) => (
+					<SuggestionItem
+						key={ comment.id }
+						suggestion={ suggestion }
+						comment={ comment }
+						onAccept={ onAccept }
+						onReject={ onReject }
+					/>
+				) ) }
+			</div>
+		</PanelBody>
+	);
+}
+
+/**
+ * Main suggestion sidebar component
+ */
+function SuggestionSidebar() {
+	const { comments, isLoading, postId } = useSelect( ( select ) => {
+		const { getCurrentPostId } = select( editorStore );
+		const { getEntityRecords, isResolving } = select( coreStore );
+		
+		const currentPostId = getCurrentPostId();
+		const commentsData = getEntityRecords( 'root', 'comment', {
+			post: currentPostId,
+			type: 'block_suggestion',
+			per_page: 100,
+			_embed: true,
+		} ) || [];
+
+		return {
+			comments: commentsData,
+			isLoading: isResolving( 'root', 'comment', {
+				post: currentPostId,
+				type: 'block_suggestion',
+				per_page: 100,
+				_embed: true,
+			} ),
+			postId: currentPostId,
+		};
+	}, [] );
+
+	// Memoize the suggestions conversion to prevent unnecessary re-renders
+	const suggestions = useMemo( () => {
+		return comments.map( ( comment ) => {
+			const suggestion = commentMetaToSuggestion( comment.meta );
+			return {
+				suggestion,
+				comment,
+			};
+		} );
+	}, [ comments ] );
+
+	const { saveEntityRecord, updateBlockAttributes } = useDispatch( coreStore );
+
+	/**
+	 * Groups suggestions by block client ID
+	 */
+	const suggestionsByBlock = useMemo( () => {
+		const grouped = {};
+		suggestions.forEach( ( item ) => {
+			const blockId = item.suggestion.blockClientId;
+			if ( ! grouped[ blockId ] ) {
+				grouped[ blockId ] = [];
+			}
+			grouped[ blockId ].push( item );
+		} );
+		return grouped;
+	}, [ suggestions ] );
+
+	/**
+	 * Handles accepting a suggestion
+	 */
+	const handleAcceptSuggestion = async ( suggestion, comment ) => {
+		try {
+			// Get current block
+			const { getBlock } = wp.data.select( 'core/block-editor' );
+			const currentBlock = getBlock( suggestion.blockClientId );
+			
+			if ( ! currentBlock ) {
+				throw new Error( __( 'Block not found' ) );
+			}
+
+			// Validate suggestion
+			const validation = validateSuggestion( suggestion, currentBlock );
+			if ( ! validation.success ) {
+				throw new Error( validation.message );
+			}
+
+			// Apply the suggestion
+			const currentContent = currentBlock.attributes.content || '';
+			const [ newContent, success ] = applyTextSuggestion( suggestion, currentContent );
+			
+			if ( ! success ) {
+				throw new Error( __( 'Failed to apply suggestion' ) );
+			}
+
+			// Update block attributes
+			await updateBlockAttributes( suggestion.blockClientId, {
+				content: newContent,
+				hasPendingSuggestions: false,
+				suggestionMode: null,
+			} );
+
+			// Update suggestion status
+			await saveEntityRecord( 'root', 'comment', {
+				id: comment.id,
+				meta: {
+					...comment.meta,
+					suggestion_status: 'accepted',
+				},
+			} );
+
+		} catch ( error ) {
+			console.error( 'Error accepting suggestion:', error );
+			// TODO: Show error notice
+		}
+	};
+
+	/**
+	 * Handles rejecting a suggestion
+	 */
+	const handleRejectSuggestion = async ( suggestion, comment ) => {
+		try {
+			// Update suggestion status
+			await saveEntityRecord( 'root', 'comment', {
+				id: comment.id,
+				meta: {
+					...comment.meta,
+					suggestion_status: 'rejected',
+				},
+			} );
+
+			// Update block attributes if no other pending suggestions
+			const otherSuggestions = suggestions.filter( 
+				( item ) => item.comment.id !== comment.id && 
+				item.suggestion.blockClientId === suggestion.blockClientId &&
+				item.suggestion.status === 'pending'
+			);
+
+			if ( otherSuggestions.length === 0 ) {
+				await updateBlockAttributes( suggestion.blockClientId, {
+					hasPendingSuggestions: false,
+					suggestionMode: null,
+				} );
+			}
+
+		} catch ( error ) {
+			console.error( 'Error rejecting suggestion:', error );
+			// TODO: Show error notice
+		}
+	};
+
+	if ( isLoading ) {
+		return (
+			<div className="editor-suggestion-sidebar">
+				<div className="editor-suggestion-sidebar__loading">
+					{ __( 'Loading suggestions...' ) }
+				</div>
+			</div>
+		);
+	}
+
+	if ( suggestions.length === 0 ) {
+		return (
+			<div className="editor-suggestion-sidebar">
+				<div className="editor-suggestion-sidebar__empty">
+					<p>{ __( 'No suggestions available.' ) }</p>
+					<p>{ __( 'Switch to suggestion mode to create suggestions.' ) }</p>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="editor-suggestion-sidebar">
+			<div className="editor-suggestion-sidebar__header">
+				<h3>{ __( 'Suggestions' ) }</h3>
+				<div className="editor-suggestion-sidebar__count">
+					{ suggestions.length } { suggestions.length === 1 ? __( 'suggestion' ) : __( 'suggestions' ) }
+				</div>
+			</div>
+
+			<Panel className="editor-suggestion-sidebar__content">
+				{ Object.entries( suggestionsByBlock ).map( ( [ blockId, blockSuggestions ] ) => (
+					<SuggestionBlock
+						key={ blockId }
+						blockId={ blockId }
+						suggestions={ blockSuggestions }
+						onAccept={ handleAcceptSuggestion }
+						onReject={ handleRejectSuggestion }
+					/>
+				) ) }
+			</Panel>
+		</div>
+	);
+}
+
+export default SuggestionSidebar;
+</file>
+
+<file path="packages/editor/src/components/suggestion-sidebar/style.scss">
+/**
+ * Suggestion sidebar styles
+ */
+.editor-suggestion-sidebar {
+	padding: 16px;
+	min-height: 100%;
+	background: #fff;
+
+	&__header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 16px;
+		padding-bottom: 8px;
+		border-bottom: 1px solid #e2e4e7;
+
+		h3 {
+			margin: 0;
+			font-size: 16px;
+			font-weight: 600;
+			color: #1e1e1e;
+		}
+	}
+
+	&__count {
+		font-size: 12px;
+		color: #757575;
+		background: #f8f9fa;
+		padding: 2px 6px;
+		border-radius: 2px;
+	}
+
+	&__content {
+		.components-panel {
+			border: none;
+			margin-bottom: 0;
+		}
+
+		.components-panel__body {
+			border: 1px solid #e2e4e7;
+			border-radius: 4px;
+			margin-bottom: 8px;
+
+			&:last-child {
+				margin-bottom: 0;
+			}
+		}
+	}
+
+	&__loading {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 200px;
+		color: #757575;
+		font-style: italic;
+	}
+
+	&__empty {
+		text-align: center;
+		color: #757575;
+		padding: 32px 16px;
+
+		p {
+			margin: 0 0 8px 0;
+			
+			&:last-child {
+				margin-bottom: 0;
+			}
+		}
+	}
+}
+
+/**
+ * Suggestion block styles
+ */
+.editor-suggestion-block {
+	&__content {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+}
+
+/**
+ * Individual suggestion item styles
+ */
+.editor-suggestion-item {
+	padding: 12px;
+	border: 1px solid #e2e4e7;
+	border-radius: 4px;
+	background: #fff;
+	transition: all 0.2s ease;
+
+	&:hover {
+		border-color: #3858e9;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+
+	&__header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 8px;
+	}
+
+	&__author {
+		font-size: 14px;
+		color: #1e1e1e;
+	}
+
+	&__date {
+		font-size: 12px;
+		color: #757575;
+	}
+
+	&__content {
+		margin-bottom: 12px;
+	}
+
+	&__description {
+		font-size: 14px;
+		line-height: 1.4;
+		color: #1e1e1e;
+		margin-bottom: 8px;
+	}
+
+	&__preview {
+		margin-top: 12px;
+		padding-top: 12px;
+		border-top: 1px solid #e2e4e7;
+	}
+
+	&__actions {
+		display: flex;
+		justify-content: flex-end;
+	}
+}
+
+/**
+ * Suggestion preview styles
+ */
+.editor-suggestion-preview {
+	background: #f8f9fa;
+	border: 1px solid #e2e4e7;
+	border-radius: 4px;
+	padding: 12px;
+
+	&--empty {
+		text-align: center;
+		color: #757575;
+		font-style: italic;
+	}
+
+	&__header {
+		margin-bottom: 12px;
+
+		h4 {
+			margin: 0;
+			font-size: 14px;
+			font-weight: 600;
+			color: #1e1e1e;
+		}
+	}
+
+	&__content {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	&__original,
+	&__suggested {
+		h5 {
+			margin: 0 0 4px 0;
+			font-size: 12px;
+			font-weight: 500;
+			color: #757575;
+			text-transform: uppercase;
+		}
+	}
+
+	&__original {
+		.editor-suggestion-preview__text {
+			background: #fff;
+			border: 1px solid #e2e4e7;
+			border-radius: 2px;
+			padding: 8px;
+			font-size: 13px;
+			line-height: 1.4;
+			color: #1e1e1e;
+		}
+	}
+
+	&__suggested {
+		.editor-suggestion-preview__text {
+			background: #e8f5e8;
+			border: 1px solid #4caf50;
+			border-radius: 2px;
+			padding: 8px;
+			font-size: 13px;
+			line-height: 1.4;
+			color: #1e1e1e;
+		}
+	}
+
+	&__diff {
+		h5 {
+			margin: 0 0 4px 0;
+			font-size: 12px;
+			font-weight: 500;
+			color: #757575;
+			text-transform: uppercase;
+		}
+	}
+
+	&__diff-content {
+		background: #fff;
+		border: 1px solid #e2e4e7;
+		border-radius: 2px;
+		padding: 8px;
+		font-size: 13px;
+		line-height: 1.4;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+	}
+
+	&__meta {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-top: 12px;
+		padding-top: 12px;
+		border-top: 1px solid #e2e4e7;
+		font-size: 12px;
+		color: #757575;
+	}
+
+	&__block-info,
+	&__timestamp {
+		strong {
+			font-weight: 500;
+			color: #1e1e1e;
+		}
+	}
+}
+
+/**
+ * Suggestion actions styles
+ */
+.editor-suggestion-actions {
+	&--accepted,
+	&--rejected {
+		display: flex;
+		justify-content: flex-end;
+	}
+
+	&__status {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 12px;
+		font-weight: 500;
+		padding: 4px 8px;
+		border-radius: 2px;
+	}
+
+	&--accepted &__status {
+		background: #e8f5e8;
+		color: #2e7d32;
+	}
+
+	&--rejected &__status {
+		background: #ffebee;
+		color: #d32f2f;
+	}
+
+	.components-button-group {
+		.components-button {
+			&:first-child {
+				border-top-right-radius: 0;
+				border-bottom-right-radius: 0;
+			}
+
+			&:last-child {
+				border-top-left-radius: 0;
+				border-bottom-left-radius: 0;
+				border-left: 0;
+			}
+		}
+	}
+}
+
+/**
+ * Responsive adjustments
+ */
+@media (max-width: 768px) {
+	.editor-suggestion-sidebar {
+		padding: 12px;
+
+		&__header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 8px;
+
+			h3 {
+				font-size: 14px;
+			}
+		}
+	}
+
+	.editor-suggestion-item {
+		padding: 8px;
+
+		&__header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 4px;
+		}
+
+		&__author {
+			font-size: 13px;
+		}
+
+		&__date {
+			font-size: 11px;
+		}
+
+		&__description {
+			font-size: 13px;
+		}
+	}
+
+	.editor-suggestion-preview {
+		padding: 8px;
+
+		&__meta {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 4px;
+		}
+	}
+}
+
+/**
+ * Dark mode support
+ */
+@media (prefers-color-scheme: dark) {
+	.editor-suggestion-sidebar {
+		background: #1e1e1e;
+		color: #f0f0f0;
+
+		&__header {
+			border-bottom-color: #3a3a3a;
+
+			h3 {
+				color: #f0f0f0;
+			}
+		}
+
+		&__count {
+			background: #2a2a2a;
+			color: #b0b0b0;
+		}
+
+		&__empty {
+			color: #b0b0b0;
+		}
+	}
+
+	.editor-suggestion-item {
+		background: #2a2a2a;
+		border-color: #3a3a3a;
+		color: #f0f0f0;
+
+		&:hover {
+			border-color: #3858e9;
+		}
+
+		&__author {
+			color: #f0f0f0;
+		}
+
+		&__date {
+			color: #b0b0b0;
+		}
+
+		&__description {
+			color: #f0f0f0;
+		}
+
+		&__preview {
+			border-top-color: #3a3a3a;
+		}
+	}
+
+	.editor-suggestion-preview {
+		background: #2a2a2a;
+		border-color: #3a3a3a;
+
+		&__header h4 {
+			color: #f0f0f0;
+		}
+
+		&__original .editor-suggestion-preview__text {
+			background: #3a3a3a;
+			border-color: #4a4a4a;
+			color: #f0f0f0;
+		}
+
+		&__suggested .editor-suggestion-preview__text {
+			background: #1a3a1a;
+			border-color: #2a6a2a;
+			color: #f0f0f0;
+		}
+
+		&__diff-content {
+			background: #3a3a3a;
+			border-color: #4a4a4a;
+			color: #f0f0f0;
+		}
+
+		&__meta {
+			border-top-color: #3a3a3a;
+			color: #b0b0b0;
+
+			strong {
+				color: #f0f0f0;
+			}
+		}
+	}
+}
+</file>
+
+<file path="packages/editor/src/components/suggestion-sidebar/suggestion-actions.js">
+/**
+ * WordPress dependencies
+ */
+import { __ } from '@wordpress/i18n';
+import { Button, ButtonGroup } from '@wordpress/components';
+import { useState } from '@wordpress/element';
+import { check, close } from '@wordpress/icons';
+
+/**
+ * Internal dependencies
+ */
+import { SUGGESTION_STATUS } from '../suggestion-data-structures';
+
+/**
+ * Component for rendering suggestion action buttons
+ */
+function SuggestionActions( { suggestion, comment, onAccept, onReject } ) {
+	const [ isAccepting, setIsAccepting ] = useState( false );
+	const [ isRejecting, setIsRejecting ] = useState( false );
+
+	const isPending = suggestion.status === SUGGESTION_STATUS.PENDING;
+	const isAccepted = suggestion.status === SUGGESTION_STATUS.ACCEPTED;
+	const isRejected = suggestion.status === SUGGESTION_STATUS.REJECTED;
+
+	/**
+	 * Handles accepting the suggestion
+	 */
+	const handleAccept = async () => {
+		setIsAccepting( true );
+		try {
+			await onAccept( suggestion, comment );
+		} finally {
+			setIsAccepting( false );
+		}
+	};
+
+	/**
+	 * Handles rejecting the suggestion
+	 */
+	const handleReject = async () => {
+		setIsRejecting( true );
+		try {
+			await onReject( suggestion, comment );
+		} finally {
+			setIsRejecting( false );
+		}
+	};
+
+	if ( isAccepted ) {
+		return (
+			<div className="editor-suggestion-actions editor-suggestion-actions--accepted">
+				<div className="editor-suggestion-actions__status">
+					<check />
+					{ __( 'Accepted' ) }
+				</div>
+			</div>
+		);
+	}
+
+	if ( isRejected ) {
+		return (
+			<div className="editor-suggestion-actions editor-suggestion-actions--rejected">
+				<div className="editor-suggestion-actions__status">
+					<close />
+					{ __( 'Rejected' ) }
+				</div>
+			</div>
+		);
+	}
+
+	if ( ! isPending ) {
+		return null;
+	}
+
+	return (
+		<div className="editor-suggestion-actions">
+			<ButtonGroup>
+				<Button
+					variant="primary"
+					size="small"
+					icon={ check }
+					onClick={ handleAccept }
+					disabled={ isAccepting || isRejecting }
+					isBusy={ isAccepting }
+				>
+					{ __( 'Accept' ) }
+				</Button>
+				<Button
+					variant="secondary"
+					size="small"
+					icon={ close }
+					onClick={ handleReject }
+					disabled={ isAccepting || isRejecting }
+					isBusy={ isRejecting }
+				>
+					{ __( 'Reject' ) }
+				</Button>
+			</ButtonGroup>
+		</div>
+	);
+}
+
+export default SuggestionActions;
+</file>
+
+<file path="packages/editor/src/components/suggestion-sidebar/suggestion-preview.js">
+/**
+ * WordPress dependencies
+ */
+import { __ } from '@wordpress/i18n';
+import { useMemo } from '@wordpress/element';
+
+/**
+ * Internal dependencies
+ */
+import { generateDiffVisualization } from '../suggestion-data-structures';
+
+/**
+ * Component for rendering a visual diff preview of a suggestion
+ */
+function SuggestionPreview( { suggestion } ) {
+	const diffElements = useMemo( () => {
+		if ( ! suggestion.diff || ! Array.isArray( suggestion.diff ) ) {
+			return [];
+		}
+
+		return generateDiffVisualization( suggestion.diff );
+	}, [ suggestion.diff ] );
+
+	if ( ! diffElements.length ) {
+		return (
+			<div className="editor-suggestion-preview editor-suggestion-preview--empty">
+				<p>{ __( 'No preview available for this suggestion.' ) }</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="editor-suggestion-preview">
+			<div className="editor-suggestion-preview__header">
+				<h4>{ __( 'Suggested Changes' ) }</h4>
+			</div>
+
+			<div className="editor-suggestion-preview__content">
+				<div className="editor-suggestion-preview__original">
+					<h5>{ __( 'Original' ) }</h5>
+					<div className="editor-suggestion-preview__text">
+						{ suggestion.originalContent }
+					</div>
+				</div>
+
+				<div className="editor-suggestion-preview__suggested">
+					<h5>{ __( 'Suggested' ) }</h5>
+					<div className="editor-suggestion-preview__text">
+						{ suggestion.suggestedContent }
+					</div>
+				</div>
+
+				<div className="editor-suggestion-preview__diff">
+					<h5>{ __( 'Changes' ) }</h5>
+					<div className="editor-suggestion-preview__diff-content">
+						{ diffElements.map( ( element, index ) => (
+							<span
+								key={ index }
+								className={ `editor-suggestion-diff editor-suggestion-diff__${ element.type }` }
+							>
+								{ element.content }
+							</span>
+						) ) }
+					</div>
+				</div>
+			</div>
+
+			<div className="editor-suggestion-preview__meta">
+				<div className="editor-suggestion-preview__block-info">
+					<strong>{ __( 'Block:' ) }</strong> { suggestion.blockType }
+				</div>
+				<div className="editor-suggestion-preview__timestamp">
+					<strong>{ __( 'Created:' ) }</strong> { new Date( suggestion.timestamp ).toLocaleString() }
+				</div>
+			</div>
+		</div>
+	);
+}
+
+export default SuggestionPreview;
+</file>
+
+<file path="packages/editor/src/components/suggestion-visual-overlay/index.js">
+/**
+ * WordPress dependencies
+ */
+import { useSelect } from '@wordpress/data';
+import { useMemo } from '@wordpress/element';
+import { createPortal } from '@wordpress/element';
+
+/**
+ * Internal dependencies
+ */
+import { generateDiffVisualization } from '../suggestion-data-structures';
+
+/**
+ * Hook to get the DOM element for a specific block
+ */
+function useBlockElement( clientId ) {
+	return useMemo( () => {
+		if ( ! clientId ) {
+			return null;
+		}
+		
+		// Find the block element by its data-block attribute
+		const blockElement = document.querySelector( `[data-block="${ clientId }"]` );
+		return blockElement;
+	}, [ clientId ] );
+}
+
+/**
+ * Component that renders a visual overlay with diff highlights
+ * directly over the block content without modifying the actual content
+ */
+export function SuggestionVisualOverlay( { blockClientId } ) {
+	const blockElement = useBlockElement( blockClientId );
+	
+	const { suggestions, isInSuggestMode } = useSelect( ( select ) => {
+		return {
+			suggestions: select( 'gutenberg/suggestions' ).getBlockPendingSuggestions( blockClientId ),
+			isInSuggestMode: select( 'gutenberg/suggestions' ).isSuggestionsActive(),
+		};
+	}, [ blockClientId ] );
+
+	const diffElements = useMemo( () => {
+		if ( ! suggestions || Object.keys( suggestions ).length === 0 ) {
+			return [];
+		}
+
+		// Get the first pending suggestion
+		const firstSuggestionId = Object.keys( suggestions )[0];
+		const suggestion = suggestions[ firstSuggestionId ];
+
+		if ( ! suggestion || ! suggestion.diff ) {
+			return [];
+		}
+
+		return generateDiffVisualization( suggestion.diff );
+	}, [ suggestions ] );
+
+	// Don't render if not in suggest mode or no block element or no suggestions
+	if ( ! isInSuggestMode || ! blockElement || diffElements.length === 0 ) {
+		return null;
+	}
+
+	// Find the paragraph content element within the block
+	const paragraphContent = blockElement.querySelector( '[data-rich-text-format-boundary]' ) || 
+	                        blockElement.querySelector( 'p' ) || 
+	                        blockElement;
+
+	if ( ! paragraphContent ) {
+		return null;
+	}
+
+	// Create the overlay content
+	const overlayContent = (
+		<div 
+			className="editor-suggestion-visual-overlay"
+			style={ {
+				position: 'absolute',
+				top: 0,
+				left: 0,
+				right: 0,
+				bottom: 0,
+				pointerEvents: 'none',
+				zIndex: 10,
+				backgroundColor: 'rgba(255, 255, 255, 0.9)',
+				border: '2px solid #007cba',
+				borderRadius: '4px',
+				padding: '12px',
+				fontSize: 'inherit',
+				lineHeight: 'inherit',
+				fontFamily: 'inherit',
+			} }
+		>
+			<div 
+				className="editor-suggestion-visual-overlay__content"
+				style={ {
+					position: 'relative',
+					zIndex: 11,
+				} }
+			>
+				{ diffElements.map( ( element, index ) => {
+					const baseStyles = {
+						fontSize: 'inherit',
+						lineHeight: 'inherit',
+						fontFamily: 'inherit',
+					};
+
+					if ( element.type === 'deletion' ) {
+						return (
+							<span
+								key={ index }
+								className="editor-suggestion-diff editor-suggestion-diff__deletion"
+								style={ {
+									...baseStyles,
+									backgroundColor: '#f8d7da',
+									color: '#721c24',
+									textDecoration: 'line-through',
+									padding: '2px 4px',
+									borderRadius: '2px',
+									margin: '0 1px',
+								} }
+							>
+								{ element.content }
+							</span>
+						);
+					}
+					
+					if ( element.type === 'insertion' ) {
+						return (
+							<span
+								key={ index }
+								className="editor-suggestion-diff editor-suggestion-diff__insertion"
+								style={ {
+									...baseStyles,
+									backgroundColor: '#d4edda',
+									color: '#155724',
+									textDecoration: 'underline',
+									padding: '2px 4px',
+									borderRadius: '2px',
+									margin: '0 1px',
+								} }
+							>
+								{ element.content }
+							</span>
+						);
+					}
+					
+					// Equal content (unchanged)
+					return (
+						<span
+							key={ index }
+							className="editor-suggestion-diff editor-suggestion-diff__equal"
+							style={ baseStyles }
+						>
+							{ element.content }
+						</span>
+					);
+				} ) }
+			</div>
+			<div 
+				className="editor-suggestion-visual-overlay__label"
+				style={ {
+					position: 'absolute',
+					top: '-28px',
+					left: 0,
+					backgroundColor: '#007cba',
+					color: 'white',
+					padding: '4px 8px',
+					borderRadius: '4px 4px 0 0',
+					fontSize: '12px',
+					lineHeight: '1.2',
+					fontWeight: '500',
+				} }
+			>
+				Suggested Change
+			</div>
+		</div>
+	);
+
+	// Create a positioned container and portal the overlay into it
+	const containerStyle = {
+		position: 'relative',
+		pointerEvents: 'none',
+	};
+
+	// Check if we need to add positioning to the block element
+	const blockComputedStyle = window.getComputedStyle( paragraphContent );
+	const isPositioned = blockComputedStyle.position !== 'static';
+	
+	if ( ! isPositioned ) {
+		// Add relative positioning to the parent block element
+		const originalPosition = blockElement.style.position;
+		blockElement.style.position = 'relative';
+		
+		// Clean up on unmount
+		return createPortal(
+			<div style={ containerStyle }>
+				{ overlayContent }
+			</div>,
+			paragraphContent,
+			`suggestion-overlay-${blockClientId}`
+		);
+	}
+
+	return createPortal(
+		<div style={ containerStyle }>
+			{ overlayContent }
+		</div>,
+		paragraphContent,
+		`suggestion-overlay-${blockClientId}`
+	);
+}
+
+/**
+ * Higher-order component that adds visual suggestion overlays to paragraph blocks
+ */
+export function withSuggestionVisualOverlay( WrappedComponent ) {
+	return function SuggestionVisualOverlayComponent( props ) {
+		const { clientId, name } = props;
+		
+		// Only apply to paragraph blocks
+		if ( name !== 'core/paragraph' ) {
+			return <WrappedComponent { ...props } />;
+		}
+		
+		return (
+			<>
+				<WrappedComponent { ...props } />
+				<SuggestionVisualOverlay blockClientId={ clientId } />
+			</>
+		);
+	};
+}
+
+export default SuggestionVisualOverlay;
+</file>
+
+<file path="packages/editor/src/components/suggestions-integration/index.js">
+/**
+ * WordPress dependencies
+ */
+import { useEffect } from '@wordpress/element';
+import { addFilter } from '@wordpress/hooks';
+import { createHigherOrderComponent } from '@wordpress/compose';
+
+/**
+ * Internal dependencies
+ */
+import { registerSuggestionsMiddleware } from '../../store/suggestions-middleware-registration';
+import { withSuggestionVisualOverlay } from '../suggestion-visual-overlay';
+import suggestionsStore, { SUGGESTIONS_STORE_NAME } from '../../store/suggestions-store';
+import '../simple-suggestion-capture'; // Import to register the filters
+import '../simple-suggestion-display'; // Import to register the display filters
+
+/**
+ * Initialize suggestions store and middleware
+ */
+export function initializeSuggestionsSystem() {
+	// Ensure the suggestions store is properly registered
+	console.log( '[SuggestionsSystem] Initializing suggestions system' );
+	console.log( '[SuggestionsSystem] Store registered:', SUGGESTIONS_STORE_NAME );
+	
+	// Register the middleware after a short delay to ensure stores are ready
+	setTimeout( () => {
+		console.log( '[SuggestionsSystem] Registering middleware' );
+		registerSuggestionsMiddleware();
+	}, 100 );
+}
+
+/**
+ * Higher-order component that integrates all suggestion functionality
+ */
+const withSuggestionsIntegration = createHigherOrderComponent(
+	( BlockEdit ) => ( props ) => {
+		const { name } = props;
+		
+		// Apply visual overlay to paragraph blocks
+		if ( name === 'core/paragraph' ) {
+			const BlockEditWithOverlay = withSuggestionVisualOverlay( BlockEdit );
+			return <BlockEditWithOverlay { ...props } />;
+		}
+		
+		return <BlockEdit { ...props } />;
+	},
+	'withSuggestionsIntegration'
+);
+
+/**
+ * Add suggestions integration to all blocks
+ */
+addFilter(
+	'editor.BlockEdit',
+	'gutenberg/suggestions/integration',
+	withSuggestionsIntegration,
+	30
+);
+
+/**
+ * Component that initializes the suggestions system
+ */
+export function SuggestionsSystemInitializer() {
+	useEffect( () => {
+		initializeSuggestionsSystem();
+	}, [] );
+	
+	return null;
+}
+
+export default SuggestionsSystemInitializer;
+</file>
+
+<file path="packages/editor/src/hooks/suggestion-capture.js">
+/**
+ * WordPress dependencies
+ */
+import { addFilter } from '@wordpress/hooks';
+import { createHigherOrderComponent } from '@wordpress/compose';
+import { useSelect } from '@wordpress/data';
+import { RichText } from '@wordpress/block-editor';
+
+/**
+ * Internal dependencies
+ */
+import { store as editorStore } from '../store';
+import { useSuggestionCapture } from '../components/suggestion-capture';
+import { withInlinePreview } from '../components/suggestion-inline-preview';
+import { generateDiffVisualization } from '../components/suggestion-data-structures';
+
+/**
+ * Higher-order component that adds suggestion capture to paragraph blocks
+ * when in suggestion mode.
+ */
+const withSuggestionCaptureIntegration = createHigherOrderComponent(
+	( BlockEdit ) => ( props ) => {
+		const { name, clientId } = props;
+		
+		const { collaborationMode } = useSelect( ( select ) => {
+			return {
+				collaborationMode: select( editorStore ).getCollaborationMode(),
+			};
+		}, [] );
+
+		// Always call hooks in the same order - this fixes the hooks order violation
+		const isParagraphBlock = name === 'core/paragraph';
+		const isSuggestionMode = collaborationMode === 'suggest';
+		const shouldCapture = isParagraphBlock && isSuggestionMode;
+
+		// Always initialize suggestion capture (it will be inactive if not needed)
+		useSuggestionCapture( shouldCapture ? clientId : null );
+
+		// Only apply wrapper to paragraph blocks in suggestion mode
+		if ( ! shouldCapture ) {
+			return <BlockEdit { ...props } />;
+		}
+
+		// Wrap the block edit component with inline preview
+		const BlockEditWithPreview = withInlinePreview( BlockEdit );
+		
+		return <BlockEditWithPreview { ...props } />;
+	},
+	'withSuggestionCaptureIntegration'
+);
+
+/**
+ * Filters the block edit component to add suggestion capture functionality
+ * for paragraph blocks when in suggestion mode.
+ */
+addFilter(
+	'editor.BlockEdit',
+	'core/editor/suggestion-capture',
+	withSuggestionCaptureIntegration,
+	20
+);
+
+/**
+ * Adds suggestion-specific CSS classes to block list blocks
+ */
+const addSuggestionCaptureClasses = createHigherOrderComponent(
+	( BlockListBlock ) => ( props ) => {
+		const { block } = props;
+		
+		const { collaborationMode } = useSelect( ( select ) => {
+			return {
+				collaborationMode: select( editorStore ).getCollaborationMode(),
+			};
+		}, [] );
+
+		// Only add classes to paragraph blocks in suggestion mode
+		if ( block.name !== 'core/paragraph' || collaborationMode !== 'suggest' ) {
+			return <BlockListBlock { ...props } />;
+		}
+
+		// Add subtle suggestion mode classes that don't interfere with block styling
+		const className = [
+			props.className,
+			'editor-suggestion-capture-active',
+		].filter( Boolean ).join( ' ' );
+
+		return <BlockListBlock { ...props } className={ className } />;
+	},
+	'addSuggestionCaptureClasses'
+);
+
+/**
+ * Filters the block list block to add suggestion-specific classes
+ */
+addFilter(
+	'editor.BlockListBlock',
+	'core/editor/suggestion-capture-classes',
+	addSuggestionCaptureClasses,
+	20
+);
+
+// Remove the old diff renderer that polluted block attributes
+// This has been replaced by the visual overlay system
+</file>
+
+<file path="packages/editor/src/store/suggestions-middleware-registration.js">
+/**
+ * WordPress dependencies
+ */
+import { select } from '@wordpress/data';
+import { store as blockEditorStore } from '@wordpress/block-editor';
+
+/**
+ * Internal dependencies
+ */
+import suggestionsMiddleware from './suggestions-middleware';
+
+/**
+ * Registers the suggestions middleware with the block editor store
+ * This needs to be called after the block editor store is created
+ */
+export function registerSuggestionsMiddleware() {
+	// Get the block editor store instance
+	const blockEditorStoreInstance = select( blockEditorStore );
+	
+	if ( ! blockEditorStoreInstance ) {
+		console.warn( 'Block editor store not found, cannot register suggestions middleware' );
+		return;
+	}
+
+	// Access the underlying Redux store
+	const reduxStore = blockEditorStoreInstance.__unstableGetReduxStore?.();
+	
+	if ( ! reduxStore ) {
+		console.warn( 'Redux store not accessible, cannot register suggestions middleware' );
+		return;
+	}
+
+	// Get the original dispatch function
+	const originalDispatch = reduxStore.dispatch;
+
+	// Wrap the dispatch function with our middleware
+	const middlewareWrapper = suggestionsMiddleware( reduxStore );
+	const wrappedDispatch = middlewareWrapper( originalDispatch );
+
+	// Replace the dispatch function
+	reduxStore.dispatch = wrappedDispatch;
+
+	console.log( 'Suggestions middleware registered successfully' );
+}
+
+/**
+ * Alternative approach using a more direct method
+ * This patches the block editor store to include our middleware
+ */
+export function patchBlockEditorWithSuggestionsMiddleware() {
+	// Wait for the block editor store to be available
+	const checkStore = () => {
+		const blockEditorStoreInstance = select( blockEditorStore );
+		
+		if ( blockEditorStoreInstance ) {
+			// Get the store's dispatch function
+			const originalDispatch = blockEditorStoreInstance.dispatch;
+			
+			// Create our middleware wrapper
+			const middlewareWrapper = suggestionsMiddleware( blockEditorStoreInstance );
+			
+			// Wrap the dispatch function
+			const wrappedDispatch = middlewareWrapper( originalDispatch );
+			
+			// Replace the dispatch function on the store
+			blockEditorStoreInstance.dispatch = wrappedDispatch;
+			
+			console.log( 'Block editor store patched with suggestions middleware' );
+		} else {
+			// Store not ready yet, try again
+			setTimeout( checkStore, 100 );
+		}
+	};
+	
+	// Start checking for the store
+	checkStore();
+}
+</file>
+
+<file path="packages/editor/src/store/suggestions-middleware.js">
+/**
+ * WordPress dependencies
+ */
+import { select, dispatch } from '@wordpress/data';
+import { store as blockEditorStore } from '@wordpress/block-editor';
+import { store as coreStore } from '@wordpress/core-data';
+
+/**
+ * Internal dependencies
+ */
+import { store as editorStore } from '../store';
+import { createTextSuggestion } from '../components/suggestion-data-structures';
+
+/**
+ * Middleware that intercepts block editing actions when in suggestions mode
+ * and converts them to suggestions instead of direct edits
+ */
+const suggestionsMiddleware = ( store ) => ( next ) => ( action ) => {
+	// Check if we're in suggestions mode
+	const suggestionsMode = select( 'gutenberg/suggestions' ).getSuggestionsMode();
+	
+	if ( suggestionsMode !== 'suggest' ) {
+		return next( action );
+	}
+
+	// Intercept block attribute updates for text content
+	if ( action.type === 'UPDATE_BLOCK_ATTRIBUTES' ) {
+		const { clientId, attributes } = action;
+		
+		// Only handle text content changes for paragraph blocks
+		const block = select( blockEditorStore ).getBlock( clientId );
+		if ( ! block || block.name !== 'core/paragraph' ) {
+			return next( action );
+		}
+
+		// Check if the content attribute is being updated
+		if ( attributes.content !== undefined ) {
+			const originalContent = select( 'gutenberg/suggestions' ).getOriginalContent( clientId );
+			const currentContent = block.attributes.content || '';
+			const newContent = attributes.content || '';
+
+			// If this is the first edit, store the original content
+			if ( ! originalContent ) {
+				dispatch( 'gutenberg/suggestions' ).setOriginalContent( clientId, currentContent );
+			}
+
+			// Create a suggestion instead of applying the edit
+			const suggestion = createTextSuggestion( 
+				originalContent || currentContent, 
+				newContent, 
+				{ 
+					clientId, 
+					blockName: block.name,
+					timestamp: Date.now(),
+				} 
+			);
+
+			// Generate a unique suggestion ID
+			const suggestionId = `suggestion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+			// Add the suggestion to the store
+			dispatch( 'gutenberg/suggestions' ).addSuggestion( clientId, suggestionId, {
+				...suggestion,
+				id: suggestionId,
+				status: 'pending',
+				blockClientId: clientId,
+				blockName: block.name,
+				timestamp: Date.now(),
+			} );
+
+			// Store the pending change
+			dispatch( 'gutenberg/suggestions' ).setPendingChange( clientId, {
+				type: 'content',
+				from: originalContent || currentContent,
+				to: newContent,
+				timestamp: Date.now(),
+			} );
+
+			// Create a block suggestion comment
+			const postId = select( editorStore ).getCurrentPostId();
+			if ( postId ) {
+				dispatch( coreStore ).saveEntityRecord( 'root', 'comment', {
+					post: postId,
+					type: 'block_suggestion',
+					content: `Text suggestion for block ${clientId}`,
+					meta: {
+						suggestion_type: 'text_change',
+						suggestion_status: 'pending',
+						block_client_id: clientId,
+						block_type: block.name,
+						original_content: originalContent || currentContent,
+						suggested_content: newContent,
+						diff_data: JSON.stringify( suggestion.diff ),
+						patches_data: JSON.stringify( suggestion.patches ),
+						timestamp: Date.now(),
+					},
+				} );
+			}
+
+			// Don't apply the original action - we've converted it to a suggestion
+			return;
+		}
+	}
+
+	// For all other actions, proceed normally
+	return next( action );
+};
+
+export default suggestionsMiddleware;
+</file>
+
+<file path="packages/editor/src/store/suggestions-store.js">
+/**
+ * WordPress dependencies
+ */
+import { createReduxStore, register } from '@wordpress/data';
+
+/**
+ * Internal dependencies
+ */
+import { STORE_NAME } from './constants';
+
+/**
+ * Initial state for the suggestions store
+ */
+const DEFAULT_STATE = {
+	suggestions: {},
+	mode: 'edit',
+	isActive: false,
+	pendingChanges: {},
+	originalContent: {},
+};
+
+/**
+ * Reducer for the suggestions store
+ */
+function suggestionsReducer( state = DEFAULT_STATE, action ) {
+	switch ( action.type ) {
+		case 'SET_SUGGESTIONS_MODE':
+			return {
+				...state,
+				mode: action.mode,
+				isActive: action.mode === 'suggest',
+			};
+
+		case 'ADD_SUGGESTION':
+			return {
+				...state,
+				suggestions: {
+					...state.suggestions,
+					[ action.blockClientId ]: {
+						...state.suggestions[ action.blockClientId ],
+						[ action.suggestionId ]: action.suggestion,
+					},
+				},
+			};
+
+		case 'UPDATE_SUGGESTION':
+			return {
+				...state,
+				suggestions: {
+					...state.suggestions,
+					[ action.blockClientId ]: {
+						...state.suggestions[ action.blockClientId ],
+						[ action.suggestionId ]: {
+							...state.suggestions[ action.blockClientId ]?.[ action.suggestionId ],
+							...action.updates,
+						},
+					},
+				},
+			};
+
+		case 'REMOVE_SUGGESTION':
+			const blockSuggestions = { ...state.suggestions[ action.blockClientId ] };
+			delete blockSuggestions[ action.suggestionId ];
+			
+			return {
+				...state,
+				suggestions: {
+					...state.suggestions,
+					[ action.blockClientId ]: blockSuggestions,
+				},
+			};
+
+		case 'SET_PENDING_CHANGE':
+			return {
+				...state,
+				pendingChanges: {
+					...state.pendingChanges,
+					[ action.blockClientId ]: action.change,
+				},
+			};
+
+		case 'CLEAR_PENDING_CHANGE':
+			const pendingChanges = { ...state.pendingChanges };
+			delete pendingChanges[ action.blockClientId ];
+			
+			return {
+				...state,
+				pendingChanges,
+			};
+
+		case 'SET_ORIGINAL_CONTENT':
+			return {
+				...state,
+				originalContent: {
+					...state.originalContent,
+					[ action.blockClientId ]: action.content,
+				},
+			};
+
+		case 'CLEAR_ORIGINAL_CONTENT':
+			const originalContent = { ...state.originalContent };
+			delete originalContent[ action.blockClientId ];
+			
+			return {
+				...state,
+				originalContent,
+			};
+
+		case 'ACCEPT_SUGGESTION':
+			const acceptedSuggestion = state.suggestions[ action.blockClientId ]?.[ action.suggestionId ];
+			if ( ! acceptedSuggestion ) {
+				return state;
+			}
+
+			const updatedSuggestions = { ...state.suggestions };
+			const blockSuggestionsAfterAccept = { ...updatedSuggestions[ action.blockClientId ] };
+			delete blockSuggestionsAfterAccept[ action.suggestionId ];
+			updatedSuggestions[ action.blockClientId ] = blockSuggestionsAfterAccept;
+
+			return {
+				...state,
+				suggestions: updatedSuggestions,
+			};
+
+		case 'REJECT_SUGGESTION':
+			const rejectedSuggestion = state.suggestions[ action.blockClientId ]?.[ action.suggestionId ];
+			if ( ! rejectedSuggestion ) {
+				return state;
+			}
+
+			const suggestionsAfterReject = { ...state.suggestions };
+			const blockSuggestionsAfterReject = { ...suggestionsAfterReject[ action.blockClientId ] };
+			delete blockSuggestionsAfterReject[ action.suggestionId ];
+			suggestionsAfterReject[ action.blockClientId ] = blockSuggestionsAfterReject;
+
+			return {
+				...state,
+				suggestions: suggestionsAfterReject,
+			};
+
+		default:
+			return state;
+	}
+}
+
+/**
+ * Action creators
+ */
+const actions = {
+	setSuggestionsMode: ( mode ) => ( {
+		type: 'SET_SUGGESTIONS_MODE',
+		mode,
+	} ),
+
+	addSuggestion: ( blockClientId, suggestionId, suggestion ) => ( {
+		type: 'ADD_SUGGESTION',
+		blockClientId,
+		suggestionId,
+		suggestion,
+	} ),
+
+	updateSuggestion: ( blockClientId, suggestionId, updates ) => ( {
+		type: 'UPDATE_SUGGESTION',
+		blockClientId,
+		suggestionId,
+		updates,
+	} ),
+
+	removeSuggestion: ( blockClientId, suggestionId ) => ( {
+		type: 'REMOVE_SUGGESTION',
+		blockClientId,
+		suggestionId,
+	} ),
+
+	setPendingChange: ( blockClientId, change ) => ( {
+		type: 'SET_PENDING_CHANGE',
+		blockClientId,
+		change,
+	} ),
+
+	clearPendingChange: ( blockClientId ) => ( {
+		type: 'CLEAR_PENDING_CHANGE',
+		blockClientId,
+	} ),
+
+	setOriginalContent: ( blockClientId, content ) => ( {
+		type: 'SET_ORIGINAL_CONTENT',
+		blockClientId,
+		content,
+	} ),
+
+	clearOriginalContent: ( blockClientId ) => ( {
+		type: 'CLEAR_ORIGINAL_CONTENT',
+		blockClientId,
+	} ),
+
+	acceptSuggestion: ( blockClientId, suggestionId ) => ( {
+		type: 'ACCEPT_SUGGESTION',
+		blockClientId,
+		suggestionId,
+	} ),
+
+	rejectSuggestion: ( blockClientId, suggestionId ) => ( {
+		type: 'REJECT_SUGGESTION',
+		blockClientId,
+		suggestionId,
+	} ),
+};
+
+/**
+ * Selectors
+ */
+const selectors = {
+	getSuggestionsMode: ( state ) => state.mode,
+	
+	isSuggestionsActive: ( state ) => state.isActive,
+
+	getSuggestions: ( state ) => state.suggestions,
+
+	getBlockSuggestions: ( state, blockClientId ) => 
+		state.suggestions[ blockClientId ] || {},
+
+	getPendingSuggestions: ( state ) => {
+		const pending = {};
+		Object.keys( state.suggestions ).forEach( blockClientId => {
+			const blockSuggestions = state.suggestions[ blockClientId ];
+			const pendingSuggestions = Object.keys( blockSuggestions ).filter( 
+				suggestionId => blockSuggestions[ suggestionId ].status === 'pending'
+			);
+			if ( pendingSuggestions.length > 0 ) {
+				pending[ blockClientId ] = pendingSuggestions.reduce( ( acc, suggestionId ) => {
+					acc[ suggestionId ] = blockSuggestions[ suggestionId ];
+					return acc;
+				}, {} );
+			}
+		});
+		return pending;
+	},
+
+	getBlockPendingSuggestions: ( state, blockClientId ) => {
+		const blockSuggestions = state.suggestions[ blockClientId ] || {};
+		return Object.keys( blockSuggestions ).filter( 
+			suggestionId => blockSuggestions[ suggestionId ].status === 'pending'
+		).reduce( ( acc, suggestionId ) => {
+			acc[ suggestionId ] = blockSuggestions[ suggestionId ];
+			return acc;
+		}, {} );
+	},
+
+	getPendingChange: ( state, blockClientId ) => 
+		state.pendingChanges[ blockClientId ] || null,
+
+	getOriginalContent: ( state, blockClientId ) => 
+		state.originalContent[ blockClientId ] || null,
+
+	hasPendingSuggestions: ( state, blockClientId ) => {
+		const blockSuggestions = state.suggestions[ blockClientId ] || {};
+		return Object.values( blockSuggestions ).some( 
+			suggestion => suggestion.status === 'pending'
+		);
+	},
+
+	getAllPendingSuggestions: ( state ) => {
+		const allPending = [];
+		Object.keys( state.suggestions ).forEach( blockClientId => {
+			const blockSuggestions = state.suggestions[ blockClientId ];
+			Object.keys( blockSuggestions ).forEach( suggestionId => {
+				const suggestion = blockSuggestions[ suggestionId ];
+				if ( suggestion.status === 'pending' ) {
+					allPending.push( {
+						blockClientId,
+						suggestionId,
+						...suggestion,
+					} );
+				}
+			});
+		});
+		return allPending;
+	},
+};
+
+/**
+ * Create and register the suggestions store
+ */
+const suggestionsStore = createReduxStore( 'gutenberg/suggestions', {
+	reducer: suggestionsReducer,
+	actions,
+	selectors,
+} );
+
+// Register the store immediately
+register( suggestionsStore );
+
+// Export the store name for consistent access
+export const SUGGESTIONS_STORE_NAME = 'gutenberg/suggestions';
+
+export default suggestionsStore;
+</file>
+
+</files>

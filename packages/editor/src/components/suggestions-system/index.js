@@ -156,17 +156,17 @@ function createDiffVisualization( originalContent, suggestedContent ) {
 
 	// Initialize diff-match-patch
 	const dmp = new diff_match_patch();
-	
+
 	// Configure for optimal semantic cleanup
 	dmp.Diff_Timeout = 1.0; // 1 second timeout
 	dmp.Diff_EditCost = 4; // Default edit cost
-	
+
 	// Create diff array
 	const diffs = dmp.diff_main( originalContent, suggestedContent );
-	
+
 	// Apply semantic cleanup to produce more human-readable diffs
 	dmp.diff_cleanupSemantic( diffs );
-	
+
 	// Convert diff array to HTML with custom styling
 	return createCustomDiffHtml( diffs );
 }
@@ -179,7 +179,7 @@ function createDiffVisualization( originalContent, suggestedContent ) {
  */
 function createCustomDiffHtml( diffs ) {
 	const html = [];
-	
+
 	diffs.forEach( ( [ operation, text ] ) => {
 		// Escape HTML entities in text
 		const encodedText = text
@@ -190,10 +190,14 @@ function createCustomDiffHtml( diffs ) {
 
 		switch ( operation ) {
 			case 1: // Insertion
-				html.push( `<span class="suggestion-addition">${ encodedText }</span>` );
+				html.push(
+					`<span class="suggestion-addition">${ encodedText }</span>`
+				);
 				break;
-			case -1: // Deletion  
-				html.push( `<span class="suggestion-deletion">${ encodedText }</span>` );
+			case -1: // Deletion
+				html.push(
+					`<span class="suggestion-deletion">${ encodedText }</span>`
+				);
 				break;
 			case 0: // Equality
 				html.push( encodedText );
@@ -205,7 +209,6 @@ function createCustomDiffHtml( diffs ) {
 
 	return html.join( '' );
 }
-
 
 /**
  * Block Content Controller
@@ -250,22 +253,22 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 		// In suggest mode with suggestions, modify the block props to show diff content
 		if ( showSuggestionOverlay ) {
 			const suggestion = getSuggestion( clientId );
-			
+
 			// Create diff HTML
-			const diffHtml = createDiffVisualization( 
-				suggestion.originalContent, 
-				suggestion.suggestedContent 
+			const diffHtml = createDiffVisualization(
+				suggestion.originalContent,
+				suggestion.suggestedContent
 			);
-			
+
 			// Modify the block attributes to show the diff content
 			const modifiedProps = {
 				...props,
 				attributes: {
 					...props.attributes,
-					content: diffHtml // Replace content with diff HTML
-				}
+					content: diffHtml, // Replace content with diff HTML
+				},
 			};
-			
+
 			// Wrap in suggestion styling
 			return (
 				<div className="suggestion-wrapper">
@@ -315,4 +318,3 @@ export function initializeSuggestionsSystem() {
 }
 
 export default initializeSuggestionsSystem;
-

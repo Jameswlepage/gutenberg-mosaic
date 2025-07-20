@@ -1,0 +1,431 @@
+/**
+ * Suggestion sidebar styles
+ */
+.editor-suggestion-sidebar {
+	padding: 16px;
+	min-height: 100%;
+	background: #fff;
+
+	&__header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 16px;
+		padding-bottom: 8px;
+		border-bottom: 1px solid #e2e4e7;
+
+		h3 {
+			margin: 0;
+			font-size: 16px;
+			font-weight: 600;
+			color: #1e1e1e;
+		}
+	}
+
+	&__count {
+		font-size: 12px;
+		color: #757575;
+		background: #f8f9fa;
+		padding: 2px 6px;
+		border-radius: 2px;
+	}
+
+	&__content {
+		.components-panel {
+			border: none;
+			margin-bottom: 0;
+		}
+
+		.components-panel__body {
+			border: 1px solid #e2e4e7;
+			border-radius: 4px;
+			margin-bottom: 8px;
+
+			&:last-child {
+				margin-bottom: 0;
+			}
+		}
+	}
+
+	&__loading {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 200px;
+		color: #757575;
+		font-style: italic;
+	}
+
+	&__empty {
+		text-align: center;
+		color: #757575;
+		padding: 32px 16px;
+
+		p {
+			margin: 0 0 8px 0;
+			
+			&:last-child {
+				margin-bottom: 0;
+			}
+		}
+	}
+}
+
+/**
+ * Suggestion block styles
+ */
+.editor-suggestion-block {
+	&__content {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+}
+
+/**
+ * Individual suggestion item styles
+ */
+.editor-suggestion-item {
+	padding: 12px;
+	border: 1px solid #e2e4e7;
+	border-radius: 4px;
+	background: #fff;
+	transition: all 0.2s ease;
+
+	&:hover {
+		border-color: #3858e9;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+
+	&__header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 8px;
+	}
+
+	&__author {
+		font-size: 14px;
+		color: #1e1e1e;
+	}
+
+	&__date {
+		font-size: 12px;
+		color: #757575;
+	}
+
+	&__content {
+		margin-bottom: 12px;
+	}
+
+	&__description {
+		font-size: 14px;
+		line-height: 1.4;
+		color: #1e1e1e;
+		margin-bottom: 8px;
+	}
+
+	&__preview {
+		margin-top: 12px;
+		padding-top: 12px;
+		border-top: 1px solid #e2e4e7;
+	}
+
+	&__actions {
+		display: flex;
+		justify-content: flex-end;
+	}
+}
+
+/**
+ * Suggestion preview styles
+ */
+.editor-suggestion-preview {
+	background: #f8f9fa;
+	border: 1px solid #e2e4e7;
+	border-radius: 4px;
+	padding: 12px;
+
+	&--empty {
+		text-align: center;
+		color: #757575;
+		font-style: italic;
+	}
+
+	&__header {
+		margin-bottom: 12px;
+
+		h4 {
+			margin: 0;
+			font-size: 14px;
+			font-weight: 600;
+			color: #1e1e1e;
+		}
+	}
+
+	&__content {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	&__original,
+	&__suggested {
+		h5 {
+			margin: 0 0 4px 0;
+			font-size: 12px;
+			font-weight: 500;
+			color: #757575;
+			text-transform: uppercase;
+		}
+	}
+
+	&__original {
+		.editor-suggestion-preview__text {
+			background: #fff;
+			border: 1px solid #e2e4e7;
+			border-radius: 2px;
+			padding: 8px;
+			font-size: 13px;
+			line-height: 1.4;
+			color: #1e1e1e;
+		}
+	}
+
+	&__suggested {
+		.editor-suggestion-preview__text {
+			background: #e8f5e8;
+			border: 1px solid #4caf50;
+			border-radius: 2px;
+			padding: 8px;
+			font-size: 13px;
+			line-height: 1.4;
+			color: #1e1e1e;
+		}
+	}
+
+	&__diff {
+		h5 {
+			margin: 0 0 4px 0;
+			font-size: 12px;
+			font-weight: 500;
+			color: #757575;
+			text-transform: uppercase;
+		}
+	}
+
+	&__diff-content {
+		background: #fff;
+		border: 1px solid #e2e4e7;
+		border-radius: 2px;
+		padding: 8px;
+		font-size: 13px;
+		line-height: 1.4;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+	}
+
+	&__meta {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-top: 12px;
+		padding-top: 12px;
+		border-top: 1px solid #e2e4e7;
+		font-size: 12px;
+		color: #757575;
+	}
+
+	&__block-info,
+	&__timestamp {
+		strong {
+			font-weight: 500;
+			color: #1e1e1e;
+		}
+	}
+}
+
+/**
+ * Suggestion actions styles
+ */
+.editor-suggestion-actions {
+	&--accepted,
+	&--rejected {
+		display: flex;
+		justify-content: flex-end;
+	}
+
+	&__status {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 12px;
+		font-weight: 500;
+		padding: 4px 8px;
+		border-radius: 2px;
+	}
+
+	&--accepted &__status {
+		background: #e8f5e8;
+		color: #2e7d32;
+	}
+
+	&--rejected &__status {
+		background: #ffebee;
+		color: #d32f2f;
+	}
+
+	.components-button-group {
+		.components-button {
+			&:first-child {
+				border-top-right-radius: 0;
+				border-bottom-right-radius: 0;
+			}
+
+			&:last-child {
+				border-top-left-radius: 0;
+				border-bottom-left-radius: 0;
+				border-left: 0;
+			}
+		}
+	}
+}
+
+/**
+ * Responsive adjustments
+ */
+@media (max-width: 768px) {
+	.editor-suggestion-sidebar {
+		padding: 12px;
+
+		&__header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 8px;
+
+			h3 {
+				font-size: 14px;
+			}
+		}
+	}
+
+	.editor-suggestion-item {
+		padding: 8px;
+
+		&__header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 4px;
+		}
+
+		&__author {
+			font-size: 13px;
+		}
+
+		&__date {
+			font-size: 11px;
+		}
+
+		&__description {
+			font-size: 13px;
+		}
+	}
+
+	.editor-suggestion-preview {
+		padding: 8px;
+
+		&__meta {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 4px;
+		}
+	}
+}
+
+/**
+ * Dark mode support
+ */
+@media (prefers-color-scheme: dark) {
+	.editor-suggestion-sidebar {
+		background: #1e1e1e;
+		color: #f0f0f0;
+
+		&__header {
+			border-bottom-color: #3a3a3a;
+
+			h3 {
+				color: #f0f0f0;
+			}
+		}
+
+		&__count {
+			background: #2a2a2a;
+			color: #b0b0b0;
+		}
+
+		&__empty {
+			color: #b0b0b0;
+		}
+	}
+
+	.editor-suggestion-item {
+		background: #2a2a2a;
+		border-color: #3a3a3a;
+		color: #f0f0f0;
+
+		&:hover {
+			border-color: #3858e9;
+		}
+
+		&__author {
+			color: #f0f0f0;
+		}
+
+		&__date {
+			color: #b0b0b0;
+		}
+
+		&__description {
+			color: #f0f0f0;
+		}
+
+		&__preview {
+			border-top-color: #3a3a3a;
+		}
+	}
+
+	.editor-suggestion-preview {
+		background: #2a2a2a;
+		border-color: #3a3a3a;
+
+		&__header h4 {
+			color: #f0f0f0;
+		}
+
+		&__original .editor-suggestion-preview__text {
+			background: #3a3a3a;
+			border-color: #4a4a4a;
+			color: #f0f0f0;
+		}
+
+		&__suggested .editor-suggestion-preview__text {
+			background: #1a3a1a;
+			border-color: #2a6a2a;
+			color: #f0f0f0;
+		}
+
+		&__diff-content {
+			background: #3a3a3a;
+			border-color: #4a4a4a;
+			color: #f0f0f0;
+		}
+
+		&__meta {
+			border-top-color: #3a3a3a;
+			color: #b0b0b0;
+
+			strong {
+				color: #f0f0f0;
+			}
+		}
+	}
+}

@@ -1,0 +1,267 @@
+/**
+ * Suggestion capture styles - minimal and non-intrusive
+ */
+.editor-suggestion-capture-active {
+	// Subtle visual indication that suggestion mode is active
+	&::before {
+		content: "";
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		border: 1px solid transparent;
+		border-radius: 2px;
+		pointer-events: none;
+		transition: border-color 0.2s ease;
+	}
+
+	&:hover::before {
+		border-color: rgba(56, 88, 233, 0.3);
+	}
+
+	&.has-pending-suggestions {
+		&::before {
+			border-color: rgba(240, 184, 73, 0.5);
+		}
+
+		&:hover::before {
+			border-color: rgba(240, 184, 73, 0.7);
+		}
+	}
+
+	&.suggestion-pending {
+		position: relative;
+
+		&::after {
+			content: "Pending";
+			position: absolute;
+			top: -8px;
+			right: -8px;
+			background: #f0b849;
+			color: #1e1e1e;
+			padding: 2px 4px;
+			border-radius: 2px;
+			font-size: 10px;
+			font-weight: 500;
+			z-index: 10;
+			opacity: 0.8;
+		}
+	}
+}
+
+/**
+ * Suggestion diff visualization
+ */
+.editor-suggestion-diff {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	line-height: 1.5;
+	
+	&__insertion {
+		background-color: #d4edda !important;
+		color: #155724 !important;
+		text-decoration: underline !important;
+		padding: 0 2px !important;
+		border-radius: 2px !important;
+	}
+
+	&__deletion {
+		background-color: #f8d7da !important;
+		color: #721c24 !important;
+		text-decoration: line-through !important;
+		padding: 0 2px !important;
+		border-radius: 2px !important;
+	}
+
+	&__equal {
+		// No special styling for unchanged text
+	}
+}
+
+// Global styles for suggestion diff spans
+.suggestion-diff-insertion {
+	background-color: #d4edda !important;
+	color: #155724 !important;
+	text-decoration: underline !important;
+	padding: 0 2px !important;
+	border-radius: 2px !important;
+	margin: 0 1px !important;
+}
+
+.suggestion-diff-deletion {
+	background-color: #f8d7da !important;
+	color: #721c24 !important;
+	text-decoration: line-through !important;
+	padding: 0 2px !important;
+	border-radius: 2px !important;
+	margin: 0 1px !important;
+}
+
+/**
+ * Suggestion inline preview
+ */
+.editor-suggestion-inline-preview {
+	margin-top: 8px;
+	padding: 12px;
+	background: #f8f9fa;
+	border: 1px solid #e2e4e7;
+	border-radius: 4px;
+	
+	&__header {
+		margin-bottom: 8px;
+		font-weight: 600;
+		color: #1e1e1e;
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+	
+	&__content {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+		line-height: 1.5;
+		font-size: 14px;
+		
+		// Ensure proper spacing between diff elements
+		.editor-suggestion-diff {
+			display: inline;
+			white-space: pre-wrap;
+		}
+	}
+}
+
+/**
+ * Suggestion mode indicator
+ */
+.editor-collaboration-mode-indicator {
+	position: fixed;
+	top: 60px;
+	right: 20px;
+	background: #3858e9;
+	color: white;
+	padding: 8px 12px;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 500;
+	z-index: 100;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	transition: all 0.2s ease;
+
+	&.is-suggest-mode {
+		background: #f0b849;
+		color: #1e1e1e;
+	}
+
+	&.is-edit-mode {
+		background: #10ac84;
+		color: white;
+	}
+}
+
+/**
+ * Suggestion capture toolbar
+ */
+.editor-suggestion-capture-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px;
+	background: #f8f9fa;
+	border: 1px solid #e2e4e7;
+	border-radius: 4px;
+	margin-bottom: 8px;
+
+	&__label {
+		font-size: 12px;
+		font-weight: 500;
+		color: #1e1e1e;
+	}
+
+	&__status {
+		font-size: 11px;
+		color: #757575;
+		padding: 2px 6px;
+		background: #fff;
+		border-radius: 2px;
+		border: 1px solid #e2e4e7;
+
+		&.is-capturing {
+			background: #f0b849;
+			color: #1e1e1e;
+			border-color: #f0b849;
+		}
+	}
+}
+
+/**
+ * Responsive adjustments
+ */
+@media (max-width: 768px) {
+	.editor-suggestion-capture-wrapper {
+		&.is-suggestion-mode {
+			.wp-block-paragraph {
+				padding: 6px;
+				margin: 2px 0;
+			}
+		}
+	}
+
+	.editor-collaboration-mode-indicator {
+		top: 50px;
+		right: 10px;
+		padding: 6px 10px;
+		font-size: 11px;
+	}
+}
+
+/**
+ * Animation for suggestion state changes
+ */
+@keyframes suggestionHighlight {
+	0% {
+		background-color: rgba(56, 88, 233, 0.3);
+	}
+	100% {
+		background-color: rgba(56, 88, 233, 0.1);
+	}
+}
+
+.editor-suggestion-capture-wrapper.suggestion-created {
+	.wp-block-paragraph {
+		animation: suggestionHighlight 0.5s ease;
+	}
+}
+
+/**
+ * Focus states for accessibility
+ */
+.editor-suggestion-capture-wrapper:focus-within {
+	outline: 2px solid #3858e9;
+	outline-offset: 2px;
+}
+
+/**
+ * High contrast mode support
+ */
+@media (prefers-contrast: high) {
+	.editor-suggestion-capture-wrapper {
+		&.is-suggestion-mode {
+			.wp-block-paragraph {
+				border-width: 2px;
+				border-style: solid;
+			}
+		}
+	}
+
+	.editor-suggestion-diff {
+		&__insertion {
+			background-color: #000;
+			color: #fff;
+		}
+
+		&__deletion {
+			background-color: #fff;
+			color: #000;
+			border: 1px solid #000;
+		}
+	}
+}

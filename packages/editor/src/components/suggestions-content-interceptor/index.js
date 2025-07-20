@@ -14,28 +14,43 @@ import { store as editorStore } from '../../store';
 const suggestionStorage = new Map();
 
 /**
- * Convert RichTextData to string
+ * Convert RichTextData to plain text string (strips HTML)
  *
  * @param {*} content - Content to convert (RichTextData, string, or other)
- * @return {string} Converted string content
+ * @return {string} Plain text content without HTML
  */
 function convertToString( content ) {
 	if ( ! content ) {
 		return '';
 	}
 
-	// If it's already a string, return it
+	// If it's already a string, strip any HTML tags for plain text comparison
 	if ( typeof content === 'string' ) {
-		return content;
+		// Remove HTML tags and decode entities for plain text comparison
+		return content
+			.replace( /<[^>]*>/g, '' ) // Remove HTML tags
+			.replace( /&amp;/g, '&' ) // Decode entities
+			.replace( /&lt;/g, '<' )
+			.replace( /&gt;/g, '>' )
+			.replace( /&para;<br>/g, '\n' );
 	}
 
-	// If it's a RichTextData object, convert to HTML string
-	if ( content && typeof content === 'object' && content.toHTMLString ) {
-		return content.toHTMLString();
+	// If it's a RichTextData object, convert to plain text
+	if ( content && typeof content === 'object' ) {
+		if ( content.toHTMLString ) {
+			// Convert to HTML first, then strip tags
+			const htmlString = content.toHTMLString();
+			return htmlString.replace( /<[^>]*>/g, '' ).replace( /&[^;]+;/g, ' ' );
+		}
+		
+		// Try other RichTextData methods for plain text
+		if ( content.toString ) {
+			return content.toString();
+		}
 	}
 
-	// Fallback to string conversion
-	return String( content );
+	// Fallback to string conversion and strip HTML
+	return String( content ).replace( /<[^>]*>/g, '' );
 }
 
 /**
@@ -196,9 +211,13 @@ const withContentInterception = createHigherOrderComponent( ( BlockEdit ) => {
 			( suggestedContent ) => {
 				if ( collaborationMode === 'suggest' ) {
 					const originalContent = originalContentRef.current;
+					
+					// Convert suggested content to plain text for comparison
+					const plainTextSuggested = convertToString( suggestedContent );
+					const plainTextOriginal = convertToString( originalContent );
 
 					// Don't store if content hasn't changed
-					if ( originalContent === suggestedContent ) {
+					if ( plainTextOriginal === plainTextSuggested ) {
 						return;
 					}
 
@@ -207,16 +226,18 @@ const withContentInterception = createHigherOrderComponent( ( BlockEdit ) => {
 						'[Content Interceptor] Real-time suggestion in suggest mode:',
 						{
 							clientId,
-							original: originalContent?.slice( 0, 30 ) + '...',
-							suggested: suggestedContent?.slice( 0, 30 ) + '...',
+							original: plainTextOriginal?.slice( 0, 30 ) + '...',
+							suggested: plainTextSuggested?.slice( 0, 30 ) + '...',
+							originalType: typeof originalContent,
+							suggestedType: typeof suggestedContent,
 						}
 					);
 
-					// Store as suggestion
+					// Store as suggestion with plain text content
 					storeSuggestion(
 						clientId,
-						originalContent,
-						suggestedContent
+						plainTextOriginal,
+						plainTextSuggested
 					);
 				}
 			},
@@ -266,7 +287,7 @@ const withContentInterception = createHigherOrderComponent( ( BlockEdit ) => {
 				) {
 					// Handle suggestion (store but prevent the actual content change)
 					handleSuggestion( newAttributes.content );
-					
+
 					// Don't call setAttributes - this prevents the content from being modified
 					// The visual overlay will show the suggestion while keeping original content intact
 					return;
@@ -291,4 +312,3 @@ const withContentInterception = createHigherOrderComponent( ( BlockEdit ) => {
 }, 'withContentInterception' );
 
 export default withContentInterception;
-
