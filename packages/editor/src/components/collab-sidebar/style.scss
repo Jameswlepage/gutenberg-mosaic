@@ -1,3 +1,7 @@
+@import "../mention-textarea-control/style.scss";
+@import "../mention-text-renderer/style.scss";
+@import "./header.scss";
+
 .interface-interface-skeleton__sidebar:has(.editor-collab-sidebar) {
 	box-shadow: none;
 
@@ -13,9 +17,23 @@
 .editor-collab-sidebar-panel {
 	padding: $grid-unit-20;
 	height: 100%;
+	display: flex;
+	flex-direction: column;
+
+	&__content {
+		flex: 1;
+		overflow-y: auto;
+	}
 
 	&__tab-selector {
 		margin-bottom: $grid-unit-20;
+		
+		// Ensure no conflicting borders with add comment form
+		+ .editor-collab-sidebar-panel__add-comment {
+			border-top: none;
+			border-top-left-radius: 0;
+			border-top-right-radius: 0;
+		}
 	}
 
 	&__tab-switch {
@@ -71,14 +89,14 @@
 		gap: $grid-unit-20;
 	}
 
-	// Individual thread wrapper - ONLY border when focused
+	// Individual thread wrapper - border when focused
 	&__thread {
 		position: relative;
 
-		// When thread is focused/expanded, add blue border around EVERYTHING
+		// When thread is focused/expanded, add grey border around EVERYTHING
 		&.editor-collab-sidebar-panel__focus-thread {
 			border-radius: $radius-small;
-			border: 1px solid var(--wp-admin-theme-color, #3858e9);
+			border: 1px solid $gray-300;
 			background-color: $white;
 		}
 	}
@@ -147,32 +165,24 @@
 	}
 
 	&__header-action {
-		background-color: $gray-100;
-		border: 1px solid $gray-300;
+		background: none;
+		border: none;
 		color: $gray-700;
 		text-decoration: none;
 		font-size: $font-size-small;
 		font-family: inherit;
-		padding: $grid-unit-05 $grid-unit-15;
-		border-radius: $radius-small;
+		padding: $grid-unit-05;
 		cursor: pointer;
 		margin: 0;
 		line-height: 1.4;
-		min-height: 32px;
-		display: flex;
-		align-items: center;
 		
 		&:hover {
-			background-color: $gray-200;
-			border-color: $gray-400;
 			color: $gray-900;
 		}
 		
 		&.editor-collab-sidebar-panel__header-action-resolve {
 			&:hover {
 				color: $alert-green;
-				background-color: rgba($alert-green, 0.04);
-				border-color: rgba($alert-green, 0.2);
 			}
 		}
 		
@@ -181,15 +191,11 @@
 			
 			&:hover {
 				color: #a00;
-				background-color: rgba(204, 24, 24, 0.04);
-				border-color: rgba(204, 24, 24, 0.2);
 			}
 		}
 		
 		&.editor-collab-sidebar-panel__header-action-edit {
 			&:hover {
-				background-color: $gray-200;
-				border-color: $gray-400;
 				color: $gray-900;
 			}
 		}
@@ -315,6 +321,99 @@
 		}
 	}
 
+	// EDIT FORM - match reply form styling
+	&__edit-form {
+		.components-base-control {
+			margin-bottom: $grid-unit-05;
+			
+			.components-base-control__field {
+				margin-bottom: 0 !important;
+			}
+		}
+		
+		.editor-collab-sidebar-panel__edit-actions {
+			display: flex;
+			justify-content: flex-end;
+			gap: $grid-unit-05;
+		}
+	}
+
+	// ADD COMMENT FORM - styling for comment creation
+	&__add-comment {
+		border-radius: $radius-small;
+		border: 1px solid $gray-300;
+		background-color: $white;
+		margin-bottom: $grid-unit-20;
+		
+		// When the tab selector is hidden, remove top margin to avoid spacing issues
+		&:first-child {
+			margin-top: 0;
+		}
+		
+		// When appearing after tab selector, avoid double borders
+		.editor-collab-sidebar-panel__tab-selector + & {
+			border-top: none;
+			border-top-left-radius: 0;
+			border-top-right-radius: 0;
+			margin-top: 0;
+		}
+	}
+
+	&__add-comment-header {
+		padding: $grid-unit-10 $grid-unit-10 0 $grid-unit-10;
+	}
+
+	// AUTHOR INFO ROW - horizontal layout
+	&__author-info-row {
+		display: flex;
+		align-items: center;
+		gap: $grid-unit-05;
+		
+		.editor-collab-sidebar-panel__user-avatar {
+			flex-shrink: 0;
+			border-radius: $radius-round;
+			width: 24px;
+			height: 24px;
+			object-fit: cover;
+		}
+		
+		.editor-collab-sidebar-panel__user-name {
+			font-weight: $font-weight-medium;
+			font-size: $font-size-small;
+			color: $gray-700;
+			margin: 0;
+		}
+		
+		.editor-collab-sidebar-panel__user-time {
+			color: $gray-600;
+			font-size: $font-size-small;
+			white-space: nowrap;
+		}
+	}
+
+	&__add-comment-form {
+		padding: $grid-unit-10;
+		border-top: 1px solid $gray-200;
+		
+		.editor-collab-sidebar-panel__edit-form {
+			.components-base-control {
+				margin-bottom: $grid-unit-10;
+				
+				.components-base-control__field {
+					margin-bottom: 0 !important;
+				}
+			}
+			
+			.editor-collab-sidebar-panel__edit-actions {
+				display: flex;
+				justify-content: flex-end;
+				gap: $grid-unit-05;
+				margin-top: $grid-unit-10;
+				padding-bottom: $grid-unit-05;
+			}
+		}
+	}
+
 	// RESOLVED ICON
 	&__resolved-icon {
 		margin-left: auto;
@@ -427,6 +526,35 @@
 				width: 24px;
 				height: 24px;
 			}
+		}
+	}
+
+	// BOTTOM ACTIONS - full height panel with button at bottom
+	&__bottom-actions {
+		margin-top: auto;
+		padding: $grid-unit-20 0 0 0;
+		border-top: 1px solid $gray-200;
+	}
+
+	&__add-comment-bottom-button {
+		width: 100%;
+		background-color: var(--wp-admin-theme-color, #3858e9);
+		color: $white;
+		border: none;
+		border-radius: $radius-small;
+		padding: $grid-unit-10 $grid-unit-15;
+		font-size: $font-size-small;
+		font-weight: $font-weight-medium;
+		cursor: pointer;
+		transition: background-color 0.2s ease;
+
+		&:hover {
+			background-color: var(--wp-admin-theme-color-darker, #2c4aa0);
+		}
+
+		&:focus {
+			box-shadow: 0 0 0 var(--wp-admin-border-width-focus) var(--wp-admin-theme-color);
+			outline: 2px solid transparent;
 		}
 	}
 }
