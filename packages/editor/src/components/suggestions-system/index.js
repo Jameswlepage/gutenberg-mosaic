@@ -171,10 +171,6 @@ function ensureSuggestionsStyles() {
 	document.head.appendChild( style );
 	stylesInjected = true;
 
-	// eslint-disable-next-line no-console
-	console.log(
-		'[Professional Suggestions System] Ultra-high specificity CSS injection completed'
-	);
 }
 
 /**
@@ -215,29 +211,8 @@ function createDiffVisualizationFromDiff( diffArray ) {
 		return '';
 	}
 
-	// Debug logging for diff visualization
-	// eslint-disable-next-line no-console
-	console.log('[DIFF VISUALIZATION] Processing diff array:', {
-		diffArray: diffArray.map(([op, text]) => ({
-			operation: op === -1 ? 'DELETE' : op === 1 ? 'INSERT' : 'EQUAL',
-			text: text.slice(0, 30) + (text.length > 30 ? '...' : ''),
-			textLength: text.length
-		})),
-		totalOperations: diffArray.length
-	});
-
 	// Generate diff elements using the professional visualization
 	const diffElements = generateDiffVisualization( diffArray );
-	
-	// eslint-disable-next-line no-console
-	console.log('[DIFF VISUALIZATION] Generated elements:', {
-		elements: diffElements.map(el => ({
-			type: el.type,
-			content: el.content.slice(0, 30) + (el.content.length > 30 ? '...' : ''),
-			contentLength: el.content.length
-		})),
-		totalElements: diffElements.length
-	});
 
 	// Convert to HTML format compatible with our styling
 	return diffElements.map( ( element, index ) => {
@@ -300,19 +275,6 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 		const handleAcceptSuggestion = ( suggestionId ) => {
 			const suggestion = getSuggestion( clientId );
 			
-			// eslint-disable-next-line no-console
-			console.log('[ACCEPT DEBUG] Before accepting suggestion:', {
-				suggestionId,
-				suggestion: suggestion ? {
-					original: suggestion.originalContent,
-					suggested: suggestion.suggestedContent,
-					diffOperations: suggestion.diff?.map(([op, text]) => ({
-						operation: op === -1 ? 'DELETE' : op === 1 ? 'INSERT' : 'EQUAL',
-						text: text.slice(0, 20) + (text.length > 20 ? '...' : ''),
-						textLength: text.length
-					})) || []
-				} : null
-			});
 			
 			const result = acceptSuggestion( suggestionId );
 			
@@ -322,11 +284,6 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 					content: result.appliedContent,
 				} );
 				
-				// eslint-disable-next-line no-console
-				console.log( '[Suggestion] Accepted and applied:', {
-					suggestionId,
-					appliedContent: result.appliedContent
-				} );
 			}
 		};
 
@@ -345,26 +302,9 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 					content: suggestion.originalContent,
 				} );
 				
-				// eslint-disable-next-line no-console
-				console.log( '[Suggestion] Rejected - reverted to original content:', suggestionId );
-			} else {
-				// eslint-disable-next-line no-console
-				console.error( '[Suggestion] Failed to reject:', result.error );
 			}
 		};
 
-		// Debug logging
-		useEffect( () => {
-			// eslint-disable-next-line no-console
-			console.log(
-				`[Professional Block Controller] Block ${ clientId }: mode=${ collaborationMode }, hasSuggestions=${ blockHasSuggestions }, showOverlay=${ showSuggestionOverlay }`
-			);
-		}, [
-			collaborationMode,
-			blockHasSuggestions,
-			showSuggestionOverlay,
-			clientId,
-		] );
 
 		// In suggest mode with suggestions, show diff with toolbar controls
 		if ( showSuggestionOverlay ) {
@@ -448,10 +388,6 @@ export function initializeProfessionalSuggestionsSystem() {
 		10 // Lower priority than content interceptor
 	);
 
-	// eslint-disable-next-line no-console
-	console.log(
-		'[Professional Suggestions System] Initialized with WordPress persistence and professional diff rendering'
-	);
 }
 
 export default initializeProfessionalSuggestionsSystem;

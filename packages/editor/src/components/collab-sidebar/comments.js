@@ -8,14 +8,9 @@ import clsx from 'clsx';
  */
 import { useState, RawHTML } from '@wordpress/element';
 import {
-	__experimentalHStack as HStack,
-	__experimentalVStack as VStack,
 	__experimentalConfirmDialog as ConfirmDialog,
-	Button,
-	DropdownMenu,
-	Tooltip,
 } from '@wordpress/components';
-import { Icon, check, published, moreVertical, comment } from '@wordpress/icons';
+import { Icon, check } from '@wordpress/icons';
 import { __, _x, sprintf } from '@wordpress/i18n';
 import { useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
@@ -77,27 +72,22 @@ export function Comments( {
 	};
 
 	return (
-		<>
+		<div className="editor-collab-sidebar-panel__threads">
 			{
 				// If there are no comments, show a message indicating no comments are available.
 				( ! Array.isArray( threads ) || threads.length === 0 ) && (
-					<VStack
-						alignment="left"
-						className="editor-collab-sidebar-panel__thread"
-						justify="flex-start"
-						spacing="3"
-					>
+					<div className="editor-collab-sidebar-panel__thread editor-collab-sidebar-panel__no-comments">
 						{
 							// translators: message displayed when there are no comments available
 							__( 'No comments available' )
 						}
-					</VStack>
+					</div>
 				)
 			}
 			{ Array.isArray( threads ) &&
 				threads.length > 0 &&
 				threads.map( ( thread ) => (
-					<VStack
+					<div
 						key={ thread.id }
 						className={ clsx(
 							'editor-collab-sidebar-panel__thread',
@@ -110,7 +100,6 @@ export function Comments( {
 							}
 						) }
 						id={ thread.id }
-						spacing="3"
 					>
 						<Thread
 							thread={ thread }
@@ -122,9 +111,9 @@ export function Comments( {
 							onActivate={ handleCommentActivate }
 							clearThreadFocus={ clearThreadFocus }
 						/>
-					</VStack>
+					</div>
 				) ) }
-		</>
+		</div>
 	);
 }
 
@@ -139,7 +128,7 @@ function Thread( {
 	clearThreadFocus,
 } ) {
 	return (
-		<>
+		<div className="editor-collab-sidebar-panel__thread-container">
 			<CommentBoard
 				thread={ thread }
 				onResolve={ onCommentResolve }
@@ -150,9 +139,9 @@ function Thread( {
 				onActivate={ onActivate }
 			/>
 			{ 0 < thread?.reply?.length && (
-				<>
+				<div className="editor-collab-sidebar-panel__replies">
 					{ ! isActive && (
-						<VStack className="editor-collab-sidebar-panel__show-more-reply">
+						<div className="editor-collab-sidebar-panel__show-more-reply">
 							{ sprintf(
 								// translators: %s: number of replies.
 								_x(
@@ -161,16 +150,15 @@ function Thread( {
 								),
 								thread?.reply?.length
 							) }
-						</VStack>
+						</div>
 					) }
 
 					{ isActive &&
 						thread.reply.map( ( reply ) => (
-							<VStack
+							<div
 								key={ reply.id }
 								className="editor-collab-sidebar-panel__child-thread"
 								id={ reply.id }
-								spacing="2"
 							>
 								{ 'approved' !== thread.status && (
 									<CommentBoard
@@ -182,22 +170,19 @@ function Thread( {
 								{ 'approved' === thread.status && (
 									<CommentBoard thread={ reply } />
 								) }
-							</VStack>
+							</div>
 						) ) }
-				</>
+				</div>
 			) }
 			{ 'approved' !== thread.status && isActive && (
-				<VStack
-					className="editor-collab-sidebar-panel__child-thread"
-					spacing="2"
-				>
+				<div className="editor-collab-sidebar-panel__child-thread">
 					<ReplyToThread
 						onAddReply={ onAddReply }
 						threadId={ thread.id }
 					/>
-				</VStack>
+				</div>
 			) }
-		</>
+		</div>
 	);
 }
 
@@ -234,28 +219,40 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, 
 
 	// Show active comment with all functionality
 	return (
-		<>
-			{/* Conditional action header */}
+		<div className="editor-collab-sidebar-panel__comment">
+			{/* Action header with resolve/delete buttons */}
 			{ ( canEdit || canDelete || ( thread.parent === 0 && onResolve ) ) && (
-				<ActiveCommentHeader
-					thread={ thread }
-					onResolve={ onResolve }
-					onDelete={ () => {
-						setActionState( 'delete' );
-						setShowConfirmDialog( true );
-					} }
-					canEdit={ canEdit }
-					canDelete={ canDelete }
-				/>
+				<div className="editor-collab-sidebar-panel__comment-actions-header">
+					{/* Always show resolve for main comments that aren't resolved yet */}
+					{ thread.parent === 0 && onResolve && thread.status !== 'approved' && (
+						<button
+							className="editor-collab-sidebar-panel__header-action editor-collab-sidebar-panel__header-action-resolve"
+							onClick={ () => {
+								setActionState( 'resolve' );
+								setShowConfirmDialog( true );
+							} }
+						>
+							{ __( 'Resolve' ) }
+						</button>
+					) }
+
+					{/* Show delete if user has permission */}
+					{ canDelete && (
+						<button
+							className="editor-collab-sidebar-panel__header-action editor-collab-sidebar-panel__header-action-delete"
+							onClick={ () => {
+								setActionState( 'delete' );
+								setShowConfirmDialog( true );
+							} }
+						>
+							{ __( 'Delete' ) }
+						</button>
+					) }
+				</div>
 			) }
 
-			{/* User info WITH avatar */}
-			<HStack
-				alignment="center"
-				justify="flex-start"
-				spacing="2"
-				className="editor-collab-sidebar-panel__comment-header"
-			>
+			{/* User info with avatar */}
+			<div className="editor-collab-sidebar-panel__comment-header">
 				<img
 					src={ thread?.author_avatar_urls?.[ 48 ] || thread?.author_avatar_urls?.[ 24 ] }
 					className="editor-collab-sidebar-panel__user-avatar"
@@ -266,75 +263,63 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, 
 				<span className="editor-collab-sidebar-panel__user-name">
 					{ thread.author_name }
 				</span>
-				<time className="editor-collab-sidebar-panel__user-time">
+				<span className="editor-collab-sidebar-panel__user-time">
 					{ new Date( thread.date ).toLocaleTimeString( [], {
 						hour: 'numeric',
 						minute: '2-digit',
 						hour12: true,
 					} ) }
-				</time>
+				</span>
 				{ status === 'approved' && (
-					<Tooltip text={ __( 'Resolved' ) }>
+					<span className="editor-collab-sidebar-panel__resolved-icon" title={ __( 'Resolved' ) }>
 						<Icon icon={ check } />
-					</Tooltip>
+					</span>
 				) }
-			</HStack>
+			</div>
 
 			{/* Comment content or edit form */}
-			<HStack
-				alignment="left"
-				spacing="3"
-				justify="flex-start"
-				className="editor-collab-sidebar-panel__user-comment"
-			>
-				<VStack
-					spacing="3"
-					className="editor-collab-sidebar-panel__comment-field"
-				>
-					{ 'edit' === actionState && (
-						<CommentForm
-							onSubmit={ ( value ) => {
-								onEdit( thread.id, value );
-								setActionState( false );
-							} }
-							onCancel={ () => handleCancel() }
-							thread={ thread }
-							submitButtonText={ _x( 'Update', 'verb' ) }
-						/>
-					) }
-					{ 'edit' !== actionState && (
+			<div className="editor-collab-sidebar-panel__comment-content">
+				{ 'edit' === actionState && (
+					<CommentForm
+						onSubmit={ ( value ) => {
+							onEdit( thread.id, value );
+							setActionState( false );
+						} }
+						onCancel={ () => handleCancel() }
+						thread={ thread }
+						submitButtonText={ _x( 'Update', 'verb' ) }
+					/>
+				) }
+				{ 'edit' !== actionState && (
+					<div className="editor-collab-sidebar-panel__comment-text">
 						<RawHTML>{ thread?.content?.raw }</RawHTML>
-					) }
-				</VStack>
-			</HStack>
+					</div>
+				) }
+			</div>
 
 			{/* User action buttons (edit/delete) below content */}
 			{ ( canEdit || canDelete ) && 'edit' !== actionState && (
-				<HStack className="editor-collab-sidebar-panel__user-actions" spacing="2">
+				<div className="editor-collab-sidebar-panel__comment-actions">
 					{ canEdit && onEdit && (
-						<Button
-							size="small"
-							variant="secondary"
+						<button
+							className="editor-collab-sidebar-panel__action-button editor-collab-sidebar-panel__action-edit"
 							onClick={ () => setActionState( 'edit' ) }
-							className="editor-collab-sidebar-panel__user-action-edit"
 						>
 							{ __( 'Edit' ) }
-						</Button>
+						</button>
 					) }
 					{ canDelete && onDelete && (
-						<Button
-							size="small"
-							variant="secondary"
+						<button
+							className="editor-collab-sidebar-panel__action-button editor-collab-sidebar-panel__action-delete"
 							onClick={ () => {
 								setActionState( 'delete' );
 								setShowConfirmDialog( true );
 							} }
-							className="editor-collab-sidebar-panel__user-action-delete"
 						>
 							{ __( 'Delete' ) }
-						</Button>
+						</button>
 					) }
-				</HStack>
+				</div>
 			) }
 
 			{/* Confirmation dialogs */}
@@ -360,6 +345,6 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, 
 					{ __( 'Are you sure you want to delete this comment?' ) }
 				</ConfirmDialog>
 			) }
-		</>
+		</div>
 	);
 };

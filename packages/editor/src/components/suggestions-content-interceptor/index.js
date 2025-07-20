@@ -140,15 +140,6 @@ function storeSuggestion( clientId, originalContent, suggestedContent ) {
 			} 
 		);
 		
-		// Debug logging for diff preservation
-		// eslint-disable-next-line no-console
-		console.log('[DIFF DEBUG] Recalculating suggestion:', {
-			original: existingSuggestion.originalContent,
-			suggested: suggestedString,
-			previousDiff: existingSuggestion.diff,
-			newDiff: recalculatedSuggestion.diff,
-			diffLength: recalculatedSuggestion.diff.length
-		});
 		
 		// Update existing suggestion with recalculated diff and metadata
 		suggestionData = {
@@ -178,17 +169,6 @@ function storeSuggestion( clientId, originalContent, suggestedContent ) {
 			},
 		};
 		
-		// eslint-disable-next-line no-console
-		console.log(
-			'[Content Interceptor] Updated existing suggestion:',
-			{
-				id: suggestionData.id,
-				blockId: clientId,
-				editCount: suggestionData.metadata.editCount,
-				original: existingSuggestion.originalContent.slice( 0, 20 ) + '...',
-				updated: suggestedString.slice( 0, 20 ) + '...',
-			}
-		);
 		
 	} else {
 		// Create new suggestion using professional structure
@@ -223,17 +203,6 @@ function storeSuggestion( clientId, originalContent, suggestedContent ) {
 			},
 		};
 		
-		// eslint-disable-next-line no-console
-		console.log(
-			'[Content Interceptor] Created new professional suggestion:',
-			{
-				id: suggestionData.id,
-				blockId: clientId,
-				author: suggestionData.author.name,
-				original: originalString.slice( 0, 20 ) + '...',
-				suggested: suggestedString.slice( 0, 20 ) + '...',
-			}
-		);
 	}
 
 	suggestionStorage.set( clientId, suggestionData );
@@ -345,8 +314,6 @@ export function acceptSuggestion( suggestionId ) {
 			// Remove the suggestion from storage since it's been applied
 			suggestionStorage.delete( clientId );
 			
-			// eslint-disable-next-line no-console
-			console.log( `[Suggestion] Accepted and removed: ${ suggestionId }` );
 			
 			return {
 				success: true,
@@ -378,8 +345,6 @@ export function rejectSuggestion( suggestionId ) {
 			// Remove the suggestion from storage since it's been rejected
 			suggestionStorage.delete( clientId );
 			
-			// eslint-disable-next-line no-console
-			console.log( `[Suggestion] Rejected and removed: ${ suggestionId }` );
 			
 			return {
 				success: true,
@@ -440,17 +405,6 @@ const withContentInterception = createHigherOrderComponent( ( BlockEdit ) => {
 						return;
 					}
 
-					// eslint-disable-next-line no-console
-					console.log(
-						'[Professional Content Interceptor] Real-time suggestion in suggest mode:',
-						{
-							clientId,
-							original: plainTextOriginal?.slice( 0, 30 ) + '...',
-							suggested: plainTextSuggested?.slice( 0, 30 ) + '...',
-							originalType: typeof originalContent,
-							suggestedType: typeof suggestedContent,
-						}
-					);
 
 					// Store as suggestion with plain text content (both in-memory and database)
 					const suggestionData = storeSuggestion(
@@ -550,7 +504,6 @@ export async function saveSuggestionToDatabase( suggestionData ) {
 
 		if ( ! postId ) {
 			// eslint-disable-next-line no-console
-			console.warn( '[Database Persistence] No post ID found, suggestion not saved to database' );
 			return;
 		}
 
@@ -583,22 +536,10 @@ export async function saveSuggestionToDatabase( suggestionData ) {
 		} );
 
 		// eslint-disable-next-line no-console
-		console.log( '[Database Persistence] Suggestion saved to WordPress:', {
-			suggestionId: suggestionData.id,
-			commentId: response.id,
-			postId: postId,
-			blockId: suggestionData.blockClientId
-		} );
 
 		return response;
 
 	} catch ( error ) {
-		// eslint-disable-next-line no-console
-		console.error( '[Database Persistence] Failed to save suggestion to WordPress:', {
-			error: error.message,
-			suggestionId: suggestionData.id,
-			blockId: suggestionData.blockClientId
-		} );
 		
 		// Don't throw - we want in-memory suggestions to continue working
 		// even if database persistence fails

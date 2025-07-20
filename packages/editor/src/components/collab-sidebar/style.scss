@@ -57,13 +57,29 @@
 		}
 	}
 
+&__threads {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+
 	&__thread {
 		position: relative;
-		padding: $grid-unit-20;
-		border-radius: $radius-small;
+		padding: 16px;
+		border-radius: 2px;
 		border: 1px solid $gray-300;
 		background-color: $white;
-		margin-bottom: $grid-unit-20;
+	}
+
+	&__no-comments {
+		text-align: center;
+		color: $gray-600;
+		font-style: italic;
+	}
+
+	&__thread-container {
+		display: flex;
+		flex-direction: column;
 	}
 
 	&__active-thread {
@@ -72,29 +88,43 @@
 	}
 
 	&__focus-thread {
-		border: 1px solid $gray-300;
+		border: 1px solid var(--wp-admin-theme-color, #3858e9) !important;
 		background-color: $white;
-		/* No box shadow */
+		box-shadow: 0 0 0 1px var(--wp-admin-theme-color, #3858e9);
 	}
 
 	&__comment-field {
 		flex: 1;
 	}
 
+&__replies {
+		margin-top: 16px;
+		margin-left: 0;
+	}
+
 	&__child-thread {
-		margin-top: 15px;
-		padding-left: $grid-unit-30;
+		margin-top: 12px;
+		margin-left: 32px !important;
+		padding-left: 16px !important;
 		position: relative;
 		
 		// Vertical line for reply threads
 		&::before {
-			content: '';
-			position: absolute;
-			left: 15px;
-			top: 0;
-			bottom: 0;
-			width: 1px;
-			background-color: $gray-300;
+			content: '' !important;
+			position: absolute !important;
+			left: -16px !important;
+			top: 0 !important;
+			bottom: 0 !important;
+			width: 2px !important;
+			background-color: $gray-300 !important;
+			display: block !important;
+		}
+		
+		// Ensure nested child threads are visible
+		.editor-collab-sidebar-panel__collapsed-comment,
+		.editor-collab-sidebar-panel__comment {
+			background-color: $white;
+			border-radius: 4px;
 		}
 	}
 
@@ -188,43 +218,41 @@
 		padding: 0;
 	}
 
-	// Collapsed comment styles
+// Collapsed comment styles
 	&__collapsed-comment {
 		cursor: pointer;
 		transition: all 0.2s ease;
-		padding: $grid-unit-15;
+		padding: 12px;
 		
 		&:hover {
 			background-color: rgba(0, 0, 0, 0.05);
 		}
 		
-		// Remove duplicate header styling - will be handled below
-		
 		.editor-collab-sidebar-panel__comment-content {
-			margin-bottom: $grid-unit-05;
+			margin-top: 8px;
 			color: $gray-900;
-		}
-		
-		.editor-collab-sidebar-panel__reply-count {
-			font-size: 12px;
-			color: $gray-700;
-			font-style: italic;
+			font-size: 13px;
+			line-height: 1.4;
+			
+			p {
+				margin-bottom: 0;
+			}
 		}
 	}
 
-	// Active comment header
+// Legacy active header (kept for backwards compatibility)
 	&__active-header {
-		padding: $grid-unit-10;
-		margin: #{-$grid-unit-20} #{-$grid-unit-20} $grid-unit-15 #{-$grid-unit-20};
+		padding: 8px;
+		margin: -16px -16px 12px -16px;
 		background-color: $gray-50;
 		border-bottom: 1px solid $gray-200;
-		border-radius: $radius-small $radius-small 0 0;
+		border-radius: 2px 2px 0 0;
 	}
 
-	// User actions below content
+	// Legacy user actions (kept for backwards compatibility)
 	&__user-actions {
-		margin-top: $grid-unit-10;
-		padding-top: $grid-unit-10;
+		margin-top: 8px;
+		padding-top: 8px;
 		border-top: 1px solid $gray-200;
 	}
 
@@ -247,37 +275,115 @@
 		}
 	}
 
+// Custom comment component styling
+	&__comment {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	&__comment-actions-header {
+		display: flex !important;
+		justify-content: flex-start !important;
+		gap: 8px !important;
+		padding: 8px !important;
+		margin: -16px -16px 8px -16px !important;
+		background-color: $gray-50 !important;
+		border-bottom: 1px solid $gray-200 !important;
+		border-radius: 2px 2px 0 0 !important;
+	}
+
+	&__header-action {
+		background: none !important;
+		border: none !important;
+		color: $gray-700 !important;
+		text-decoration: none !important;
+		font-size: 12px !important;
+		font-family: inherit !important;
+		padding: 4px 8px !important;
+		border-radius: 2px !important;
+		cursor: pointer !important;
+		margin: 0 !important;
+		line-height: 1.4 !important;
+		
+		&:hover {
+			color: $gray-900 !important;
+			background-color: rgba(0, 0, 0, 0.05) !important;
+		}
+		
+		&-resolve {
+			&:hover {
+				background-color: rgba(0, 128, 0, 0.1) !important;
+				color: #008000 !important;
+			}
+		}
+		
+		&-delete {
+			&:hover {
+				background-color: rgba(220, 38, 127, 0.1) !important;
+				color: #dc267f !important;
+			}
+		}
+	}
+
 	// Comment header styling for both collapsed and active states
 	&__comment-header {
-		margin-bottom: $grid-unit-05;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 8px;
+		width: 100%;
 		
-		// Ensure proper spacing between elements
-		.editor-collab-sidebar-panel__user-time {
+		// Direct child styling to ensure specificity
+		> .editor-collab-sidebar-panel__user-avatar {
+			flex-shrink: 0;
+			border-radius: 50%;
+			width: 24px;
+			height: 24px;
+			object-fit: cover;
+		}
+		
+		> .editor-collab-sidebar-panel__user-name {
+			font-weight: 500;
+			font-size: 12px;
+			line-height: 16px;
+			color: $gray-700;
+			margin: 0;
+		}
+		
+		> .editor-collab-sidebar-panel__user-time {
 			margin-left: auto;
+			color: $gray-600;
+			font-size: 12px;
+			line-height: 16px;
+			white-space: nowrap;
 		}
 	}
 
 	// User avatar styling
 	&__user-avatar {
-		flex-shrink: 0;
-		border-radius: $radius-round;
-		width: 24px;
-		height: 24px;
+		flex-shrink: 0 !important;
+		border-radius: 50% !important;
+		width: 24px !important;
+		height: 24px !important;
+		object-fit: cover !important;
 	}
 
 	// User name and time styling
 	&__user-name {
-		font-weight: 500;
-		font-size: 12px;
-		line-height: 16px;
-		color: $gray-700;
+		font-weight: 500 !important;
+		font-size: 12px !important;
+		line-height: 16px !important;
+		color: $gray-700 !important;
+		margin: 0 !important;
 	}
 
 	&__user-time {
-		color: $gray-600;
-		font-size: 12px;
-		line-height: 16px;
-		margin-left: auto; // Push time to the right
+		color: $gray-600 !important;
+		font-size: 12px !important;
+		line-height: 16px !important;
+		margin-left: auto !important; // Push time to the right
+		white-space: nowrap !important;
 	}
 
 	// Header action buttons (resolve/delete in header)
@@ -290,6 +396,70 @@
 			color: $gray-900;
 			background-color: rgba(0, 0, 0, 0.05);
 		}
+	}
+
+// Comment content styling
+	&__comment-content {
+		margin-bottom: 8px;
+	}
+
+	&__comment-text {
+		color: $gray-900;
+		font-size: 13px;
+		line-height: 1.4;
+		
+		p {
+			margin-bottom: 0;
+		}
+	}
+
+	// Comment action buttons below content
+	&__comment-actions {
+		display: flex !important;
+		justify-content: flex-start !important;
+		gap: 8px !important;
+		padding-top: 8px !important;
+		margin-top: 8px !important;
+		border-top: 1px solid $gray-200 !important;
+	}
+
+	&__action-button {
+		background-color: $gray-100 !important;
+		border: 1px solid $gray-300 !important;
+		color: $gray-700 !important;
+		font-size: 12px !important;
+		font-family: inherit !important;
+		padding: 6px 12px !important;
+		border-radius: 3px !important;
+		cursor: pointer !important;
+		margin: 0 !important;
+		line-height: 1.4 !important;
+		text-decoration: none !important;
+		display: inline-block !important;
+		
+		&:hover {
+			background-color: $gray-200 !important;
+			border-color: $gray-400 !important;
+			color: $gray-900 !important;
+		}
+		
+		&:focus {
+			outline: 2px solid var(--wp-admin-theme-color, #3858e9) !important;
+			outline-offset: 1px !important;
+		}
+		
+		&-edit {
+			// Inherit from base styles
+		}
+		
+		&-delete {
+			// Inherit from base styles
+		}
+	}
+
+	&__resolved-icon {
+		margin-left: auto;
+		color: $green-500;
 	}
 
 	// User action buttons (edit/delete below content) - grey background

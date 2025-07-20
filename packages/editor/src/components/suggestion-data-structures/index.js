@@ -60,17 +60,6 @@ export function createTextSuggestion( originalText, suggestedText, blockData ) {
 	// diff_cleanupSemanticLossless preserves separate -1/+1 operations for small word-level edits
 	dmp.diff_cleanupSemanticLossless( diff );
 	
-	// Debug logging to understand what's happening
-	// eslint-disable-next-line no-console
-	console.log('[DIFF CREATION] Created diff:', {
-		original: originalText.slice(0, 50) + '...',
-		suggested: suggestedText.slice(0, 50) + '...',
-		diffOperations: diff.map(([op, text]) => ({
-			operation: op === -1 ? 'DELETE' : op === 1 ? 'INSERT' : 'EQUAL',
-			text: text.slice(0, 20) + (text.length > 20 ? '...' : ''),
-			length: text.length
-		}))
-	});
 
 	return {
 		id: generateUUID(), // Add unique ID to each suggestion

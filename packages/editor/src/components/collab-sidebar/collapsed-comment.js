@@ -3,8 +3,6 @@
  */
 import { RawHTML } from '@wordpress/element';
 import { sprintf, __ } from '@wordpress/i18n';
-import { Icon, __experimentalHStack as HStack } from '@wordpress/components';
-import { comment } from '@wordpress/icons';
 
 /**
  * CollapsedComment component displays a minimal comment view with just name, time, content, and reply count.
@@ -21,12 +19,7 @@ export function CollapsedComment({ thread, onActivate }) {
 			className="editor-collab-sidebar-panel__collapsed-comment"
 		>
 			{/* User info with avatar */}
-			<HStack
-				alignment="center"
-				justify="flex-start"
-				spacing="2"
-				className="editor-collab-sidebar-panel__comment-header"
-			>
+			<div className="editor-collab-sidebar-panel__comment-header">
 				<img
 					src={ thread?.author_avatar_urls?.[ 48 ] || thread?.author_avatar_urls?.[ 24 ] }
 					className="editor-collab-sidebar-panel__user-avatar"
@@ -37,21 +30,19 @@ export function CollapsedComment({ thread, onActivate }) {
 				<span className="editor-collab-sidebar-panel__user-name">
 					{thread.author_name}
 				</span>
-				<time className="editor-collab-sidebar-panel__user-time">
+				<span className="editor-collab-sidebar-panel__user-time">
 					{new Date(thread.date).toLocaleTimeString([], {
 						hour: 'numeric',
 						minute: '2-digit',
 						hour12: true,
 					})}
-				</time>
-			</HStack>
+				</span>
+			</div>
 
 			{/* Comment content */}
 			<div className="editor-collab-sidebar-panel__comment-content">
 				<RawHTML>{thread?.content?.raw}</RawHTML>
 			</div>
-
-			{/* Reply count - removed to avoid duplicate with thread's "X more replies" */}
 		</div>
 	);
 }
