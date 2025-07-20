@@ -23,6 +23,7 @@ import PluginSidebar from '../plugin-sidebar';
 import { collabHistorySidebarName, collabSidebarName } from './constants';
 import { Comments } from './comments';
 import { AddComment } from './add-comment';
+import { CommentsTabSelector } from './comments-tab-selector';
 import { store as editorStore } from '../../store';
 import AddCommentButton from './comment-button';
 import AddCommentToolbarButton from './comment-button-toolbar';
@@ -55,6 +56,7 @@ function CollabSidebarContent( {
 	styles,
 	comments,
 } ) {
+	const [ activeTab, setActiveTab ] = useState( 'open' );
 	const { createNotice } = useDispatch( noticesStore );
 	const { saveEntityRecord, deleteEntityRecord } = useDispatch( coreStore );
 	const { getEntityRecord } = resolveSelect( coreStore );
@@ -193,6 +195,16 @@ function CollabSidebarContent( {
 		);
 	};
 
+	// Filter comments based on active tab
+	const filteredComments = comments.filter( ( comment ) => {
+		if ( activeTab === 'open' ) {
+			return comment.status !== 'approved';
+		} else if ( activeTab === 'resolved' ) {
+			return comment.status === 'approved';
+		}
+		return true;
+	} );
+
 	return (
 		<div className="editor-collab-sidebar-panel" style={ styles }>
 			<AddComment
@@ -200,9 +212,18 @@ function CollabSidebarContent( {
 				showCommentBoard={ showCommentBoard }
 				setShowCommentBoard={ setShowCommentBoard }
 			/>
+			
+			{/* Tab selector for open/resolved comments */}
+			{ comments && comments.length > 0 && (
+				<CommentsTabSelector
+					activeTab={ activeTab }
+					onTabChange={ setActiveTab }
+				/>
+			) }
+			
 			<Comments
 				key={ getSelectedBlockClientId() }
-				threads={ comments }
+				threads={ filteredComments }
 				onEditComment={ onEditComment }
 				onAddReply={ addNewComment }
 				onCommentDelete={ onCommentDelete }

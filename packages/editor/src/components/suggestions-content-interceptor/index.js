@@ -50,6 +50,25 @@ function getCurrentUser() {
 }
 
 /**
+ * Hard-remove <span class="suggestion-deletion">…</span>
+ * and unwrap <span class="suggestion-addition">…</span>.
+ * 
+ * @param {string} html - HTML content with suggestion markup
+ * @return {string} HTML with suggestion markup stripped
+ */
+function stripSuggestionMarkup( html ) {
+	return html
+		.replace(
+			/<span[^>]*class="[^"]*suggestion-deletion[^"]*"[^>]*>.*?<\/span>/gis,
+			''
+		)
+		.replace(
+			/<span[^>]*class="[^"]*suggestion-addition[^"]*"[^>]*>(.*?)<\/span>/gis,
+			'$1'
+		);
+}
+
+/**
  * Convert RichTextData to plain text string (strips HTML)
  *
  * @param {*} content - Content to convert (RichTextData, string, or other)
@@ -60,10 +79,10 @@ function convertToString( content ) {
 		return '';
 	}
 
-	// If it's already a string, strip any HTML tags for plain text comparison
+	// If it's already a string, strip suggestion markup first, then HTML tags for plain text comparison
 	if ( typeof content === 'string' ) {
 		// Remove HTML tags and decode entities for plain text comparison
-		return content
+		return stripSuggestionMarkup( content )
 			.replace( /<[^>]*>/g, '' ) // Remove HTML tags
 			.replace( /&amp;/g, '&' ) // Decode entities
 			.replace( /&lt;/g, '<' )
@@ -74,19 +93,19 @@ function convertToString( content ) {
 	// If it's a RichTextData object, convert to plain text
 	if ( content && typeof content === 'object' ) {
 		if ( content.toHTMLString ) {
-			// Convert to HTML first, then strip tags
-			const htmlString = content.toHTMLString();
+			// Convert to HTML first, strip suggestion markup, then strip tags
+			const htmlString = stripSuggestionMarkup( content.toHTMLString() );
 			return htmlString.replace( /<[^>]*>/g, '' ).replace( /&[^;]+;/g, ' ' );
 		}
 		
 		// Try other RichTextData methods for plain text
 		if ( content.toString ) {
-			return content.toString();
+			return stripSuggestionMarkup( content.toString() );
 		}
 	}
 
-	// Fallback to string conversion and strip HTML
-	return String( content ).replace( /<[^>]*>/g, '' );
+	// Fallback to string conversion, strip suggestion markup, then strip HTML
+	return stripSuggestionMarkup( String( content ) ).replace( /<[^>]*>/g, '' );
 }
 
 /**
@@ -110,7 +129,28 @@ function storeSuggestion( clientId, originalContent, suggestedContent ) {
 	let suggestionData;
 	
 	if ( existingSuggestion && existingSuggestion.status === 'pending' ) {
-		// Update existing suggestion with new content, keeping original baseline
+		// CRITICAL FIX: Recalculate complete diff from original to current suggested content
+		// This ensures proper diff rendering for continuous edits
+		const recalculatedSuggestion = createTextSuggestion( 
+			existingSuggestion.originalContent, 
+			suggestedString, 
+			{
+				clientId,
+				name: 'core/paragraph',
+			} 
+		);
+		
+		// Debug logging for diff preservation
+		// eslint-disable-next-line no-console
+		console.log('[DIFF DEBUG] Recalculating suggestion:', {
+			original: existingSuggestion.originalContent,
+			suggested: suggestedString,
+			previousDiff: existingSuggestion.diff,
+			newDiff: recalculatedSuggestion.diff,
+			diffLength: recalculatedSuggestion.diff.length
+		});
+		
+		// Update existing suggestion with recalculated diff and metadata
 		suggestionData = {
 			...existingSuggestion,
 			
@@ -119,7 +159,9 @@ function storeSuggestion( clientId, originalContent, suggestedContent ) {
 			
 			// Update with latest suggested content
 			suggestedContent: suggestedString,
-			changes: calculateChanges( existingSuggestion.originalContent, suggestedString ),
+			
+			// CRITICAL: Use recalculated diff for proper visual rendering
+			diff: recalculatedSuggestion.diff,
 			
 			// Update timestamp
 			updated: now.toISOString(),

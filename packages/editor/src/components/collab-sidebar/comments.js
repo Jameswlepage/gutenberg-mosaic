@@ -25,6 +25,9 @@ import { store as blockEditorStore } from '@wordpress/block-editor';
  */
 import CommentAuthorInfo from './comment-author-info';
 import CommentForm from './comment-form';
+import { CollapsedComment } from './collapsed-comment';
+import { ActiveCommentHeader } from './active-comment-header';
+import { ReplyToThread } from './reply-to-thread';
 
 /**
  * Renders the Comments component.
@@ -60,12 +63,16 @@ export function Comments( {
 		};
 	}, [] );
 
-	const [ focusThread, setFocusThread ] = useState(
+	const [ activeCommentId, setActiveCommentId ] = useState(
 		showCommentBoard && blockCommentId ? blockCommentId : null
 	);
 
+	const handleCommentActivate = ( commentId ) => {
+		setActiveCommentId( activeCommentId === commentId ? null : commentId );
+	};
+
 	const clearThreadFocus = () => {
-		setFocusThread( null );
+		setActiveCommentId( null );
 		setShowCommentBoard( false );
 	};
 
@@ -99,12 +106,11 @@ export function Comments( {
 									blockCommentId &&
 									blockCommentId === thread.id,
 								'editor-collab-sidebar-panel__focus-thread':
-									focusThread && focusThread === thread.id,
+									activeCommentId && activeCommentId === thread.id,
 							}
 						) }
 						id={ thread.id }
 						spacing="3"
-						onClick={ () => setFocusThread( thread.id ) }
 					>
 						<Thread
 							thread={ thread }
@@ -112,7 +118,8 @@ export function Comments( {
 							onCommentDelete={ onCommentDelete }
 							onCommentResolve={ onCommentResolve }
 							onEditComment={ onEditComment }
-							isFocused={ focusThread === thread.id }
+							isActive={ activeCommentId === thread.id }
+							onActivate={ handleCommentActivate }
 							clearThreadFocus={ clearThreadFocus }
 						/>
 					</VStack>
@@ -127,7 +134,8 @@ function Thread( {
 	onAddReply,
 	onCommentDelete,
 	onCommentResolve,
-	isFocused,
+	isActive,
+	onActivate,
 	clearThreadFocus,
 } ) {
 	return (
@@ -138,10 +146,12 @@ function Thread( {
 				onEdit={ onEditComment }
 				onDelete={ onCommentDelete }
 				status={ thread.status }
+				isActive={ isActive }
+				onActivate={ onActivate }
 			/>
 			{ 0 < thread?.reply?.length && (
 				<>
-					{ ! isFocused && (
+					{ ! isActive && (
 						<VStack className="editor-collab-sidebar-panel__show-more-reply">
 							{ sprintf(
 								// translators: %s: number of replies.
@@ -154,7 +164,7 @@ function Thread( {
 						</VStack>
 					) }
 
-					{ isFocused &&
+					{ isActive &&
 						thread.reply.map( ( reply ) => (
 							<VStack
 								key={ reply.id }
@@ -176,41 +186,29 @@ function Thread( {
 						) ) }
 				</>
 			) }
-			{ 'approved' !== thread.status && isFocused && (
+			{ 'approved' !== thread.status && isActive && (
 				<VStack
 					className="editor-collab-sidebar-panel__child-thread"
 					spacing="2"
 				>
-					<HStack alignment="left" spacing="3" justify="flex-start">
-						<CommentAuthorInfo />
-					</HStack>
-					<VStack
-						spacing="3"
-						className="editor-collab-sidebar-panel__comment-field"
-					>
-						<CommentForm
-							onSubmit={ ( inputComment ) => {
-								onAddReply( inputComment, thread.id );
-							} }
-							onCancel={ ( event ) => {
-								event.stopPropagation(); // Prevent the parent onClick from being triggered
-								clearThreadFocus();
-							} }
-							submitButtonText={ _x(
-								'Reply',
-								'Add reply comment'
-							) }
-						/>
-					</VStack>
+					<ReplyToThread
+						onAddReply={ onAddReply }
+						threadId={ thread.id }
+					/>
 				</VStack>
 			) }
 		</>
 	);
 }
 
-const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status } ) => {
+const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, onActivate } ) => {
 	const [ actionState, setActionState ] = useState( false );
 	const [ showConfirmDialog, setShowConfirmDialog ] = useState( false );
+
+	// User permission system (placeholder - will be enhanced later)
+	// TODO: Replace with proper user permission checks
+	const canEdit = true; // For now, assume all users can edit
+	const canDelete = true; // For now, assume all users can delete
 
 	const handleConfirmDelete = () => {
 		onDelete( thread.id );
@@ -229,75 +227,48 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status } ) => {
 		setShowConfirmDialog( false );
 	};
 
-	const actions = [
-		onEdit && {
-			title: _x( 'Edit', 'Edit comment' ),
-			onClick: () => {
-				setActionState( 'edit' );
-			},
-		},
-		onDelete && {
-			title: _x( 'Delete', 'Delete comment' ),
-			onClick: () => {
-				setActionState( 'delete' );
-				setShowConfirmDialog( true );
-			},
-		},
-	];
+	// Show collapsed comment if not active
+	if ( ! isActive ) {
+		return <CollapsedComment thread={ thread } onActivate={ onActivate } />;
+	}
 
-	const moreActions = actions.filter( ( item ) => item?.onClick );
-
+	// Show active comment with all functionality
 	return (
 		<>
-			<HStack alignment="left" spacing="3" justify="flex-start">
-				<CommentAuthorInfo
-					avatar={ thread?.author_avatar_urls?.[ 48 ] }
-					name={ thread?.author_name }
-					date={ thread?.date }
+			{/* Conditional action header */}
+			{ ( canEdit || canDelete || ( thread.parent === 0 && onResolve ) ) && (
+				<ActiveCommentHeader
+					thread={ thread }
+					onResolve={ onResolve }
+					onDelete={ () => {
+						setActionState( 'delete' );
+						setShowConfirmDialog( true );
+					} }
+					canEdit={ canEdit }
+					canDelete={ canDelete }
 				/>
-				<span className="editor-collab-sidebar-panel__comment-status">
-					{ status !== 'approved' && (
-						<HStack
-							alignment="right"
-							justify="flex-end"
-							spacing="0"
-						>
-							{ 0 === thread?.parent && onResolve && (
-								<Button
-									label={ _x(
-										'Resolve',
-										'Mark comment as resolved'
-									) }
-									__next40pxDefaultSize
-									icon={ published }
-									onClick={ () => {
-										setActionState( 'resolve' );
-										setShowConfirmDialog( true );
-									} }
-									showTooltip
-								/>
-							) }
-							{ 0 < moreActions.length && (
-								<DropdownMenu
-									icon={ moreVertical }
-									label={ _x(
-										'Select an action',
-										'Select comment action'
-									) }
-									className="editor-collab-sidebar-panel__comment-dropdown-menu"
-									controls={ moreActions }
-								/>
-							) }
-						</HStack>
-					) }
-					{ status === 'approved' && (
-						// translators: tooltip for resolved comment
-						<Tooltip text={ __( 'Resolved' ) }>
-							<Icon icon={ check } />
-						</Tooltip>
-					) }
+			) }
+
+			{/* User info WITHOUT avatar */}
+			<div className="editor-collab-sidebar-panel__comment-header">
+				<span className="editor-collab-sidebar-panel__user-name">
+					{ thread.author_name }
 				</span>
-			</HStack>
+				<time className="editor-collab-sidebar-panel__user-time">
+					{ new Date( thread.date ).toLocaleTimeString( [], {
+						hour: 'numeric',
+						minute: '2-digit',
+						hour12: true,
+					} ) }
+				</time>
+				{ status === 'approved' && (
+					<Tooltip text={ __( 'Resolved' ) }>
+						<Icon icon={ check } />
+					</Tooltip>
+				) }
+			</div>
+
+			{/* Comment content or edit form */}
 			<HStack
 				alignment="left"
 				spacing="3"
@@ -324,6 +295,35 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status } ) => {
 					) }
 				</VStack>
 			</HStack>
+
+			{/* User action buttons (edit/delete) below content */}
+			{ ( canEdit || canDelete ) && 'edit' !== actionState && (
+				<HStack className="editor-collab-sidebar-panel__user-actions" spacing="2">
+					{ canEdit && onEdit && (
+						<Button
+							size="small"
+							onClick={ () => setActionState( 'edit' ) }
+						>
+							{ __( 'Edit' ) }
+						</Button>
+					) }
+					{ canDelete && onDelete && (
+						<Button
+							size="small"
+							variant="secondary"
+							isDestructive
+							onClick={ () => {
+								setActionState( 'delete' );
+								setShowConfirmDialog( true );
+							} }
+						>
+							{ __( 'Delete' ) }
+						</Button>
+					) }
+				</HStack>
+			) }
+
+			{/* Confirmation dialogs */}
 			{ 'resolve' === actionState && (
 				<ConfirmDialog
 					isOpen={ showConfirmDialog }
@@ -332,12 +332,7 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status } ) => {
 					confirmButtonText="Yes"
 					cancelButtonText="No"
 				>
-					{
-						// translators: message displayed when confirming an action
-						__(
-							'Are you sure you want to mark this comment as resolved?'
-						)
-					}
+					{ __( 'Are you sure you want to mark this comment as resolved?' ) }
 				</ConfirmDialog>
 			) }
 			{ 'delete' === actionState && (
@@ -348,10 +343,7 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status } ) => {
 					confirmButtonText="Yes"
 					cancelButtonText="No"
 				>
-					{
-						// translators: message displayed when confirming an action
-						__( 'Are you sure you want to delete this comment?' )
-					}
+					{ __( 'Are you sure you want to delete this comment?' ) }
 				</ConfirmDialog>
 			) }
 		</>

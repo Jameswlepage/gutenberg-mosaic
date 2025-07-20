@@ -51,11 +51,26 @@ function generateUUID() {
 export function createTextSuggestion( originalText, suggestedText, blockData ) {
 	// Use our proven diff-match-patch implementation
 	const dmp = new diff_match_patch();
-	dmp.Diff_Timeout = 1.0;
+	dmp.Diff_Timeout = 2.0; // Increased timeout for better accuracy
 	dmp.Diff_EditCost = 4;
 	
 	const diff = dmp.diff_main( originalText, suggestedText );
-	dmp.diff_cleanupSemantic( diff );
+	
+	// Use less aggressive cleanup to preserve deletions better
+	// diff_cleanupSemanticLossless preserves separate -1/+1 operations for small word-level edits
+	dmp.diff_cleanupSemanticLossless( diff );
+	
+	// Debug logging to understand what's happening
+	// eslint-disable-next-line no-console
+	console.log('[DIFF CREATION] Created diff:', {
+		original: originalText.slice(0, 50) + '...',
+		suggested: suggestedText.slice(0, 50) + '...',
+		diffOperations: diff.map(([op, text]) => ({
+			operation: op === -1 ? 'DELETE' : op === 1 ? 'INSERT' : 'EQUAL',
+			text: text.slice(0, 20) + (text.length > 20 ? '...' : ''),
+			length: text.length
+		}))
+	});
 
 	return {
 		id: generateUUID(), // Add unique ID to each suggestion

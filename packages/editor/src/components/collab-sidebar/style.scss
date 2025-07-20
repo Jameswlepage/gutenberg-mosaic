@@ -14,6 +14,17 @@
 	padding: $grid-unit-20;
 	height: 100%;
 
+	&__tab-selector {
+		display: flex;
+		gap: $grid-unit-05;
+		margin-bottom: $grid-unit-15;
+		
+		.editor-collab-sidebar-panel__tab-button {
+			flex: 1;
+			justify-content: center;
+		}
+	}
+
 	&__thread {
 		position: relative;
 		padding: $grid-unit-20;
@@ -129,5 +140,72 @@
 		font-weight: 500;
 		font-style: italic;
 		padding: 0;
+	}
+
+	// Collapsed comment styles
+	&__collapsed-comment {
+		cursor: pointer;
+		transition: all 0.2s ease;
+		padding: $grid-unit-15;
+		
+		&:hover {
+			background-color: rgba(0, 0, 0, 0.05);
+		}
+		
+		.editor-collab-sidebar-panel__comment-header {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: $grid-unit-05;
+		}
+		
+		.editor-collab-sidebar-panel__comment-content {
+			margin-bottom: $grid-unit-05;
+			color: $gray-900;
+		}
+		
+		.editor-collab-sidebar-panel__reply-count {
+			font-size: 12px;
+			color: $gray-700;
+			font-style: italic;
+		}
+	}
+
+	// Active comment header
+	&__active-header {
+		padding: $grid-unit-10;
+		margin: #{-$grid-unit-20} #{-$grid-unit-20} $grid-unit-15 #{-$grid-unit-20};
+		background-color: $gray-50;
+		border-bottom: 1px solid $gray-200;
+		border-radius: $radius-small $radius-small 0 0;
+	}
+
+	// User actions below content
+	&__user-actions {
+		margin-top: $grid-unit-10;
+		padding-top: $grid-unit-10;
+		border-top: 1px solid $gray-200;
+	}
+
+	// Simplified reply form
+	&__reply-to-thread {
+		margin-top: $grid-unit-15;
+		
+		.editor-collab-sidebar-panel__reply-actions {
+			display: flex;
+			justify-content: flex-end;
+			margin-top: $grid-unit-05;
+		}
+	}
+
+	// Remove avatars in active state
+	&__focus-thread {
+		.editor-collab-sidebar-panel__user-avatar {
+			display: none;
+		}
+		
+		// Override collapsed comment padding in active state
+		.editor-collab-sidebar-panel__collapsed-comment {
+			padding: 0;
+		}
 	}
 }
