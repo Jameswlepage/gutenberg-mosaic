@@ -10,8 +10,36 @@ import { useCallback, useEffect, useRef } from '@wordpress/element';
  */
 import { store as editorStore } from '../../store';
 
-// Global suggestion storage
+// Global suggestion storage - will be replaced with WordPress integration
 const suggestionStorage = new Map();
+
+/**
+ * Generate a simple UUID v4
+ * 
+ * @return {string} UUID string
+ */
+function generateUUID() {
+	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, function( c ) {
+		const r = Math.random() * 16 | 0;
+		const v = c === 'x' ? r : ( r & 0x3 | 0x8 );
+		return v.toString( 16 );
+	} );
+}
+
+/**
+ * Get current WordPress user info (placeholder for now)
+ * 
+ * @return {Object} User info object
+ */
+function getCurrentUser() {
+	// TODO: Integrate with WordPress user system
+	// For now, return placeholder data
+	return {
+		id: 1,
+		name: 'Current User',
+		avatar: '',
+	};
+}
 
 /**
  * Convert RichTextData to plain text string (strips HTML)
@@ -54,42 +82,140 @@ function convertToString( content ) {
 }
 
 /**
- * Store a suggestion without modifying block content
+ * Store or update a suggestion with cumulative changes
  *
  * @param {string} clientId - Block client ID
- * @param {*} originalContent - Original content
- * @param {*} suggestedContent - Suggested content changes
- * @return {Object} Suggestion data object
+ * @param {*} originalContent - Original content (baseline)
+ * @param {*} suggestedContent - Latest suggested content changes
+ * @return {Object} Enhanced suggestion data object
  */
 function storeSuggestion( clientId, originalContent, suggestedContent ) {
 	// Convert RichTextData objects to strings
 	const originalString = convertToString( originalContent );
 	const suggestedString = convertToString( suggestedContent );
+	const currentUser = getCurrentUser();
+	const now = new Date();
 
-	const suggestionData = {
-		id: `suggestion_${ clientId }_${ Date.now() }`,
-		blockClientId: clientId,
-		originalContent: originalString,
-		suggestedContent: suggestedString,
-		timestamp: Date.now(),
-		status: 'pending',
-		changes: calculateChanges( originalString, suggestedString ),
-	};
+	// Check if we have an existing suggestion for this block
+	const existingSuggestion = suggestionStorage.get( clientId );
+	
+	let suggestionData;
+	
+	if ( existingSuggestion && existingSuggestion.status === 'pending' ) {
+		// Update existing suggestion with new content, keeping original baseline
+		suggestionData = {
+			...existingSuggestion,
+			
+			// Keep the original baseline content unchanged
+			// originalContent stays the same
+			
+			// Update with latest suggested content
+			suggestedContent: suggestedString,
+			changes: calculateChanges( existingSuggestion.originalContent, suggestedString ),
+			
+			// Update timestamp
+			updated: now.toISOString(),
+			
+			// Update metadata
+			metadata: {
+				...existingSuggestion.metadata,
+				wordCount: {
+					original: existingSuggestion.originalContent.split( /\s+/ ).length,
+					suggested: suggestedString.split( /\s+/ ).length,
+				},
+				changeType: determineChangeType( existingSuggestion.originalContent, suggestedString ),
+				editCount: ( existingSuggestion.metadata.editCount || 0 ) + 1,
+			},
+		};
+		
+		// eslint-disable-next-line no-console
+		console.log(
+			'[Content Interceptor] Updated existing suggestion:',
+			{
+				id: suggestionData.id,
+				blockId: clientId,
+				editCount: suggestionData.metadata.editCount,
+				original: existingSuggestion.originalContent.slice( 0, 20 ) + '...',
+				updated: suggestedString.slice( 0, 20 ) + '...',
+			}
+		);
+		
+	} else {
+		// Create new suggestion
+		suggestionData = {
+			// Core identification
+			id: generateUUID(),
+			blockClientId: clientId,
+			
+			// Author information
+			author: {
+				id: currentUser.id,
+				name: currentUser.name,
+				avatar: currentUser.avatar,
+			},
+			
+			// Content data - originalString is the baseline for all future changes
+			originalContent: originalString,
+			suggestedContent: suggestedString,
+			changes: calculateChanges( originalString, suggestedString ),
+			
+			// Timestamps (ISO format for compatibility)
+			created: now.toISOString(),
+			updated: now.toISOString(),
+			
+			// Status workflow
+			status: 'pending', // pending | accepted | rejected | resolved
+			
+			// Future extensions
+			commentThreadId: null, // Will link to WordPress comments
+			metadata: {
+				wordCount: {
+					original: originalString.split( /\s+/ ).length,
+					suggested: suggestedString.split( /\s+/ ).length,
+				},
+				changeType: determineChangeType( originalString, suggestedString ),
+				editCount: 1,
+			},
+		};
+		
+		// eslint-disable-next-line no-console
+		console.log(
+			'[Content Interceptor] Created new suggestion:',
+			{
+				id: suggestionData.id,
+				blockId: clientId,
+				author: suggestionData.author.name,
+				original: originalString.slice( 0, 20 ) + '...',
+				suggested: suggestedString.slice( 0, 20 ) + '...',
+			}
+		);
+	}
 
 	suggestionStorage.set( clientId, suggestionData );
-
-	// eslint-disable-next-line no-console
-	console.log(
-		'[Content Interceptor] Stored suggestion for block:',
-		clientId,
-		{
-			...suggestionData,
-			originalContent: originalString.slice( 0, 30 ) + '...',
-			suggestedContent: suggestedString.slice( 0, 30 ) + '...',
-		}
-	);
-
 	return suggestionData;
+}
+
+/**
+ * Determine the type of change for metadata
+ *
+ * @param {string} original - Original content
+ * @param {string} suggested - Suggested content
+ * @return {string} Change type
+ */
+function determineChangeType( original, suggested ) {
+	if ( ! original && suggested ) {
+		return 'addition';
+	}
+	if ( original && ! suggested ) {
+		return 'deletion';
+	}
+	if ( original.length < suggested.length ) {
+		return 'expansion';
+	}
+	if ( original.length > suggested.length ) {
+		return 'reduction';
+	}
+	return 'modification';
 }
 
 /**
@@ -167,9 +293,120 @@ export function clearSuggestion( clientId ) {
 
 /**
  * Get all suggestions
+ *
+ * @param {Object} filters - Optional filters 
+ * @param {string} filters.status - Filter by status
+ * @param {number} filters.authorId - Filter by author ID
+ * @return {Array} Array of suggestion objects
  */
-export function getAllSuggestions() {
-	return Array.from( suggestionStorage.values() );
+export function getAllSuggestions( filters = {} ) {
+	let suggestions = Array.from( suggestionStorage.values() );
+	
+	// Apply status filter
+	if ( filters.status ) {
+		suggestions = suggestions.filter( s => s.status === filters.status );
+	}
+	
+	// Apply author filter
+	if ( filters.authorId ) {
+		suggestions = suggestions.filter( s => s.author.id === filters.authorId );
+	}
+	
+	// Sort by creation date (newest first)
+	suggestions.sort( ( a, b ) => new Date( b.created ) - new Date( a.created ) );
+	
+	return suggestions;
+}
+
+/**
+ * Update suggestion status
+ *
+ * @param {string} suggestionId - Suggestion UUID
+ * @param {string} newStatus - New status (pending/accepted/rejected)
+ * @return {Object|null} Updated suggestion or null if not found
+ */
+export function updateSuggestionStatus( suggestionId, newStatus ) {
+	// Find suggestion by ID across all blocks
+	for ( const [ clientId, suggestion ] of suggestionStorage.entries() ) {
+		if ( suggestion.id === suggestionId ) {
+			const updatedSuggestion = {
+				...suggestion,
+				status: newStatus,
+				updated: new Date().toISOString(),
+			};
+			
+			suggestionStorage.set( clientId, updatedSuggestion );
+			
+			// eslint-disable-next-line no-console
+			console.log( `[Suggestion] Status updated: ${ suggestionId } → ${ newStatus }` );
+			
+			return updatedSuggestion;
+		}
+	}
+	
+	return null;
+}
+
+/**
+ * Accept a suggestion (apply changes to block)
+ *
+ * @param {string} suggestionId - Suggestion UUID
+ * @return {Object|null} Result object with success status and content
+ */
+export function acceptSuggestion( suggestionId ) {
+	const updatedSuggestion = updateSuggestionStatus( suggestionId, 'accepted' );
+	
+	if ( updatedSuggestion ) {
+		// TODO: Apply the suggested content to the actual block
+		// This will require integration with Gutenberg's block updating system
+		
+		return {
+			success: true,
+			suggestion: updatedSuggestion,
+			appliedContent: updatedSuggestion.suggestedContent,
+		};
+	}
+	
+	return { success: false, error: 'Suggestion not found' };
+}
+
+/**
+ * Reject a suggestion
+ *
+ * @param {string} suggestionId - Suggestion UUID
+ * @return {Object|null} Result object with success status
+ */
+export function rejectSuggestion( suggestionId ) {
+	const updatedSuggestion = updateSuggestionStatus( suggestionId, 'rejected' );
+	
+	if ( updatedSuggestion ) {
+		return {
+			success: true,
+			suggestion: updatedSuggestion,
+		};
+	}
+	
+	return { success: false, error: 'Suggestion not found' };
+}
+
+/**
+ * Get suggestion statistics
+ *
+ * @return {Object} Statistics about suggestions
+ */
+export function getSuggestionStats() {
+	const suggestions = getAllSuggestions();
+	
+	return {
+		total: suggestions.length,
+		pending: suggestions.filter( s => s.status === 'pending' ).length,
+		accepted: suggestions.filter( s => s.status === 'accepted' ).length,
+		rejected: suggestions.filter( s => s.status === 'rejected' ).length,
+		byAuthor: suggestions.reduce( ( acc, s ) => {
+			acc[ s.author.name ] = ( acc[ s.author.name ] || 0 ) + 1;
+			return acc;
+		}, {} ),
+	};
 }
 
 /**
