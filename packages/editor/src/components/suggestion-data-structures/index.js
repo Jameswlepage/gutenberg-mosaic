@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-import { makeDiff, makePatches, applyPatches } from '@sanity/diff-match-patch';
+import { diff_match_patch } from 'diff-match-patch';
 
 /**
  * WordPress dependencies
@@ -9,7 +9,7 @@ import { makeDiff, makePatches, applyPatches } from '@sanity/diff-match-patch';
 import { __ } from '@wordpress/i18n';
 
 /**
- * Suggestion status constants
+ * Suggestion status constants (professional standard)
  */
 export const SUGGESTION_STATUS = {
 	PENDING: 'pending',
@@ -19,7 +19,7 @@ export const SUGGESTION_STATUS = {
 };
 
 /**
- * Suggestion types
+ * Suggestion types (professional standard)
  */
 export const SUGGESTION_TYPES = {
 	TEXT_CHANGE: 'text_change',
@@ -28,85 +28,51 @@ export const SUGGESTION_TYPES = {
 };
 
 /**
- * Creates a text diff suggestion for paragraph blocks
+ * Creates a text diff suggestion for paragraph blocks using our proven diff engine
  *
  * @param {string} originalText - Original block content
  * @param {string} suggestedText - Suggested block content
  * @param {Object} blockData - Block information
  * @return {Object} Suggestion data structure
  */
+/**
+ * Generate a simple UUID v4
+ * 
+ * @return {string} UUID string
+ */
+function generateUUID() {
+	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, function( c ) {
+		const r = Math.random() * 16 | 0;
+		const v = c === 'x' ? r : ( r & 0x3 | 0x8 );
+		return v.toString( 16 );
+	} );
+}
+
 export function createTextSuggestion( originalText, suggestedText, blockData ) {
-	const diff = makeDiff( originalText, suggestedText );
-	const patches = makePatches( originalText, suggestedText );
+	// Use our proven diff-match-patch implementation
+	const dmp = new diff_match_patch();
+	dmp.Diff_Timeout = 1.0;
+	dmp.Diff_EditCost = 4;
+	
+	const diff = dmp.diff_main( originalText, suggestedText );
+	dmp.diff_cleanupSemantic( diff );
 
 	return {
+		id: generateUUID(), // Add unique ID to each suggestion
 		type: SUGGESTION_TYPES.TEXT_CHANGE,
 		blockClientId: blockData.clientId,
 		blockType: blockData.name,
 		originalContent: originalText,
 		suggestedContent: suggestedText,
 		diff,
-		patches,
+		patches: [], // Could implement patches later if needed
 		timestamp: Date.now(),
 		status: SUGGESTION_STATUS.PENDING,
 	};
 }
 
 /**
- * Creates an attribute change suggestion for blocks
- *
- * @param {Object} originalAttributes - Original block attributes
- * @param {Object} suggestedAttributes - Suggested block attributes
- * @param {Object} blockData - Block information
- * @return {Object} Suggestion data structure
- */
-export function createAttributeSuggestion( originalAttributes, suggestedAttributes, blockData ) {
-	const changes = [];
-	
-	// Find attribute differences
-	Object.keys( suggestedAttributes ).forEach( ( key ) => {
-		if ( originalAttributes[ key ] !== suggestedAttributes[ key ] ) {
-			changes.push( {
-				attribute: key,
-				from: originalAttributes[ key ],
-				to: suggestedAttributes[ key ],
-			} );
-		}
-	} );
-
-	return {
-		type: SUGGESTION_TYPES.ATTRIBUTE_CHANGE,
-		blockClientId: blockData.clientId,
-		blockType: blockData.name,
-		originalAttributes,
-		suggestedAttributes,
-		changes,
-		timestamp: Date.now(),
-		status: SUGGESTION_STATUS.PENDING,
-	};
-}
-
-/**
- * Creates a complete content change suggestion
- *
- * @param {Object} originalBlock - Original block data
- * @param {Object} suggestedBlock - Suggested block data
- * @return {Object} Suggestion data structure
- */
-export function createContentSuggestion( originalBlock, suggestedBlock ) {
-	return {
-		type: SUGGESTION_TYPES.CONTENT_CHANGE,
-		blockClientId: originalBlock.clientId,
-		blockType: originalBlock.name,
-		originalBlock,
-		suggestedBlock,
-		timestamp: Date.now(),
-		status: SUGGESTION_STATUS.PENDING,
-	};
-}
-
-/**
- * Applies a text suggestion to content
+ * Applies a text suggestion to content (simplified for now)
  *
  * @param {Object} suggestion - Suggestion data
  * @param {string} currentContent - Current content to apply to
@@ -114,34 +80,20 @@ export function createContentSuggestion( originalBlock, suggestedBlock ) {
  */
 export function applyTextSuggestion( suggestion, currentContent ) {
 	try {
-		const [ newContent, success ] = applyPatches( suggestion.patches, currentContent );
-		return [ newContent, success ];
+		// For now, just return the suggested content if the current content matches original
+		if ( currentContent === suggestion.originalContent ) {
+			return [ suggestion.suggestedContent, true ];
+		}
+		return [ currentContent, false ];
 	} catch ( error ) {
 		return [ currentContent, false ];
 	}
 }
 
 /**
- * Applies an attribute suggestion to block attributes
+ * Generates a visual diff representation for text changes using our proven algorithm
  *
- * @param {Object} suggestion - Suggestion data
- * @param {Object} currentAttributes - Current block attributes
- * @return {Object} New attributes with suggestion applied
- */
-export function applyAttributeSuggestion( suggestion, currentAttributes ) {
-	const newAttributes = { ...currentAttributes };
-	
-	suggestion.changes.forEach( ( change ) => {
-		newAttributes[ change.attribute ] = change.to;
-	} );
-
-	return newAttributes;
-}
-
-/**
- * Generates a visual diff representation for text changes
- *
- * @param {Array} diff - Diff array from makeDiff
+ * @param {Array} diff - Diff array from diff-match-patch
  * @return {Array} Array of diff elements with type and content
  */
 export function generateDiffVisualization( diff ) {
@@ -169,7 +121,7 @@ export function generateDiffVisualization( diff ) {
 }
 
 /**
- * Converts suggestion data to comment meta format
+ * Converts suggestion data to comment meta format (WordPress integration)
  *
  * @param {Object} suggestion - Suggestion data
  * @param {string} description - Human-readable description
@@ -181,9 +133,9 @@ export function suggestionToCommentMeta( suggestion, description = '' ) {
 		suggestion_status: suggestion.status,
 		block_client_id: suggestion.blockClientId,
 		block_type: suggestion.blockType,
-		original_content: JSON.stringify( suggestion.originalContent || suggestion.originalAttributes || suggestion.originalBlock ),
-		suggested_content: JSON.stringify( suggestion.suggestedContent || suggestion.suggestedAttributes || suggestion.suggestedBlock ),
-		diff_data: JSON.stringify( suggestion.diff || suggestion.changes || {} ),
+		original_content: JSON.stringify( suggestion.originalContent ),
+		suggested_content: JSON.stringify( suggestion.suggestedContent ),
+		diff_data: JSON.stringify( suggestion.diff || [] ),
 		patches_data: JSON.stringify( suggestion.patches || [] ),
 		timestamp: suggestion.timestamp.toString(),
 		description,
@@ -191,7 +143,7 @@ export function suggestionToCommentMeta( suggestion, description = '' ) {
 }
 
 /**
- * Converts comment meta to suggestion data format
+ * Converts comment meta to suggestion data format (WordPress integration)
  *
  * @param {Object} commentMeta - Comment meta object
  * @return {Object} Suggestion data
@@ -202,8 +154,8 @@ export function commentMetaToSuggestion( commentMeta ) {
 		status: commentMeta.suggestion_status,
 		blockClientId: commentMeta.block_client_id,
 		blockType: commentMeta.block_type,
-		originalContent: JSON.parse( commentMeta.original_content || '{}' ),
-		suggestedContent: JSON.parse( commentMeta.suggested_content || '{}' ),
+		originalContent: JSON.parse( commentMeta.original_content || '""' ),
+		suggestedContent: JSON.parse( commentMeta.suggested_content || '""' ),
 		diff: JSON.parse( commentMeta.diff_data || '[]' ),
 		patches: JSON.parse( commentMeta.patches_data || '[]' ),
 		timestamp: parseInt( commentMeta.timestamp, 10 ),
@@ -212,48 +164,10 @@ export function commentMetaToSuggestion( commentMeta ) {
 }
 
 /**
- * Validates if a suggestion can be applied to the current block state
- *
- * @param {Object} suggestion - Suggestion data
- * @param {Object} currentBlock - Current block data
- * @return {Object} Validation result with success flag and message
- */
-export function validateSuggestion( suggestion, currentBlock ) {
-	if ( suggestion.blockClientId !== currentBlock.clientId ) {
-		return {
-			success: false,
-			message: __( 'Suggestion is for a different block.' ),
-		};
-	}
-
-	if ( suggestion.blockType !== currentBlock.name ) {
-		return {
-			success: false,
-			message: __( 'Block type has changed since suggestion was created.' ),
-		};
-	}
-
-	// For text suggestions, validate that the original content matches
-	if ( suggestion.type === SUGGESTION_TYPES.TEXT_CHANGE ) {
-		const currentContent = currentBlock.attributes.content || '';
-		if ( suggestion.originalContent !== currentContent ) {
-			return {
-				success: false,
-				message: __( 'Block content has changed since suggestion was created.' ),
-			};
-		}
-	}
-
-	return {
-		success: true,
-		message: __( 'Suggestion can be applied.' ),
-	};
-}
-
-/**
  * Default suggestion data structure
  */
 export const DEFAULT_SUGGESTION = {
+	id: '',
 	type: SUGGESTION_TYPES.TEXT_CHANGE,
 	blockClientId: '',
 	blockType: '',

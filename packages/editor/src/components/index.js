@@ -108,9 +108,9 @@ export { default as EditorProvider } from './provider';
 
 export * from './deprecated';
 
-// Initialize suggestions system if experiment is enabled
+// Initialize professional suggestions system if experiment is enabled
 if ( typeof window !== 'undefined' && window.__experimentalSuggestionsMode ) {
-	require( './suggestions-system' ).default();
+	require( './suggestions-system' ).initializeProfessionalSuggestionsSystem();
 }
 
 /**

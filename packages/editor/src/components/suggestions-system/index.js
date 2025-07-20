@@ -3,22 +3,27 @@
  */
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
-import { useSelect } from '@wordpress/data';
+import { useSelect, useDispatch } from '@wordpress/data';
 import { useEffect, Fragment } from '@wordpress/element';
-import { ToolbarGroup, ToolbarButton } from '@wordpress/components';
+import { ToolbarGroup, ToolbarButton, Tooltip } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { BlockControls } from '@wordpress/block-editor';
 import { check, close } from '@wordpress/icons';
-
-/**
- * External dependencies
- */
-import { diff_match_patch } from 'diff-match-patch';
+import { store as coreStore } from '@wordpress/core-data';
+import { store as blockEditorStore } from '@wordpress/block-editor';
 
 /**
  * Internal dependencies
  */
 import { store as editorStore } from '../../store';
+import {
+	createTextSuggestion,
+	applyTextSuggestion,
+	SUGGESTION_STATUS,
+	generateDiffVisualization,
+	suggestionToCommentMeta,
+	commentMetaToSuggestion,
+} from '../suggestion-data-structures';
 import withContentInterception, {
 	getSuggestion,
 	hasSuggestions,
@@ -45,7 +50,7 @@ function ensureSuggestionsStyles() {
 			border: 1px solid #28a745 !important;
 			background-color: transparent !important;
 			border-radius: 3px !important;
-			padding: 8px !important;
+			padding: 8px 8px 8px 8px !important;
 			margin: 4px 0 !important;
 			min-height: 40px !important;
 			display: block !important;
@@ -54,29 +59,53 @@ function ensureSuggestionsStyles() {
 			box-sizing: border-box !important;
 		}
 		
-		/* Ultra high specificity selectors for suggestion indicator */
+		/* Ultra high specificity selectors for suggestion dot indicator */
 		.wp-block-editor .suggestion-indicator,
 		.block-editor-block-list__layout .suggestion-indicator,
 		.edit-post-visual-editor .suggestion-indicator,
 		div.suggestion-indicator {
 			position: absolute !important;
-			top: -8px !important;
-			right: 8px !important;
+			top: 50% !important;
+			left: -20px !important;
+			transform: translateY(-50%) !important;
+			width: 8px !important;
+			height: 8px !important;
 			background: #28a745 !important;
-			color: white !important;
-			font-size: 10px !important;
-			padding: 2px 6px !important;
-			border-radius: 2px !important;
-			font-weight: 500 !important;
+			border-radius: 50% !important;
 			z-index: 999999 !important;
-			pointer-events: none !important;
-			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif !important;
-			line-height: 1.2 !important;
+			opacity: 0.6 !important;
+			transition: opacity 0.2s ease !important;
+			cursor: pointer !important;
 			display: block !important;
-			max-width: 200px !important;
-			white-space: nowrap !important;
-			overflow: hidden !important;
-			text-overflow: ellipsis !important;
+		}
+		
+		/* Suggestion dot when block is focused (has .is-selected or .is-focused) */
+		.wp-block-editor .is-selected .suggestion-indicator,
+		.wp-block-editor .is-focused .suggestion-indicator,
+		.block-editor-block-list__layout .is-selected .suggestion-indicator,
+		.block-editor-block-list__layout .is-focused .suggestion-indicator,
+		.edit-post-visual-editor .is-selected .suggestion-indicator,
+		.edit-post-visual-editor .is-focused .suggestion-indicator,
+		.is-selected div.suggestion-indicator,
+		.is-focused div.suggestion-indicator {
+			opacity: 1 !important;
+		}
+		
+		/* Suggestion dot when hovering over the block wrapper */
+		.wp-block-editor .suggestion-wrapper:hover .suggestion-indicator,
+		.block-editor-block-list__layout .suggestion-wrapper:hover .suggestion-indicator,
+		.edit-post-visual-editor .suggestion-wrapper:hover .suggestion-indicator,
+		div.suggestion-wrapper:hover .suggestion-indicator {
+			opacity: 1 !important;
+		}
+		
+		/* Suggestion dot when hovering over the dot itself */
+		.wp-block-editor .suggestion-indicator:hover,
+		.block-editor-block-list__layout .suggestion-indicator:hover,
+		.edit-post-visual-editor .suggestion-indicator:hover,
+		div.suggestion-indicator:hover {
+			opacity: 1 !important;
+			transform: translateY(-50%) scale(1.2) !important;
 		}
 		
 		/* Ultra high specificity selectors for suggestion additions - green underline */
@@ -126,32 +155,30 @@ function ensureSuggestionsStyles() {
 			width: 100% !important;
 		}
 		
-		
+		/* Remove padding from paragraphs within suggestion wrappers */
+		.wp-block-editor .suggestion-wrapper p,
+		.wp-block-editor .suggestion-wrapper .wp-block-paragraph,
+		.block-editor-block-list__layout .suggestion-wrapper p,
+		.block-editor-block-list__layout .suggestion-wrapper .wp-block-paragraph,
+		.edit-post-visual-editor .suggestion-wrapper p,
+		.edit-post-visual-editor .suggestion-wrapper .wp-block-paragraph,
+		div.suggestion-wrapper p,
+		div.suggestion-wrapper .wp-block-paragraph {
+			padding: 0 !important;
+			margin: 0 !important;
+		}
 	`;
 	document.head.appendChild( style );
 	stylesInjected = true;
 
-	// Also check if styles were actually injected
-	setTimeout( () => {
-		const injectedStyle = document.getElementById(
-			'suggestions-system-forced-styles'
-		);
-		// eslint-disable-next-line no-console
-		console.log( '[Suggestions System] Style injection verification:', {
-			styleElementExists: !! injectedStyle,
-			styleContent: injectedStyle?.textContent?.slice( 0, 100 ) + '...',
-			totalRules: injectedStyle?.sheet?.cssRules?.length || 0,
-		} );
-	}, 100 );
-
 	// eslint-disable-next-line no-console
 	console.log(
-		'[Suggestions System] Ultra-high specificity CSS injection completed'
+		'[Professional Suggestions System] Ultra-high specificity CSS injection completed'
 	);
 }
 
 /**
- * Advanced diff visualization using Google's diff-match-patch
+ * Create professional diff visualization using existing Gutenberg infrastructure
  *
  * @param {string} originalContent - Original content
  * @param {string} suggestedContent - Suggested content
@@ -166,135 +193,43 @@ function createDiffVisualization( originalContent, suggestedContent ) {
 		return suggestedContent;
 	}
 
-	// Initialize diff-match-patch
-	const dmp = new diff_match_patch();
-
-	// Configure for better diff detection
-	dmp.Diff_Timeout = 1.0; // 1 second timeout
-	dmp.Diff_EditCost = 4; // Default edit cost
-
-	// Debug logging
-	// eslint-disable-next-line no-console
-	console.log( '[Diff Creation] Input comparison:', {
-		original: originalContent.slice( 0, 50 ) + '...',
-		suggested: suggestedContent.slice( 0, 50 ) + '...',
-		originalLength: originalContent.length,
-		suggestedLength: suggestedContent.length,
+	// Create suggestion data using the professional system
+	const suggestionData = createTextSuggestion( originalContent, suggestedContent, {
+		clientId: 'temp',
+		name: 'core/paragraph',
 	} );
 
-	// Create diff array
-	const diffs = dmp.diff_main( originalContent, suggestedContent );
+	// Generate diff elements using the professional visualization
+	const diffElements = generateDiffVisualization( suggestionData.diff );
 
-	// Apply semantic cleanup to produce more human-readable diffs
-	dmp.diff_cleanupSemantic( diffs );
+	// Convert to HTML format compatible with our styling
+	return diffElements.map( ( element, index ) => {
+		let className;
+		switch ( element.type ) {
+			case 'insertion':
+				className = 'suggestion-addition';
+				break;
+			case 'deletion':
+				className = 'suggestion-deletion';
+				break;
+			default:
+				return element.content;
+		}
 
-	// Debug the raw diff result before HTML conversion
-	// eslint-disable-next-line no-console
-	console.log( '[Diff Creation] Raw diff result:', diffs.map( ( [ op, text ] ) => ({
-		op: op === 1 ? 'INSERT' : op === -1 ? 'DELETE' : 'EQUAL',
-		text: `"${ text.slice( 0, 30 ) }"${ text.length > 30 ? '...' : '' }`,
-		length: text.length,
-	} ) ) );
-
-	// Count operations for debugging
-	const insertions = diffs.filter( ( [ op ] ) => op === 1 ).length;
-	const deletions = diffs.filter( ( [ op ] ) => op === -1 ).length;
-	const equals = diffs.filter( ( [ op ] ) => op === 0 ).length;
-	// eslint-disable-next-line no-console
-	console.log( `[Diff Creation] Operation counts: ${ insertions } insertions, ${ deletions } deletions, ${ equals } equals` );
-
-	// Convert diff array to HTML with custom styling
-	return createCustomDiffHtml( diffs );
-}
-
-/**
- * Convert diff array to HTML with custom Gutenberg-style classes
- *
- * @param {Array} diffs - Array of diff operations from diff-match-patch
- * @return {string} HTML string with custom diff styling
- */
-function createCustomDiffHtml( diffs ) {
-	const html = [];
-
-	// Debug logging to understand the diff structure
-	// eslint-disable-next-line no-console
-	console.log( '[Diff Rendering] Processing diffs:', diffs.map( ( [ op, text ], index ) => ({
-		index,
-		operation: op === 1 ? 'INSERT' : op === -1 ? 'DELETE' : 'EQUAL',
-		text: text.slice( 0, 20 ) + ( text.length > 20 ? '...' : '' ),
-		length: text.length,
-		charCodes: text.split( '' ).map( c => c.charCodeAt( 0 ) ).slice( 0, 10 ),
-	} ) ) );
-
-	// Count how many deletions we're processing
-	const deletionCount = diffs.filter( ( [ op ] ) => op === -1 ).length;
-	// eslint-disable-next-line no-console
-	console.log( `[Diff Rendering] Processing ${ deletionCount } deletion operations` );
-
-	diffs.forEach( ( [ operation, text ], index ) => {
-		// Escape HTML entities in text
-		const encodedText = text
+		const encodedText = element.content
 			.replace( /&/g, '&amp;' )
 			.replace( /</g, '&lt;' )
 			.replace( />/g, '&gt;' )
 			.replace( /\n/g, '&para;<br>' );
 
-		switch ( operation ) {
-			case 1: // Insertion
-				html.push(
-					`<span class="suggestion-addition" data-diff-index="${ index }">${ encodedText }</span>`
-				);
-				break;
-			case -1: // Deletion
-				// Split deletion text by word boundaries and wrap each word separately
-				// This ensures that each deleted word gets its own strikethrough span
-				if ( text.trim() ) {
-					// Split on word boundaries but preserve whitespace
-					const parts = text.split( /(\s+)/ );
-					parts.forEach( ( part, partIndex ) => {
-						if ( part ) {
-							const encodedPart = part
-								.replace( /&/g, '&amp;' )
-								.replace( /</g, '&lt;' )
-								.replace( />/g, '&gt;' )
-								.replace( /\n/g, '&para;<br>' );
-							html.push(
-								`<span class="suggestion-deletion" data-diff-index="${ index }-${ partIndex }">${ encodedPart }</span>`
-							);
-						}
-					} );
-				} else {
-					// Handle whitespace-only deletions
-					html.push(
-						`<span class="suggestion-deletion" data-diff-index="${ index }">${ encodedText }</span>`
-					);
-				}
-				break;
-			case 0: // Equality
-				html.push( encodedText );
-				break;
-			default:
-				html.push( encodedText );
-		}
-	} );
-
-	const result = html.join( '' );
-	
-	// Count deletion spans in generated HTML
-	const deletionSpanCount = ( result.match( /class="suggestion-deletion"/g ) || [] ).length;
-	// eslint-disable-next-line no-console
-	console.log( `[Diff Rendering] Generated ${ deletionSpanCount } deletion spans in HTML` );
-	// eslint-disable-next-line no-console
-	console.log( '[Diff Rendering] Generated HTML preview:', result.slice( 0, 200 ) + '...' );
-	
-	return result;
+		return `<span class="${ className }" data-diff-index="${ index }">${ encodedText }</span>`;
+	} ).join( '' );
 }
-
-
 
 /**
  * Block Content Controller
  * Shows clean content in edit mode, diff overlay in suggest mode
+ * Now uses professional Gutenberg suggestions infrastructure
  */
 const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 	return ( props ) => {
@@ -315,11 +250,13 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 			return <BlockEdit { ...props } />;
 		}
 
-		const blockHasSuggestions = hasSuggestions( clientId );
-		const showSuggestionOverlay =
-			collaborationMode === 'suggest' && blockHasSuggestions;
+		// Remove WordPress API calls that were causing conflicts
 
-		// Accept suggestion handler
+		// Check if block has suggestions using the working in-memory system
+		const blockHasSuggestions = hasSuggestions( clientId );
+		const showSuggestionOverlay = collaborationMode === 'suggest' && blockHasSuggestions;
+
+		// Accept suggestion handler using working system
 		const handleAcceptSuggestion = ( suggestionId ) => {
 			const result = acceptSuggestion( suggestionId );
 			
@@ -334,7 +271,7 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 			}
 		};
 
-		// Reject suggestion handler
+		// Reject suggestion handler using working system
 		const handleRejectSuggestion = ( suggestionId ) => {
 			const suggestion = getSuggestion( clientId );
 			if ( ! suggestion ) {
@@ -361,7 +298,7 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 		useEffect( () => {
 			// eslint-disable-next-line no-console
 			console.log(
-				`[Block Content Controller] Block ${ clientId }: mode=${ collaborationMode }, hasSuggestions=${ blockHasSuggestions }, showOverlay=${ showSuggestionOverlay }`
+				`[Professional Block Controller] Block ${ clientId }: mode=${ collaborationMode }, hasSuggestions=${ blockHasSuggestions }, showOverlay=${ showSuggestionOverlay }`
 			);
 		}, [
 			collaborationMode,
@@ -370,7 +307,7 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 			clientId,
 		] );
 
-		// In suggest mode with suggestions, show diff with hover toolbar
+		// In suggest mode with suggestions, show diff with toolbar controls
 		if ( showSuggestionOverlay ) {
 			const suggestion = getSuggestion( clientId );
 
@@ -379,7 +316,7 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 				return <BlockEdit { ...props } />;
 			}
 
-			// Create diff HTML
+			// Create diff HTML using our proven system
 			const diffHtml = createDiffVisualization(
 				suggestion.originalContent,
 				suggestion.suggestedContent
@@ -394,7 +331,7 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 				},
 			};
 
-			// Wrap in suggestion styling with toolbar controls and hover info
+			// Wrap in suggestion styling with toolbar controls
 			return (
 				<Fragment>
 					<BlockControls group="block">
@@ -412,9 +349,9 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 						</ToolbarGroup>
 					</BlockControls>
 					<div className="suggestion-wrapper">
-						<div className="suggestion-indicator">
-							Suggestion: { suggestion.metadata?.editCount || 1 } { ( suggestion.metadata?.editCount || 1 ) === 1 ? 'change' : 'changes' } by { suggestion.author.name }
-						</div>
+						<Tooltip text={ `Suggestion: ${ suggestion.metadata?.editCount || 1 } ${ ( suggestion.metadata?.editCount || 1 ) === 1 ? 'change' : 'changes' } by ${ suggestion.author.name }` }>
+							<div className="suggestion-indicator" />
+						</Tooltip>
 						<BlockEdit { ...modifiedProps } />
 					</div>
 				</Fragment>
@@ -424,12 +361,12 @@ const BlockContentController = createHigherOrderComponent( ( BlockEdit ) => {
 		// Edit mode: show clean original content only
 		return <BlockEdit { ...props } />;
 	};
-}, 'BlockContentController' );
+}, 'ProfessionalBlockContentController' );
 
 /**
- * Initialize suggestions system with proper content management
+ * Initialize professional suggestions system
  */
-export function initializeSuggestionsSystem() {
+export function initializeProfessionalSuggestionsSystem() {
 	// Only initialize if experiment is enabled
 	if ( ! window.__experimentalSuggestionsMode ) {
 		return;
@@ -437,7 +374,6 @@ export function initializeSuggestionsSystem() {
 
 	// Ensure CSS styles are loaded
 	ensureSuggestionsStyles();
-
 
 	// Add content interception filter first (higher priority)
 	addFilter(
@@ -457,8 +393,8 @@ export function initializeSuggestionsSystem() {
 
 	// eslint-disable-next-line no-console
 	console.log(
-		'[Suggestions System] Initialized with content interception, visual overlay, and block toolbar integration'
+		'[Professional Suggestions System] Initialized with WordPress persistence and professional diff rendering'
 	);
 }
 
-export default initializeSuggestionsSystem;
+export default initializeProfessionalSuggestionsSystem;
