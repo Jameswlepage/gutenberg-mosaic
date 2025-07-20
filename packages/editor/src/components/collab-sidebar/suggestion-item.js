@@ -5,11 +5,14 @@ import { __ } from '@wordpress/i18n';
 import { Button } from '@wordpress/components';
 import { check, close } from '@wordpress/icons';
 import { useState } from '@wordpress/element';
+import { useSelect, useDispatch } from '@wordpress/data';
+import { store as blockEditorStore } from '@wordpress/block-editor';
 
 /**
  * Internal dependencies
  */
 import { generateDiffVisualization } from '../suggestion-data-structures';
+import { store as editorStore } from '../../store';
 
 /**
  * Create a simplified diff preview for the sidebar
@@ -70,6 +73,8 @@ export function SuggestionItem({
 	onViewDetails 
 }) {
 	const [showDetails, setShowDetails] = useState(false);
+	const { selectBlock } = useDispatch( blockEditorStore );
+	const { setCollaborationMode } = useDispatch( editorStore );
 
 	if (!suggestion) {
 		return null;
@@ -79,6 +84,16 @@ export function SuggestionItem({
 	const changeType = suggestion.metadata?.changeType || 'modification';
 	const editCount = suggestion.metadata?.editCount || 1;
 	const authorName = suggestion.author?.name || 'User';
+
+	// Create better diff preview text
+	let previewText = diffPreview;
+	if (!previewText || previewText.trim() === '') {
+		// Fallback to suggested content if diff preview is empty
+		previewText = suggestion.suggestedContent?.substring(0, 60) || 'No preview available';
+		if (suggestion.suggestedContent?.length > 60) {
+			previewText += '...';
+		}
+	}
 
 	const handleAccept = () => {
 		if (onAccept) {
@@ -99,9 +114,44 @@ export function SuggestionItem({
 		}
 	};
 
+	const navigateToBlock = () => {
+		// Get the client ID from the suggestion
+		const clientId = suggestion.blockClientId || suggestion.clientId;
+		
+		console.log('Navigating to suggestion block:', {
+			suggestionId: suggestion.id,
+			blockClientId: clientId,
+			suggestion: suggestion
+		});
+		
+		if (clientId) {
+			// Switch to suggestion mode to show diff visualization
+			setCollaborationMode('suggest');
+			
+			// Small delay to ensure mode switch completes
+			setTimeout(() => {
+				// Select the block to show the suggestion
+				selectBlock(clientId);
+				
+				// Scroll to the block
+				const blockElement = document.querySelector(`[data-block="${clientId}"]`);
+				if (blockElement) {
+					blockElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				}
+			}, 100);
+		} else {
+			console.error('No client ID found for suggestion:', suggestion);
+		}
+	};
+
 	return (
 		<div className="editor-collab-sidebar-suggestion-item">
-			<div className="editor-collab-sidebar-suggestion-item__header">
+			<div 
+				className="editor-collab-sidebar-suggestion-item__header"
+				onClick={navigateToBlock}
+				style={{ cursor: 'pointer' }}
+				title={__('Click to view suggestion in editor')}
+			>
 				<div className="editor-collab-sidebar-suggestion-item__info">
 					<span className="editor-collab-sidebar-suggestion-item__author">
 						{authorName}
@@ -110,7 +160,10 @@ export function SuggestionItem({
 						{editCount} {editCount === 1 ? __('change') : __('changes')} • {changeType}
 					</span>
 				</div>
-				<div className="editor-collab-sidebar-suggestion-item__actions">
+				<div 
+					className="editor-collab-sidebar-suggestion-item__actions"
+					onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking buttons
+				>
 					<Button
 						icon={check}
 						label={__('Accept suggestion')}
@@ -133,7 +186,7 @@ export function SuggestionItem({
 					onClick={toggleDetails}
 				>
 					<div className="editor-collab-sidebar-suggestion-item__preview-text">
-						{diffPreview}
+						{previewText}
 					</div>
 					<span className="editor-collab-sidebar-suggestion-item__toggle">
 						{showDetails ? __('Hide details') : __('Show details')}

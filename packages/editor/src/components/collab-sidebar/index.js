@@ -35,7 +35,8 @@ import { navigateToComment } from '../../utils/comment-navigation';
 import { 
 	acceptSuggestion as acceptInMemorySuggestion,
 	rejectSuggestion as rejectInMemorySuggestion,
-	commentMetaToSuggestion 
+	commentMetaToSuggestion,
+	restoreSuggestionFromDatabase 
 } from '../suggestions-content-interceptor';
 
 const modifyBlockCommentAttributes = ( settings ) => {
@@ -64,6 +65,7 @@ function CollabSidebarContent( {
 	styles,
 	comments,
 	suggestions,
+	selectedBlockClientId,
 } ) {
 	const [ activeTab, setActiveTab ] = useState( 'open' );
 	const { createNotice } = useDispatch( noticesStore );
@@ -79,7 +81,6 @@ function CollabSidebarContent( {
 		};
 	}, [] );
 
-	const { getSelectedBlockClientId } = useSelect( blockEditorStore );
 	const { updateBlockAttributes } = useDispatch( blockEditorStore );
 
 	// Function to save the comment.
@@ -143,18 +144,23 @@ function CollabSidebarContent( {
 	};
 
 	const onCommentResolve = async ( commentId ) => {
-		const savedRecord = await saveEntityRecord( 'root', 'comment', {
-			id: commentId,
-			status: 'approved',
-		} );
-
-		if ( savedRecord ) {
-			// translators: Comment resolved successfully
-			createNotice( 'snackbar', __( 'Comment marked as resolved.' ), {
-				type: 'snackbar',
-				isDismissible: true,
+		try {
+			const savedRecord = await saveEntityRecord( 'root', 'comment', {
+				id: commentId,
+				status: 'approved',
 			} );
-		} else {
+
+			if ( savedRecord ) {
+				// translators: Comment resolved successfully
+				createNotice( 'snackbar', __( 'Comment marked as resolved.' ), {
+					type: 'snackbar',
+					isDismissible: true,
+				} );
+			} else {
+				onError();
+			}
+		} catch ( error ) {
+			console.error( 'Error resolving comment:', error );
 			onError();
 		}
 	};
@@ -294,6 +300,27 @@ function CollabSidebarContent( {
 	const filteredSuggestions = activeTab === 'suggestions' 
 		? suggestions.filter( s => s.status === 'hold' ) // Only pending suggestions
 		: [];
+
+	// Restore suggestions from database to in-memory system when suggestions are loaded
+	useMemo( () => {
+		if ( suggestions && suggestions.length > 0 && window.__experimentalSuggestionsMode ) {
+			suggestions.forEach( suggestionComment => {
+				if ( suggestionComment.meta?.suggestion_block_id && suggestionComment.status === 'hold' ) {
+					// Try to restore this suggestion to the in-memory system if it doesn't exist
+					if ( typeof restoreSuggestionFromDatabase === 'function' ) {
+						const success = restoreSuggestionFromDatabase( suggestionComment );
+						if ( success ) {
+							console.log( 'Restored suggestion from database:', {
+								id: suggestionComment.meta.suggestion_block_id,
+								clientId: suggestionComment.meta.block_client_id,
+								status: suggestionComment.status
+							} );
+						}
+					}
+				}
+			} );
+		}
+	}, [ suggestions ] );
 
 	return (
 		<div className="editor-collab-sidebar-panel" style={ styles }>
@@ -550,6 +577,7 @@ export default function CollabSidebar() {
 					suggestions={ suggestions || [] }
 					showCommentBoard={ showCommentBoard }
 					setShowCommentBoard={ setShowCommentBoard }
+					selectedBlockClientId={ selectedBlockClientId }
 					styles={ {
 						backgroundColor,
 					} }

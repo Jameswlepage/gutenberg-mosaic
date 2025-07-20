@@ -21,6 +21,9 @@ import apiFetch from '@wordpress/api-fetch';
 // Re-export functions from suggestion-data-structures for collab-sidebar
 export { commentMetaToSuggestion } from '../suggestion-data-structures';
 
+// Also import it for local use
+import { commentMetaToSuggestion } from '../suggestion-data-structures';
+
 // Working in-memory suggestion storage (will be replaced with WordPress integration later)
 const suggestionStorage = new Map();
 
@@ -650,6 +653,58 @@ export async function saveSuggestionToDatabase( suggestionData ) {
 		// Don't throw - we want in-memory suggestions to continue working
 		// even if database persistence fails
 		return null;
+	}
+}
+
+/**
+ * Restore a suggestion from database comment back to in-memory storage
+ * This ensures suggestions persist across page loads and show in suggestion mode
+ * 
+ * @param {Object} suggestionComment - WordPress comment object with suggestion metadata
+ * @return {boolean} Success status
+ */
+export function restoreSuggestionFromDatabase( suggestionComment ) {
+	try {
+		if ( ! suggestionComment.meta?.suggestion_block_id ) {
+			return false;
+		}
+
+		// Convert comment metadata back to suggestion format
+		const suggestionData = commentMetaToSuggestion( suggestionComment.meta || {} );
+		
+		// Get the client ID from the suggestion
+		const clientId = suggestionData.blockClientId || suggestionComment.meta.suggestion_client_id;
+		
+		if ( ! clientId ) {
+			return false;
+		}
+
+		// Check if we already have this suggestion in memory (avoid duplicates)
+		if ( suggestionStorage.has( clientId ) ) {
+			return true; // Already exists
+		}
+
+		// Restore full suggestion data structure
+		const restoredSuggestion = {
+			...suggestionData,
+			id: suggestionComment.meta.suggestion_block_id,
+			status: 'pending', // Mark as pending for visual display
+			author: {
+				id: suggestionComment.meta.suggestion_author_id || suggestionComment.author,
+				name: suggestionComment.author_name || 'User',
+				avatar: suggestionComment.author_avatar_urls?.[24] || '',
+			},
+			created: suggestionComment.meta.suggestion_created || suggestionComment.date_gmt,
+			updated: suggestionComment.meta.suggestion_updated || suggestionComment.modified_gmt,
+		};
+
+		// Store in memory for visual display
+		suggestionStorage.set( clientId, restoredSuggestion );
+		
+		return true;
+	} catch ( error ) {
+		console.error( 'Error restoring suggestion from database:', error );
+		return false;
 	}
 }
 
