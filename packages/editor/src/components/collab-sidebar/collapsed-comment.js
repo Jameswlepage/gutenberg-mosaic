@@ -3,7 +3,7 @@
  */
 import { RawHTML } from '@wordpress/element';
 import { sprintf, __ } from '@wordpress/i18n';
-import { Icon } from '@wordpress/components';
+import { Icon, __experimentalHStack as HStack } from '@wordpress/components';
 import { comment } from '@wordpress/icons';
 
 /**
@@ -21,7 +21,12 @@ export function CollapsedComment({ thread, onActivate }) {
 			className="editor-collab-sidebar-panel__collapsed-comment"
 		>
 			{/* User info with avatar */}
-			<div className="editor-collab-sidebar-panel__comment-header">
+			<HStack
+				alignment="center"
+				justify="flex-start"
+				spacing="2"
+				className="editor-collab-sidebar-panel__comment-header"
+			>
 				<img
 					src={ thread?.author_avatar_urls?.[ 48 ] || thread?.author_avatar_urls?.[ 24 ] }
 					className="editor-collab-sidebar-panel__user-avatar"
@@ -39,23 +44,14 @@ export function CollapsedComment({ thread, onActivate }) {
 						hour12: true,
 					})}
 				</time>
-			</div>
+			</HStack>
 
 			{/* Comment content */}
 			<div className="editor-collab-sidebar-panel__comment-content">
 				<RawHTML>{thread?.content?.raw}</RawHTML>
 			</div>
 
-			{/* Reply count */}
-			{thread.reply?.length > 0 && (
-				<div className="editor-collab-sidebar-panel__reply-count">
-					{sprintf(
-						// translators: %d: number of replies
-						__('%d replies'),
-						thread.reply.length
-					)}
-				</div>
-			)}
+			{/* Reply count - removed to avoid duplicate with thread's "X more replies" */}
 		</div>
 	);
 }

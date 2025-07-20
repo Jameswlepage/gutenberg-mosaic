@@ -250,7 +250,12 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, 
 			) }
 
 			{/* User info WITH avatar */}
-			<div className="editor-collab-sidebar-panel__comment-header">
+			<HStack
+				alignment="center"
+				justify="flex-start"
+				spacing="2"
+				className="editor-collab-sidebar-panel__comment-header"
+			>
 				<img
 					src={ thread?.author_avatar_urls?.[ 48 ] || thread?.author_avatar_urls?.[ 24 ] }
 					className="editor-collab-sidebar-panel__user-avatar"
@@ -273,7 +278,7 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, 
 						<Icon icon={ check } />
 					</Tooltip>
 				) }
-			</div>
+			</HStack>
 
 			{/* Comment content or edit form */}
 			<HStack
