@@ -1,0 +1,89 @@
+/**
+ * Comment Block Indicator Styles - matches suggestion system positioning
+ */
+
+// Comment wrapper for blocks with comments
+.comment-wrapper {
+	position: relative !important;
+	// Add a subtle border to indicate this block has comments
+	border: 1px solid rgba(#f0b849, 0.3) !important;
+	border-radius: 3px !important;
+	padding: 2px !important;
+	margin: 2px 0 !important;
+}
+
+// Comment dot indicator - positioned exactly like suggestion dots
+.comment-indicator {
+	position: absolute !important;
+	top: 50% !important;                    /* Vertical center of parent */
+	left: -20px !important;                 /* 20px to the left of wrapper */
+	transform: translateY(-50%) !important; /* Perfect vertical alignment */
+	width: 8px !important;                  /* Circle width */
+	height: 8px !important;                 /* Circle height */
+	background: #f0b849 !important;         /* WordPress yellow */
+	border-radius: 50% !important;          /* Makes it perfectly circular */
+	z-index: 999999 !important;            /* On top of everything */
+	opacity: 0.6 !important;               /* Semi-transparent by default */
+	transition: all 0.2s ease !important;
+	cursor: pointer !important;
+	display: block !important;
+
+	&:hover {
+		opacity: 1 !important;
+		transform: translateY(-50%) scale(1.2) !important;
+	}
+
+	&.is-active {
+		opacity: 0.3 !important;
+		background: #d3d3d3 !important;
+	}
+
+	// Tooltip
+	&::after {
+		content: attr(data-tooltip);
+		position: absolute;
+		bottom: 100%;
+		left: 50%;
+		transform: translateX(-50%);
+		background: rgba(0, 0, 0, 0.8);
+		color: white;
+		padding: 4px 8px;
+		border-radius: 3px;
+		font-size: 12px;
+		white-space: nowrap;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.2s ease;
+		margin-bottom: 5px;
+		z-index: 1000000;
+	}
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: calc(100% - 5px);
+		left: 50%;
+		transform: translateX(-50%);
+		border: 4px solid transparent;
+		border-top-color: rgba(0, 0, 0, 0.8);
+		opacity: 0;
+		transition: opacity 0.2s ease;
+		z-index: 1000000;
+	}
+
+	&:hover::after,
+	&:hover::before {
+		opacity: 1;
+	}
+}
+
+// When block is selected or focused, make indicator more prominent
+.is-selected .comment-indicator,
+.is-focused .comment-indicator,
+.comment-wrapper:hover .comment-indicator {
+	opacity: 1 !important;
+	
+	&.is-active {
+		opacity: 0.5 !important;
+	}
+}

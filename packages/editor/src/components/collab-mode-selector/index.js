@@ -7,16 +7,19 @@ import {
 	MenuItemsChoice,
 	NavigableMenu,
 	Icon,
+	MenuItem,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { edit, comment } from '@wordpress/icons';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { forwardRef } from '@wordpress/element';
+import { store as interfaceStore } from '@wordpress/interface';
 
 /**
  * Internal dependencies
  */
 import { store as editorStore } from '../../store';
+import { collabSidebarName } from '../collab-sidebar/constants';
 
 const COLLABORATION_MODES = [
 	{
@@ -54,6 +57,7 @@ const CollabModeSelector = forwardRef( function CollabModeSelector(
 	}, [] );
 
 	const { setCollaborationMode } = useDispatch( editorStore );
+	const { enableComplementaryArea } = useDispatch( interfaceStore );
 
 	// Only show if suggestions mode experiment is enabled
 	if ( ! window.__experimentalSuggestionsMode ) {
@@ -62,6 +66,10 @@ const CollabModeSelector = forwardRef( function CollabModeSelector(
 
 	const handleModeChange = ( newMode ) => {
 		setCollaborationMode( newMode );
+	};
+
+	const handleCommentsClick = () => {
+		enableComplementaryArea( 'core', collabSidebarName );
 	};
 
 	const currentMode = COLLABORATION_MODES.find(
@@ -94,6 +102,13 @@ const CollabModeSelector = forwardRef( function CollabModeSelector(
 						value={ collaborationMode }
 						onSelect={ handleModeChange }
 					/>
+					<MenuItem
+						icon={ comment }
+						onClick={ handleCommentsClick }
+						role="menuitem"
+					>
+						{ __( 'View Comments' ) }
+					</MenuItem>
 					<div className="block-editor-collab-mode-selector__help">
 						{ __( 
 							'Collaboration tools provide different ways to work with content. Choose between direct editing and suggestion mode for collaborative review.' 

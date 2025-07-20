@@ -1,7 +1,6 @@
 /**
  * WordPress dependencies
  */
-import { __experimentalVStack as VStack } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { dateI18n, getSettings as getDateSettings } from '@wordpress/date';
 import { useEntityProp, store as coreStore } from '@wordpress/core-data';
@@ -41,27 +40,25 @@ function CommentAuthorInfo( { avatar, name, date } ) {
 	const currentDate = new Date();
 
 	return (
-		<>
+		<div className="editor-collab-sidebar-panel__author-info-row">
 			<img
 				src={ avatar ?? currentUserAvatar }
 				className="editor-collab-sidebar-panel__user-avatar"
 				// translators: alt text for user avatar image
 				alt={ __( 'User avatar' ) }
-				width={ 32 }
-				height={ 32 }
+				width={ 24 }
+				height={ 24 }
 			/>
-			<VStack spacing="0">
-				<span className="editor-collab-sidebar-panel__user-name">
-					{ name ?? currentUserName }
-				</span>
-				<time
-					dateTime={ dateI18n( 'c', date ?? currentDate ) }
-					className="editor-collab-sidebar-panel__user-time"
-				>
-					{ dateI18n( dateTimeFormat, date ?? currentDate ) }
-				</time>
-			</VStack>
-		</>
+			<span className="editor-collab-sidebar-panel__user-name">
+				{ name ?? currentUserName }
+			</span>
+			<time
+				dateTime={ dateI18n( 'c', date ?? currentDate ) }
+				className="editor-collab-sidebar-panel__user-time"
+			>
+				{ dateI18n( dateTimeFormat, date ?? currentDate ) }
+			</time>
+		</div>
 	);
 }
 

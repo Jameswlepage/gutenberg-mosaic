@@ -42,6 +42,8 @@ import {
 	TEMPLATE_POST_TYPE,
 } from '../../store/constants';
 import { useZoomOutModeExit } from './use-zoom-out-mode-exit';
+// Import the new block comment integration system
+import '../block-comment-integration';
 
 const {
 	LayoutStyle,
@@ -491,6 +493,7 @@ function VisualEditor( {
 							/>
 						) }
 					</RecursionProvider>
+					{/* Comment indicators now handled by block filters */}
 				</BlockCanvas>
 			</ResizableEditor>
 		</div>

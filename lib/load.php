@@ -56,10 +56,7 @@ if ( class_exists( 'WP_REST_Controller' ) ) {
 		require __DIR__ . '/experimental/class-gutenberg-rest-comment-controller.php';
 	}
 
-	// Block Suggestions.
-	if ( gutenberg_is_experiment_enabled( 'gutenberg-suggestions-mode' ) ) {
-		require __DIR__ . '/experimental/block-suggestions.php';
-	}
+	// Block Suggestions are now handled within block-comments.php
 }
 
 // Experimental signaling server.

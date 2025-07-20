@@ -4,9 +4,19 @@
 
 .interface-interface-skeleton__sidebar:has(.editor-collab-sidebar) {
 	box-shadow: none;
+	height: 100%;
+	border-left: 1px solid $gray-300;
+	border-top: 1px solid $gray-300;
+	border-bottom: 1px solid $gray-300;
 
 	.interface-complementary-area-header {
 		display: none;
+	}
+	
+	.interface-complementary-area {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
 	}
 }
 
@@ -15,7 +25,6 @@
 }
 
 .editor-collab-sidebar-panel {
-	padding: $grid-unit-20;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -23,6 +32,7 @@
 	&__content {
 		flex: 1;
 		overflow-y: auto;
+		padding: $grid-unit-20 $grid-unit-20 0 $grid-unit-20; // Top and sides padding, no bottom
 	}
 
 	&__tab-selector {
@@ -532,29 +542,31 @@
 	// BOTTOM ACTIONS - full height panel with button at bottom
 	&__bottom-actions {
 		margin-top: auto;
-		padding: $grid-unit-20 0 0 0;
-		border-top: 1px solid $gray-200;
+		padding: $grid-unit-20;
+		background-color: $white;
 	}
 
 	&__add-comment-bottom-button {
 		width: 100%;
-		background-color: var(--wp-admin-theme-color, #3858e9);
-		color: $white;
+		background: none;
+		color: $gray-600;
 		border: none;
 		border-radius: $radius-small;
-		padding: $grid-unit-10 $grid-unit-15;
+		padding: $grid-unit-05 0;
 		font-size: $font-size-small;
-		font-weight: $font-weight-medium;
+		font-weight: $font-weight-regular;
 		cursor: pointer;
-		transition: background-color 0.2s ease;
+		transition: color 0.2s ease;
+		text-align: left;
+		font-family: inherit;
 
 		&:hover {
-			background-color: var(--wp-admin-theme-color-darker, #2c4aa0);
+			color: $gray-900;
 		}
 
 		&:focus {
-			box-shadow: 0 0 0 var(--wp-admin-border-width-focus) var(--wp-admin-theme-color);
-			outline: 2px solid transparent;
+			outline: 2px solid var(--wp-admin-theme-color, #3858e9);
+			outline-offset: 2px;
 		}
 	}
 }

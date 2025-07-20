@@ -3,9 +3,7 @@
  */
 import { useState } from '@wordpress/element';
 import {
-	__experimentalHStack as HStack,
 	Button,
-	TextareaControl,
 } from '@wordpress/components';
 import { _x, __ } from '@wordpress/i18n';
 
@@ -13,6 +11,7 @@ import { _x, __ } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { sanitizeCommentString } from './utils';
+import { MentionTextareaControl } from '../mention-textarea-control';
 
 /**
  * EditComment component.
@@ -30,20 +29,17 @@ function CommentForm( { onSubmit, onCancel, thread, submitButtonText } ) {
 	);
 
 	return (
-		<>
-			<TextareaControl
-				__next40pxDefaultSize
-				__nextHasNoMarginBottom
+		<div className="editor-collab-sidebar-panel__edit-form">
+			<MentionTextareaControl
 				value={ inputComment ?? '' }
 				onChange={ setInputComment }
-				label={ __( 'Comment' ) }
-				hideLabelFromVision
+				placeholder={ __( 'Write a comment...' ) }
+				rows={ 3 }
 			/>
-			<HStack alignment="left" spacing="3" justify="flex-start">
+			<div className="editor-collab-sidebar-panel__edit-actions">
 				<Button
-					__next40pxDefaultSize
-					accessibleWhenDisabled
 					variant="primary"
+					size="small"
 					onClick={ () => {
 						onSubmit( inputComment );
 						setInputComment( '' );
@@ -51,16 +47,18 @@ function CommentForm( { onSubmit, onCancel, thread, submitButtonText } ) {
 					disabled={
 						0 === sanitizeCommentString( inputComment ).length
 					}
-					text={ submitButtonText }
-				/>
+				>
+					{ submitButtonText }
+				</Button>
 				<Button
-					__next40pxDefaultSize
 					variant="tertiary"
+					size="small"
 					onClick={ onCancel }
-					text={ _x( 'Cancel', 'Cancel comment button' ) }
-				/>
-			</HStack>
-		</>
+				>
+					{ _x( 'Cancel', 'Cancel comment button' ) }
+				</Button>
+			</div>
+		</div>
 	);
 }
 

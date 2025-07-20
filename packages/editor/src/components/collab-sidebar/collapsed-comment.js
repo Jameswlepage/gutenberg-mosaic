@@ -5,6 +5,11 @@ import { RawHTML } from '@wordpress/element';
 import { sprintf, __ } from '@wordpress/i18n';
 
 /**
+ * Internal dependencies
+ */
+import { MentionTextRenderer } from '../mention-text-renderer';
+
+/**
  * CollapsedComment component displays a minimal comment view with just name, time, content, and reply count.
  *
  * @param {Object}   props             - The component props.
@@ -40,9 +45,10 @@ export function CollapsedComment({ thread, onActivate }) {
 			</div>
 
 			{/* Comment content */}
-			<div className="editor-collab-sidebar-panel__comment-content">
-				<RawHTML>{thread?.content?.raw}</RawHTML>
-			</div>
+			<MentionTextRenderer 
+				content={thread?.content?.raw}
+				className="editor-collab-sidebar-panel__comment-content"
+			/>
 		</div>
 	);
 }

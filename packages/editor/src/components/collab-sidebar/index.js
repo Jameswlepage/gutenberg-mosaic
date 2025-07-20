@@ -20,15 +20,23 @@ import { store as interfaceStore } from '@wordpress/interface';
  * Internal dependencies
  */
 import PluginSidebar from '../plugin-sidebar';
-import { collabHistorySidebarName, collabSidebarName } from './constants';
+import PluginSidebarMoreMenuItem from '../plugin-sidebar-more-menu-item';
+import { collabSidebarName } from './constants';
 import { Comments } from './comments';
 import { AddComment } from './add-comment';
 import { CommentsTabSelector } from './comments-tab-selector';
+import { SuggestionItem } from './suggestion-item';
 import { store as editorStore } from '../../store';
 import AddCommentButton from './comment-button';
 import AddCommentToolbarButton from './comment-button-toolbar';
 import { useGlobalStylesContext } from '../global-styles-provider';
 import { getCommentIdsFromBlocks } from './utils';
+import { navigateToComment } from '../../utils/comment-navigation';
+import { 
+	acceptSuggestion as acceptInMemorySuggestion,
+	rejectSuggestion as rejectInMemorySuggestion,
+	commentMetaToSuggestion 
+} from '../suggestions-content-interceptor';
 
 const modifyBlockCommentAttributes = ( settings ) => {
 	if ( ! settings.attributes.blockCommentId ) {
@@ -55,6 +63,7 @@ function CollabSidebarContent( {
 	setShowCommentBoard,
 	styles,
 	comments,
+	suggestions,
 } ) {
 	const [ activeTab, setActiveTab ] = useState( 'open' );
 	const { createNotice } = useDispatch( noticesStore );
@@ -97,10 +106,24 @@ function CollabSidebarContent( {
 		if ( savedRecord ) {
 			// If it's a main comment, update the block attributes with the comment id.
 			if ( ! parentCommentId ) {
-				updateBlockAttributes( getSelectedBlockClientId(), {
+				updateBlockAttributes( selectedBlockClientId, {
 					blockCommentId: savedRecord?.id,
 				} );
 			}
+
+			// Close the comment creation board
+			setShowCommentBoard( false );
+
+			// Navigate to and expand the newly created comment
+			setTimeout(() => {
+				if ( parentCommentId ) {
+					// For replies, navigate to the parent comment to show the full thread
+					navigateToComment( parentCommentId, selectedBlockClientId );
+				} else if ( savedRecord?.id ) {
+					// For new main comments, navigate to the new comment
+					navigateToComment( savedRecord.id, selectedBlockClientId );
+				}
+			}, 100); // Small delay to allow UI updates
 
 			createNotice(
 				'snackbar',
@@ -179,7 +202,7 @@ function CollabSidebarContent( {
 		await deleteEntityRecord( 'root', 'comment', commentId );
 
 		if ( childComment && ! childComment.parent ) {
-			updateBlockAttributes( getSelectedBlockClientId(), {
+			updateBlockAttributes( selectedBlockClientId, {
 				blockCommentId: undefined,
 			} );
 		}
@@ -195,7 +218,70 @@ function CollabSidebarContent( {
 		);
 	};
 
-	// Filter comments based on active tab
+	// Handle suggestion accept/reject actions
+	const handleAcceptSuggestion = async ( suggestionId ) => {
+		// Try in-memory acceptance first
+		const result = acceptInMemorySuggestion( suggestionId );
+		
+		if ( result.success ) {
+			// Find the suggestion in database comments to update it
+			const suggestionComment = suggestions.find( s => 
+				s.meta?.suggestion_block_id && s.meta.suggestion_block_id === suggestionId 
+			);
+			
+			if ( suggestionComment ) {
+				// Update the comment status to 'approved' to mark as accepted
+				await saveEntityRecord( 'root', 'comment', {
+					id: suggestionComment.id,
+					status: 'approved',
+				} );
+			}
+			
+			createNotice(
+				'snackbar',
+				__( 'Suggestion accepted successfully.' ),
+				{
+					type: 'snackbar',
+					isDismissible: true,
+				}
+			);
+		} else {
+			onError();
+		}
+	};
+	
+	const handleRejectSuggestion = async ( suggestionId ) => {
+		// Try in-memory rejection first
+		const result = rejectInMemorySuggestion( suggestionId );
+		
+		if ( result.success ) {
+			// Find the suggestion in database comments to update it
+			const suggestionComment = suggestions.find( s => 
+				s.meta?.suggestion_block_id && s.meta.suggestion_block_id === suggestionId 
+			);
+			
+			if ( suggestionComment ) {
+				// Update the comment status to 'spam' to mark as rejected
+				await saveEntityRecord( 'root', 'comment', {
+					id: suggestionComment.id,
+					status: 'spam',
+				} );
+			}
+			
+			createNotice(
+				'snackbar',
+				__( 'Suggestion rejected successfully.' ),
+				{
+					type: 'snackbar',
+					isDismissible: true,
+				}
+			);
+		} else {
+			onError();
+		}
+	};
+
+	// Filter comments and suggestions based on active tab
 	const filteredComments = comments.filter( ( comment ) => {
 		if ( activeTab === 'open' ) {
 			return comment.status !== 'approved';
@@ -204,33 +290,87 @@ function CollabSidebarContent( {
 		}
 		return true;
 	} );
+	
+	const filteredSuggestions = activeTab === 'suggestions' 
+		? suggestions.filter( s => s.status === 'hold' ) // Only pending suggestions
+		: [];
 
 	return (
 		<div className="editor-collab-sidebar-panel" style={ styles }>
-			<AddComment
-				onSubmit={ addNewComment }
-				showCommentBoard={ showCommentBoard }
-				setShowCommentBoard={ setShowCommentBoard }
-			/>
-			
-			{/* Tab selector for open/resolved comments */}
-			{ comments && comments.length > 0 && (
-				<CommentsTabSelector
-					activeTab={ activeTab }
-					onTabChange={ setActiveTab }
+			<div className="editor-collab-sidebar-panel__content">
+				<AddComment
+					onSubmit={ addNewComment }
+					showCommentBoard={ showCommentBoard }
+					setShowCommentBoard={ setShowCommentBoard }
+				/>
+				
+				{/* Tab selector for open/resolved comments and suggestions */}
+				{ ((comments && comments.length > 0) || (suggestions && suggestions.length > 0)) && !showCommentBoard ? (
+					<CommentsTabSelector
+						activeTab={ activeTab }
+						onTabChange={ setActiveTab }
+						suggestionsCount={ suggestions ? suggestions.filter( s => s.status === 'hold' ).length : 0 }
+					/>
+				) : null }
+				
+				{/* Render comments or suggestions based on active tab */}
+				{ activeTab === 'suggestions' ? (
+				<div className="editor-collab-sidebar-suggestions">
+					{ filteredSuggestions.length > 0 ? (
+						filteredSuggestions.map( ( suggestionComment ) => {
+							// Convert comment meta back to suggestion format
+							const suggestion = commentMetaToSuggestion( suggestionComment.meta || {} );
+							suggestion.id = suggestionComment.meta?.suggestion_block_id || suggestionComment.id;
+							suggestion.author = { name: suggestionComment.author_name || 'User' };
+							
+							return (
+								<SuggestionItem
+									key={ suggestion.id }
+									suggestion={ suggestion }
+									onAccept={ handleAcceptSuggestion }
+									onReject={ handleRejectSuggestion }
+								/>
+							);
+						} )
+					) : (
+						<div className="editor-collab-sidebar-panel__thread editor-collab-sidebar-panel__no-comments">
+							{ __( 'No pending suggestions.' ) }
+						</div>
+					) }
+				</div>
+			) : (
+				<Comments
+					key={ selectedBlockClientId }
+					threads={ filteredComments }
+					onEditComment={ onEditComment }
+					onAddReply={ addNewComment }
+					onCommentDelete={ onCommentDelete }
+					onCommentResolve={ onCommentResolve }
+					showCommentBoard={ showCommentBoard }
+					setShowCommentBoard={ setShowCommentBoard }
 				/>
 			) }
+			</div>
 			
-			<Comments
-				key={ getSelectedBlockClientId() }
-				threads={ filteredComments }
-				onEditComment={ onEditComment }
-				onAddReply={ addNewComment }
-				onCommentDelete={ onCommentDelete }
-				onCommentResolve={ onCommentResolve }
-				showCommentBoard={ showCommentBoard }
-				setShowCommentBoard={ setShowCommentBoard }
-			/>
+			{/* Add comment button at bottom when block is selected */}
+			{ selectedBlockClientId && !showCommentBoard && (
+				<div className="editor-collab-sidebar-panel__bottom-actions">
+					<div 
+						className="editor-collab-sidebar-panel__add-comment-bottom-button"
+						onClick={ () => setShowCommentBoard( true ) }
+						role="button"
+						tabIndex="0"
+						onKeyDown={ ( e ) => {
+							if ( e.key === 'Enter' || e.key === ' ' ) {
+								e.preventDefault();
+								setShowCommentBoard( true );
+							}
+						} }
+					>
+						+ { __( 'Add comment' ) }
+					</div>
+				</div>
+			) }
 		</div>
 	);
 }
@@ -243,10 +383,12 @@ export default function CollabSidebar() {
 	const { enableComplementaryArea } = useDispatch( interfaceStore );
 	const { getActiveComplementaryArea } = useSelect( interfaceStore );
 
-	const { postId, postType, postStatus, threads } = useSelect( ( select ) => {
+	const { postId, postType, postStatus, threads, suggestions } = useSelect( ( select ) => {
 		const { getCurrentPostId, getCurrentPostType } = select( editorStore );
 		const _postId = getCurrentPostId();
-		const data =
+		
+		// Fetch regular comments
+		const commentsData =
 			!! _postId && typeof _postId === 'number'
 				? select( coreStore ).getEntityRecords( 'root', 'comment', {
 						post: _postId,
@@ -255,16 +397,30 @@ export default function CollabSidebar() {
 						per_page: 100,
 				  } )
 				: null;
+		
+		// Fetch suggestions (if experimental mode is enabled)
+		const suggestionsData = 
+			!! _postId && typeof _postId === 'number' && window.__experimentalSuggestionsMode
+				? select( coreStore ).getEntityRecords( 'root', 'comment', {
+						post: _postId,
+						type: 'block_suggestion',
+						status: 'any',
+						meta_key: 'suggestion_type',
+						per_page: 100,
+				  } )
+				: null;
+		
 		return {
 			postId: _postId,
 			postType: getCurrentPostType(),
 			postStatus:
 				select( editorStore ).getEditedPostAttribute( 'status' ),
-			threads: data,
+			threads: commentsData,
+			suggestions: suggestionsData,
 		};
 	}, [] );
 
-	const { blockCommentId } = useSelect( ( select ) => {
+	const { blockCommentId, selectedBlockClientId } = useSelect( ( select ) => {
 		const { getBlockAttributes, getSelectedBlockClientId } =
 			select( blockEditorStore );
 		const _clientId = getSelectedBlockClientId();
@@ -273,12 +429,26 @@ export default function CollabSidebar() {
 			blockCommentId: _clientId
 				? getBlockAttributes( _clientId )?.blockCommentId
 				: null,
+			selectedBlockClientId: _clientId,
 		};
 	}, [] );
 
 	const openCollabBoard = () => {
-		setShowCommentBoard( true );
-		enableComplementaryArea( 'core', 'edit-post/collab-sidebar' );
+		// Always use the main collabSidebarName for consistency
+		enableComplementaryArea( 'core', collabSidebarName );
+		
+		if ( blockCommentId ) {
+			// Block has existing comment - show comments thread but don't navigate yet
+			// User can see existing comments and choose to add a new one via bottom button
+			setShowCommentBoard( false );
+			// Optional: Navigate to existing comment to highlight it
+			setTimeout(() => {
+				navigateToComment( blockCommentId, selectedBlockClientId );
+			}, 100);
+		} else {
+			// No existing comment - show comment creation form immediately  
+			setShowCommentBoard( true );
+		}
 	};
 
 	const [ blocks ] = useEntityBlockEditor( 'postType', postType, {
@@ -359,27 +529,25 @@ export default function CollabSidebar() {
 	return (
 		<>
 			<AddCommentComponent onClick={ openCollabBoard } />
-			<PluginSidebar
-				identifier={ collabHistorySidebarName }
-				// translators: Comments sidebar title
-				title={ __( 'Comments' ) }
+			<PluginSidebarMoreMenuItem
+				target={ collabSidebarName }
 				icon={ commentIcon }
 			>
-				<CollabSidebarContent
-					comments={ resultComments }
-					showCommentBoard={ showCommentBoard }
-					setShowCommentBoard={ setShowCommentBoard }
-				/>
-			</PluginSidebar>
+				{ __( 'Comments' ) }
+			</PluginSidebarMoreMenuItem>
 			<PluginSidebar
 				isPinnable={ false }
 				header={ false }
 				identifier={ collabSidebarName }
 				className="editor-collab-sidebar"
 				headerClassName="editor-collab-sidebar__header"
+				// translators: Comments sidebar title
+				title={ __( 'Comments' ) }
+				icon={ commentIcon }
 			>
 				<CollabSidebarContent
 					comments={ sortedThreads }
+					suggestions={ suggestions || [] }
 					showCommentBoard={ showCommentBoard }
 					setShowCommentBoard={ setShowCommentBoard }
 					styles={ {

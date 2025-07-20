@@ -18,8 +18,15 @@ import { useDispatch } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 import apiFetch from '@wordpress/api-fetch';
 
+// Re-export functions from suggestion-data-structures for collab-sidebar
+export { commentMetaToSuggestion } from '../suggestion-data-structures';
+
 // Working in-memory suggestion storage (will be replaced with WordPress integration later)
 const suggestionStorage = new Map();
+
+// Database save debouncing - track pending saves and timeouts
+const pendingDatabaseSaves = new Map();
+const DATABASE_SAVE_DEBOUNCE_MS = 3000; // Save 3 seconds after user stops typing
 
 /**
  * Generate a simple UUID v4
@@ -296,6 +303,29 @@ export function hasSuggestions( clientId ) {
 }
 
 /**
+ * Force immediate save of pending suggestion (bypasses debouncing)
+ *
+ * @param {string} blockClientId - Block client ID to save
+ */
+export async function forceImmediateSave( blockClientId ) {
+	// Cancel any pending debounced save
+	if ( pendingDatabaseSaves.has( blockClientId ) ) {
+		clearTimeout( pendingDatabaseSaves.get( blockClientId ) );
+		pendingDatabaseSaves.delete( blockClientId );
+	}
+	
+	// Get the current suggestion for this block
+	const suggestion = suggestionStorage.get( blockClientId );
+	if ( suggestion ) {
+		try {
+			await saveSuggestionToDatabase( suggestion );
+		} catch ( error ) {
+			// Fail silently
+		}
+	}
+}
+
+/**
  * Accept a suggestion (apply changes to block)
  *
  * @param {string} suggestionId - Suggestion UUID
@@ -311,9 +341,11 @@ export function acceptSuggestion( suggestionId ) {
 				updated: new Date().toISOString(),
 			};
 			
+			// Force immediate save before removing from memory
+			forceImmediateSave( clientId );
+			
 			// Remove the suggestion from storage since it's been applied
 			suggestionStorage.delete( clientId );
-			
 			
 			return {
 				success: true,
@@ -342,9 +374,11 @@ export function rejectSuggestion( suggestionId ) {
 				updated: new Date().toISOString(),
 			};
 			
+			// Force immediate save before removing from memory
+			forceImmediateSave( clientId );
+			
 			// Remove the suggestion from storage since it's been rejected
 			suggestionStorage.delete( clientId );
-			
 			
 			return {
 				success: true,
@@ -384,11 +418,16 @@ const withContentInterception = createHigherOrderComponent( ( BlockEdit ) => {
 		}
 
 		// Update original content reference when not in suggest mode
+		// Also force immediate save when leaving suggest mode
 		useEffect( () => {
 			if ( collaborationMode !== 'suggest' ) {
+				// Force immediate save of any pending suggestion before switching modes
+				if ( hasSuggestions( clientId ) ) {
+					forceImmediateSave( clientId );
+				}
 				originalContentRef.current = currentContent;
 			}
-		}, [ currentContent, collaborationMode ] );
+		}, [ currentContent, collaborationMode, clientId ] );
 
 		// Store suggestion for real-time changes
 		const handleSuggestion = useCallback(
@@ -413,9 +452,9 @@ const withContentInterception = createHigherOrderComponent( ( BlockEdit ) => {
 						plainTextSuggested
 					);
 					
-					// Also save to WordPress database asynchronously
+					// Also save to WordPress database asynchronously (debounced)
 					if ( suggestionData ) {
-						saveSuggestionToDatabase( suggestionData );
+						debouncedDatabaseSave( suggestionData );
 					}
 				}
 			},
@@ -490,7 +529,55 @@ const withContentInterception = createHigherOrderComponent( ( BlockEdit ) => {
 }, 'withContentInterception' );
 
 /**
- * Save suggestion to WordPress database as a comment
+ * Find existing suggestion comment for a block
+ *
+ * @param {string} postId - Post ID
+ * @param {string} blockClientId - Block client ID
+ * @return {Promise<Object|null>} Existing suggestion comment or null
+ */
+async function findExistingSuggestionComment( postId, blockClientId ) {
+	try {
+		// Query for existing suggestion comments for this block
+		const existingComments = await apiFetch( {
+			path: `/wp/v2/comments?post=${postId}&type=block_suggestion&meta_key=suggestion_block_id&meta_value=${blockClientId}&per_page=1`,
+			method: 'GET',
+		} );
+		
+		return existingComments && existingComments.length > 0 ? existingComments[0] : null;
+	} catch ( error ) {
+		return null;
+	}
+}
+
+/**
+ * Debounced database save - only saves after user stops typing
+ *
+ * @param {Object} suggestionData - Suggestion data to save
+ */
+function debouncedDatabaseSave( suggestionData ) {
+	const blockClientId = suggestionData.blockClientId;
+	
+	// Clear existing timeout for this block
+	if ( pendingDatabaseSaves.has( blockClientId ) ) {
+		clearTimeout( pendingDatabaseSaves.get( blockClientId ) );
+	}
+	
+	// Set new timeout to save after debounce period
+	const timeoutId = setTimeout( async () => {
+		try {
+			await saveSuggestionToDatabase( suggestionData );
+			pendingDatabaseSaves.delete( blockClientId );
+		} catch ( error ) {
+			// Fail silently - in-memory suggestions still work
+			pendingDatabaseSaves.delete( blockClientId );
+		}
+	}, DATABASE_SAVE_DEBOUNCE_MS );
+	
+	pendingDatabaseSaves.set( blockClientId, timeoutId );
+}
+
+/**
+ * Save suggestion to WordPress database as a comment (with debouncing and update logic)
  *
  * @param {Object} suggestionData - Suggestion data to save
  * @return {Promise} WordPress API response promise
@@ -503,44 +590,63 @@ export async function saveSuggestionToDatabase( suggestionData ) {
 					   new URLSearchParams( window.location.search ).get( 'post' );
 
 		if ( ! postId ) {
-			// eslint-disable-next-line no-console
-			return;
+			return null;
 		}
 
 		// Convert suggestion to WordPress comment format
 		const commentMeta = suggestionToCommentMeta( suggestionData, 
 			`Text suggestion: ${suggestionData.metadata?.changeType || 'modification'} by ${suggestionData.author?.name || 'User'}` );
 
-		// Prepare comment data for WordPress API
-		const commentData = {
-			post: postId,
-			content: `Suggestion: ${suggestionData.metadata?.changeType || 'text change'}`,
-			meta: {
-				...commentMeta,
-				// Add additional metadata for easier querying
-				suggestion_block_id: suggestionData.blockClientId || suggestionData.id,
-				suggestion_author_id: suggestionData.author?.id || 1,
-				suggestion_created: suggestionData.created || new Date().toISOString(),
-			},
-			// Set comment type to identify this as a suggestion
-			type: 'block_suggestion',
-			// Don't show suggestion comments in regular comment flows
-			status: 'hold'
-		};
+		// Check if suggestion comment already exists for this block
+		const existingComment = await findExistingSuggestionComment( postId, suggestionData.blockClientId );
+		
+		if ( existingComment ) {
+			// Update existing comment with new suggestion data
+			const response = await apiFetch( {
+				path: `/wp/v2/comments/${existingComment.id}`,
+				method: 'POST',
+				data: {
+					content: `Suggestion: ${suggestionData.metadata?.changeType || 'text change'}`,
+					meta: {
+						...commentMeta,
+						// Keep original metadata but update content
+						suggestion_block_id: suggestionData.blockClientId || suggestionData.id,
+						suggestion_author_id: suggestionData.author?.id || 1,
+						suggestion_updated: new Date().toISOString(),
+					},
+				}
+			} );
+			
+			return response;
+		} else {
+			// Create new suggestion comment
+			const commentData = {
+				post: postId,
+				content: `Suggestion: ${suggestionData.metadata?.changeType || 'text change'}`,
+				meta: {
+					...commentMeta,
+					// Add additional metadata for easier querying
+					suggestion_block_id: suggestionData.blockClientId || suggestionData.id,
+					suggestion_author_id: suggestionData.author?.id || 1,
+					suggestion_created: suggestionData.created || new Date().toISOString(),
+				},
+				// Use comment_type like the working comments system, not 'type'
+				comment_type: 'block_suggestion', 
+				// Use comment_approved like the working comments system, not 'status'
+				comment_approved: 0
+			};
 
-		// Save to WordPress via REST API
-		const response = await apiFetch( {
-			path: '/wp/v2/comments',
-			method: 'POST',
-			data: commentData,
-		} );
+			// Save to WordPress via REST API
+			const response = await apiFetch( {
+				path: '/wp/v2/comments',
+				method: 'POST',
+				data: commentData,
+			} );
 
-		// eslint-disable-next-line no-console
-
-		return response;
+			return response;
+		}
 
 	} catch ( error ) {
-		
 		// Don't throw - we want in-memory suggestions to continue working
 		// even if database persistence fails
 		return null;

@@ -3,10 +3,6 @@
  */
 import { _x } from '@wordpress/i18n';
 import { useSelect } from '@wordpress/data';
-import {
-	__experimentalHStack as HStack,
-	__experimentalVStack as VStack,
-} from '@wordpress/components';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 
 /**
@@ -38,27 +34,30 @@ export function AddComment( {
 		};
 	} );
 
-	if ( ! showCommentBoard || ! clientId || undefined !== blockCommentId ) {
+	// Only show the add comment form if:
+	// 1. showCommentBoard is true (user clicked to add comment)
+	// 2. There's a selected block (clientId exists) 
+	// 3. We're in "new comment" mode (regardless of existing blockCommentId)
+	if ( ! showCommentBoard || ! clientId ) {
 		return null;
 	}
 
 	return (
-		<VStack
-			spacing="3"
-			className="editor-collab-sidebar-panel__thread editor-collab-sidebar-panel__active-thread editor-collab-sidebar-panel__focus-thread"
-		>
-			<HStack alignment="left" spacing="3">
+		<div className="editor-collab-sidebar-panel__thread editor-collab-sidebar-panel__active-thread editor-collab-sidebar-panel__focus-thread editor-collab-sidebar-panel__add-comment">
+			<div className="editor-collab-sidebar-panel__add-comment-header">
 				<CommentAuthorInfo />
-			</HStack>
-			<CommentForm
-				onSubmit={ ( inputComment ) => {
-					onSubmit( inputComment );
-				} }
-				onCancel={ () => {
-					setShowCommentBoard( false );
-				} }
-				submitButtonText={ _x( 'Comment', 'Add comment button' ) }
-			/>
-		</VStack>
+			</div>
+			<div className="editor-collab-sidebar-panel__add-comment-form">
+				<CommentForm
+					onSubmit={ ( inputComment ) => {
+						onSubmit( inputComment );
+					} }
+					onCancel={ () => {
+						setShowCommentBoard( false );
+					} }
+					submitButtonText={ _x( 'Comment', 'Add comment button' ) }
+				/>
+			</div>
+		</div>
 	);
 }

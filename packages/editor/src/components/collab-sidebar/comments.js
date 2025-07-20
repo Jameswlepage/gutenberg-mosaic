@@ -23,6 +23,8 @@ import CommentForm from './comment-form';
 import { CollapsedComment } from './collapsed-comment';
 import { ActiveCommentHeader } from './active-comment-header';
 import { ReplyToThread } from './reply-to-thread';
+import { MentionTextRenderer } from '../mention-text-renderer';
+import { registerCommentNavigationCallbacks, clearCommentNavigationCallbacks, setActiveCommentId as setGlobalActiveCommentId } from '../../utils/comment-navigation';
 
 /**
  * Renders the Comments component.
@@ -63,11 +65,15 @@ export function Comments( {
 	);
 
 	const handleCommentActivate = ( commentId ) => {
-		setActiveCommentId( activeCommentId === commentId ? null : commentId );
+		const newActiveId = activeCommentId === commentId ? null : commentId;
+		setActiveCommentId( newActiveId );
+		// Also update the global state for block indicators
+		setGlobalActiveCommentId( newActiveId );
 	};
 
 	const clearThreadFocus = () => {
 		setActiveCommentId( null );
+		setGlobalActiveCommentId( null );
 		setShowCommentBoard( false );
 	};
 
@@ -91,11 +97,30 @@ export function Comments( {
 		};
 	}, [ activeCommentId ] );
 
+	// Register comment navigation callbacks for block indicators
+	useEffect( () => {
+		registerCommentNavigationCallbacks({
+			onCommentActivate: ( commentId ) => {
+				setActiveCommentId( commentId );
+				setGlobalActiveCommentId( commentId ); // Also update global state
+				setShowCommentBoard( false ); // Show existing comments, not creation form
+			},
+			onSidebarOpen: () => {
+				setShowCommentBoard( false ); // Show existing comments by default
+			}
+		});
+
+		return () => {
+			clearCommentNavigationCallbacks();
+		};
+	}, [] );
+
 	return (
 		<div ref={ threadsRef } className="editor-collab-sidebar-panel__threads">
 			{
 				// If there are no comments, show a message indicating no comments are available.
-				( ! Array.isArray( threads ) || threads.length === 0 ) && (
+				// BUT don't show it if we're currently adding a comment
+				( ! Array.isArray( threads ) || threads.length === 0 ) && ! showCommentBoard && (
 					<div className="editor-collab-sidebar-panel__thread editor-collab-sidebar-panel__no-comments">
 						{
 							// translators: message displayed when there are no comments available
@@ -173,10 +198,16 @@ function Thread( {
 									thread={ reply }
 									onEdit={ onEditComment }
 									onDelete={ onCommentDelete }
+									isActive={ false }
+									onActivate={ () => {} }
 								/>
 							) }
 							{ 'approved' === thread.status && (
-								<CommentBoard thread={ reply } />
+								<CommentBoard 
+									thread={ reply } 
+									isActive={ false }
+									onActivate={ () => {} }
+								/>
 							) }
 						</div>
 					) ) }
@@ -315,9 +346,10 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, 
 						/>
 					) }
 					{ 'edit' !== actionState && (
-						<div className="editor-collab-sidebar-panel__comment-text">
-							<RawHTML>{ thread?.content?.raw }</RawHTML>
-						</div>
+						<MentionTextRenderer 
+							content={ thread?.content?.raw }
+							className="editor-collab-sidebar-panel__comment-text"
+						/>
 					) }
 
 					{/* Show "X more replies" inside the comment when there are replies but not expanded */}

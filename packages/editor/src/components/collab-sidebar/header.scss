@@ -1,0 +1,52 @@
+/**
+ * Collab Sidebar Header Styles
+ */
+
+.editor-collab-sidebar-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: $grid-unit-15 $grid-unit-20;
+	border-bottom: 1px solid $gray-200;
+	background: $white;
+	min-height: 48px;
+	
+	&__title {
+		font-weight: $font-weight-medium;
+		font-size: $font-size-medium;
+		color: $gray-900;
+	}
+	
+	&__actions {
+		display: flex;
+		gap: $grid-unit-05;
+		align-items: center;
+	}
+	
+	&__add-button {
+		background-color: var(--wp-admin-theme-color, #3858e9);
+		color: $white;
+		border-radius: $radius-small;
+		
+		&:hover:not(:disabled) {
+			background-color: var(--wp-admin-theme-color-darker, #2c4aa0);
+		}
+		
+		&:focus {
+			box-shadow: 0 0 0 var(--wp-admin-border-width-focus) var(--wp-admin-theme-color);
+			outline: 2px solid transparent;
+		}
+	}
+	
+	&__pin-button {
+		color: $gray-700;
+		
+		&:hover:not(:disabled) {
+			color: $gray-900;
+		}
+		
+		&.is-pressed {
+			color: var(--wp-admin-theme-color, #3858e9);
+		}
+	}
+}

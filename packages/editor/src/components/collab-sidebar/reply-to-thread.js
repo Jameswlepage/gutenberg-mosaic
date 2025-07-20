@@ -2,8 +2,13 @@
  * WordPress dependencies
  */
 import { useState } from '@wordpress/element';
-import { Button, TextareaControl } from '@wordpress/components';
+import { Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
+
+/**
+ * Internal dependencies
+ */
+import { MentionTextareaControl } from '../mention-textarea-control';
 
 /**
  * ReplyToThread component displays a simplified reply form that shows send button only when focused.
@@ -46,7 +51,7 @@ export function ReplyToThread({ onAddReply, threadId }) {
 
 	return (
 		<div className="editor-collab-sidebar-panel__reply-to-thread">
-			<TextareaControl
+			<MentionTextareaControl
 				placeholder={__('Reply to thread')}
 				value={replyText}
 				onChange={setReplyText}
