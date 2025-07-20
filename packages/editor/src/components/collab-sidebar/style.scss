@@ -50,6 +50,19 @@
 
 	&__child-thread {
 		margin-top: 15px;
+		padding-left: $grid-unit-30;
+		position: relative;
+		
+		// Vertical line for reply threads
+		&::before {
+			content: '';
+			position: absolute;
+			left: 15px;
+			top: 0;
+			bottom: 0;
+			width: 1px;
+			background-color: $gray-300;
+		}
 	}
 
 	&__user-name {
@@ -154,7 +167,8 @@
 		
 		.editor-collab-sidebar-panel__comment-header {
 			display: flex;
-			justify-content: space-between;
+			align-items: center;
+			gap: $grid-unit-10;
 			margin-bottom: $grid-unit-05;
 		}
 		
@@ -206,6 +220,57 @@
 		// Override collapsed comment padding in active state
 		.editor-collab-sidebar-panel__collapsed-comment {
 			padding: 0;
+		}
+	}
+
+	// Comment header styling for both collapsed and active states
+	&__comment-header {
+		display: flex;
+		align-items: center;
+		gap: $grid-unit-10;
+		margin-bottom: $grid-unit-05;
+	}
+
+	// Comment icon for top-level comments
+	&__comment-icon {
+		flex-shrink: 0;
+		color: $gray-600;
+	}
+
+	// User name and time styling
+	&__user-name {
+		font-weight: 500;
+	}
+
+	&__user-time {
+		color: $gray-600;
+		font-size: 12px;
+		margin-left: auto; // Push time to the right
+	}
+
+	// Header action buttons (resolve/delete in header)
+	&__header-action-resolve,
+	&__header-action-delete {
+		color: $gray-700;
+		text-decoration: none;
+		
+		&:hover {
+			color: $gray-900;
+			background-color: rgba(0, 0, 0, 0.05);
+		}
+	}
+
+	// User action buttons (edit/delete below content) - grey background
+	&__user-action-edit,
+	&__user-action-delete {
+		background-color: $gray-100;
+		border-color: $gray-300;
+		color: $gray-700;
+		
+		&:hover {
+			background-color: $gray-200;
+			border-color: $gray-400;
+			color: $gray-900;
 		}
 	}
 }

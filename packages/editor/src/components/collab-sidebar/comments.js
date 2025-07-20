@@ -15,7 +15,7 @@ import {
 	DropdownMenu,
 	Tooltip,
 } from '@wordpress/components';
-import { Icon, check, published, moreVertical } from '@wordpress/icons';
+import { Icon, check, published, moreVertical, comment } from '@wordpress/icons';
 import { __, _x, sprintf } from '@wordpress/i18n';
 import { useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
@@ -251,6 +251,13 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, 
 
 			{/* User info WITHOUT avatar */}
 			<div className="editor-collab-sidebar-panel__comment-header">
+				{ thread.parent === 0 && (
+					<Icon
+						icon={ comment }
+						size={ 14 }
+						className="editor-collab-sidebar-panel__comment-icon"
+					/>
+				) }
 				<span className="editor-collab-sidebar-panel__user-name">
 					{ thread.author_name }
 				</span>
@@ -302,7 +309,9 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, 
 					{ canEdit && onEdit && (
 						<Button
 							size="small"
+							variant="secondary"
 							onClick={ () => setActionState( 'edit' ) }
+							className="editor-collab-sidebar-panel__user-action-edit"
 						>
 							{ __( 'Edit' ) }
 						</Button>
@@ -311,11 +320,11 @@ const CommentBoard = ( { thread, onResolve, onEdit, onDelete, status, isActive, 
 						<Button
 							size="small"
 							variant="secondary"
-							isDestructive
 							onClick={ () => {
 								setActionState( 'delete' );
 								setShowConfirmDialog( true );
 							} }
+							className="editor-collab-sidebar-panel__user-action-delete"
 						>
 							{ __( 'Delete' ) }
 						</Button>

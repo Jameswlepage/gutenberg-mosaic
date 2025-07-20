@@ -24,35 +24,31 @@ export function ActiveCommentHeader({ thread, onResolve, onDelete, canEdit, canD
 
 	return (
 		<div className="editor-collab-sidebar-panel__active-header">
-			<HStack justify="space-between">
-				<div className="editor-collab-sidebar-panel__active-header-title">
-					{/* Visual separator or could add thread title */}
-				</div>
+			<HStack justify="flex-start" spacing="2">
+				{/* Always show resolve for main comments that aren't resolved yet */}
+				{thread.parent === 0 && onResolve && thread.status !== 'approved' && (
+					<Button
+						size="small"
+						variant="link"
+						onClick={() => onResolve(thread.id)}
+						className="editor-collab-sidebar-panel__header-action-resolve"
+					>
+						{__('Resolve')}
+					</Button>
+				)}
 
-				<HStack spacing="1">
-					{/* Always show resolve for main comments that aren't resolved yet */}
-					{thread.parent === 0 && onResolve && thread.status !== 'approved' && (
-						<Button
-							size="small"
-							variant="primary"
-							onClick={() => onResolve(thread.id)}
-						>
-							{__('Resolve')}
-						</Button>
-					)}
-
-					{/* Show delete if user has permission */}
-					{canDelete && (
-						<Button
-							size="small"
-							variant="secondary"
-							isDestructive
-							onClick={() => onDelete(thread.id)}
-						>
-							{__('Delete')}
-						</Button>
-					)}
-				</HStack>
+				{/* Show delete if user has permission */}
+				{canDelete && (
+					<Button
+						size="small"
+						variant="link"
+						isDestructive
+						onClick={() => onDelete(thread.id)}
+						className="editor-collab-sidebar-panel__header-action-delete"
+					>
+						{__('Delete')}
+					</Button>
+				)}
 			</HStack>
 		</div>
 	);

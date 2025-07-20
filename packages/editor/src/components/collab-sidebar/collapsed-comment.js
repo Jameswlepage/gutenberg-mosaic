@@ -3,6 +3,8 @@
  */
 import { RawHTML } from '@wordpress/element';
 import { sprintf, __ } from '@wordpress/i18n';
+import { Icon } from '@wordpress/components';
+import { comment } from '@wordpress/icons';
 
 /**
  * CollapsedComment component displays a minimal comment view with just name, time, content, and reply count.
@@ -20,6 +22,13 @@ export function CollapsedComment({ thread, onActivate }) {
 		>
 			{/* User name and time only */}
 			<div className="editor-collab-sidebar-panel__comment-header">
+				{ thread.parent === 0 && (
+					<Icon
+						icon={ comment }
+						size={ 14 }
+						className="editor-collab-sidebar-panel__comment-icon"
+					/>
+				) }
 				<span className="editor-collab-sidebar-panel__user-name">
 					{thread.author_name}
 				</span>
