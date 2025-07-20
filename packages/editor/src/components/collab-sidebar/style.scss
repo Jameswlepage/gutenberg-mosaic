@@ -15,151 +15,369 @@
 	height: 100%;
 
 	&__tab-selector {
-		margin-bottom: $grid-unit-15;
+		margin-bottom: $grid-unit-20;
+	}
+
+	&__tab-switch {
+		display: flex;
+		background-color: $gray-100;
+		border-radius: $radius-small;
+		padding: 2px;
+		gap: 0;
+		width: 100%;
+	}
+
+	&__tab-option {
+		background: none;
+		border: none;
+		color: $gray-700;
+		border-radius: calc(#{$radius-small} - 2px);
+		padding: 4px 12px;
+		margin: 0;
+		font-size: $font-size-small;
+		font-weight: $font-weight-medium;
+		font-family: inherit;
+		cursor: pointer;
+		transition: all 0.1s ease;
+		white-space: nowrap;
+		flex: 1;
+		text-align: center;
 		
-		.editor-collab-sidebar-panel__tab-panel {
-			.components-tab-panel__tabs {
-				display: flex;
-				gap: $grid-unit-05;
-				background: none;
-				border: none;
-				padding: 0;
-			}
+		&:hover {
+			color: $gray-900;
+		}
+		
+		&.is-active {
+			background-color: $white;
+			color: $gray-900;
+			border-radius: 2px;
 			
-			.components-tab-panel__tabs-item {
-				flex: 1;
-				justify-content: center;
-				background-color: $gray-100;
-				border: 1px solid $gray-300;
-				color: $gray-700;
-				border-radius: $radius-small;
-				padding: $grid-unit-05 $grid-unit-10;
-				margin: 0;
-				
-				&:hover {
-					background-color: $gray-200;
-					border-color: $gray-400;
-					color: $gray-900;
-				}
-				
-				&.is-active {
-					background-color: var(--wp-admin-theme-color, #3858e9);
-					border-color: var(--wp-admin-theme-color, #3858e9);
-					color: #fff;
-					
-					&:hover {
-						background-color: var(--wp-admin-theme-color, #3858e9);
-						border-color: var(--wp-admin-theme-color, #3858e9);
-						color: #fff;
-					}
-				}
+			&:hover {
+				background-color: $white;
+				color: $gray-900;
 			}
+		}
+		
+		&:focus {
+			outline: 2px solid var(--wp-admin-theme-color, #3858e9);
+			outline-offset: 1px;
 		}
 	}
 
-&__threads {
+	// Main threads container
+	&__threads {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: $grid-unit-20;
 	}
 
+	// Individual thread wrapper - ONLY border when focused
 	&__thread {
 		position: relative;
-		padding: 16px;
-		border-radius: 2px;
-		border: 1px solid $gray-300;
-		background-color: $white;
+
+		// When thread is focused/expanded, add blue border around EVERYTHING
+		&.editor-collab-sidebar-panel__focus-thread {
+			border-radius: $radius-small;
+			border: 1px solid var(--wp-admin-theme-color, #3858e9);
+			background-color: $white;
+		}
 	}
 
-	&__no-comments {
-		text-align: center;
-		color: $gray-600;
-		font-style: italic;
-	}
-
+	// Thread container (wrapper for comment + replies)
 	&__thread-container {
 		display: flex;
 		flex-direction: column;
 	}
 
-	&__active-thread {
+	// No comments state
+	&__no-comments {
+		text-align: center;
+		color: $gray-600;
+		font-style: italic;
+		padding: $grid-unit-40;
+	}
+
+	// COLLAPSED COMMENT STYLES - entire area clickable
+	&__collapsed-comment {
+		cursor: pointer;
+		transition: all 0.1s ease;
+		padding: $grid-unit-10;
+		
+		// When NOT in focus thread, show border
+		.editor-collab-sidebar-panel__thread:not(.editor-collab-sidebar-panel__focus-thread) & {
+			border-radius: $radius-small;
+			border: 1px solid $gray-300;
+			
+			&:hover {
+				border-color: $gray-400;
+			}
+		}
+	}
+
+	// ACTIVE/EXPANDED COMMENT STYLES - no borders
+	&__comment {
+		display: flex;
+		flex-direction: column;
+	}
+
+	// Header with resolve/delete buttons - grey background, full width
+	&__comment-actions-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: $grid-unit-05;
+		padding: $grid-unit-05 $grid-unit-10;
+		background-color: $gray-100;
+		border-radius: $radius-small $radius-small 0 0;
+		
+		// When thread is focused, remove border-radius to match border
+		.editor-collab-sidebar-panel__focus-thread & {
+			border-radius: $radius-small $radius-small 0 0;
+		}
+	}
+
+	&__header-actions-left {
+		display: flex;
+		gap: $grid-unit-05;
+	}
+
+	&__header-actions-right {
+		display: flex;
+		gap: $grid-unit-05;
+	}
+
+	&__header-action {
+		background-color: $gray-100;
 		border: 1px solid $gray-300;
-		background-color: $white;
+		color: $gray-700;
+		text-decoration: none;
+		font-size: $font-size-small;
+		font-family: inherit;
+		padding: $grid-unit-05 $grid-unit-15;
+		border-radius: $radius-small;
+		cursor: pointer;
+		margin: 0;
+		line-height: 1.4;
+		min-height: 32px;
+		display: flex;
+		align-items: center;
+		
+		&:hover {
+			background-color: $gray-200;
+			border-color: $gray-400;
+			color: $gray-900;
+		}
+		
+		&.editor-collab-sidebar-panel__header-action-resolve {
+			&:hover {
+				color: $alert-green;
+				background-color: rgba($alert-green, 0.04);
+				border-color: rgba($alert-green, 0.2);
+			}
+		}
+		
+		&.editor-collab-sidebar-panel__header-action-delete {
+			color: #cc1818;
+			
+			&:hover {
+				color: #a00;
+				background-color: rgba(204, 24, 24, 0.04);
+				border-color: rgba(204, 24, 24, 0.2);
+			}
+		}
+		
+		&.editor-collab-sidebar-panel__header-action-edit {
+			&:hover {
+				background-color: $gray-200;
+				border-color: $gray-400;
+				color: $gray-900;
+			}
+		}
 	}
 
-	&__focus-thread {
-		border: 1px solid var(--wp-admin-theme-color, #3858e9) !important;
-		background-color: $white;
-		box-shadow: 0 0 0 1px var(--wp-admin-theme-color, #3858e9);
+	// Comment body wrapper - padding for content
+	&__comment-body {
+		padding: $grid-unit-10;
 	}
 
+	// COMMENT HEADER (user info)
+	&__comment-header {
+		display: flex;
+		align-items: center;
+		gap: $grid-unit-05;
+		margin-bottom: $grid-unit-05;
+	}
+
+	&__user-avatar {
+		flex-shrink: 0;
+		border-radius: $radius-round;
+		width: 24px;
+		height: 24px;
+		object-fit: cover;
+	}
+
+	&__user-name {
+		font-weight: $font-weight-medium;
+		font-size: $font-size-small;
+		color: $gray-700;
+		margin: 0;
+	}
+
+	&__user-time {
+		color: $gray-600;
+		font-size: $font-size-small;
+		white-space: nowrap;
+	}
+
+	// COMMENT CONTENT
+	&__comment-content {
+		margin-bottom: $grid-unit-05;
+		color: $gray-900;
+		font-size: $font-size-medium;
+		line-height: $default-line-height;
+		
+		p {
+			margin: 0 0 $grid-unit-05 0;
+			
+			&:last-child {
+				margin-bottom: 0;
+			}
+		}
+	}
+
+	&__comment-text {
+		color: $gray-900;
+		font-size: $font-size-medium;
+		line-height: $default-line-height;
+		
+		p {
+			margin: 0 0 $grid-unit-05 0;
+			
+			&:last-child {
+				margin-bottom: 0;
+			}
+		}
+	}
+
+	// REPLIES SECTION - part of the thread
+	&__replies {
+		// No extra styling - part of thread container
+	}
+
+	&__show-more-reply {
+		font-weight: $font-weight-regular;
+		font-style: italic;
+		color: $gray-600;
+		font-size: $font-size-small;
+		margin: $grid-unit-05 0 0 0;
+		padding: $grid-unit-05 0;
+		border-top: 1px solid $gray-200;
+	}
+
+	// CHILD THREADS (replies) - indented
+	&__child-thread {
+		margin-top: $grid-unit-05;
+		
+		// Only add left padding if it contains a comment (not reply form)
+		&:has(.editor-collab-sidebar-panel__collapsed-comment),
+		&:has(.editor-collab-sidebar-panel__comment) {
+			padding-left: $grid-unit-15;
+		}
+		
+		// Nested collapsed comments
+		.editor-collab-sidebar-panel__collapsed-comment {
+			padding: $grid-unit-05;
+		}
+		
+		// Nested comment bodies
+		.editor-collab-sidebar-panel__comment-body {
+			padding: $grid-unit-05;
+		}
+	}
+
+	// REPLY FORM - full width, no left padding from parent
+	&__reply-to-thread {
+		padding: $grid-unit-10;
+		border-top: 1px solid $gray-200;
+		
+		.components-base-control {
+			margin-bottom: $grid-unit-05;
+			
+			.components-base-control__field {
+				margin-bottom: 0 !important;
+			}
+		}
+		
+		.editor-collab-sidebar-panel__reply-actions {
+			display: flex;
+			justify-content: flex-end;
+			gap: $grid-unit-05;
+		}
+	}
+
+	// RESOLVED ICON
+	&__resolved-icon {
+		margin-left: auto;
+		color: $alert-green;
+	}
+
+	// LEGACY COMPATIBILITY
+	&__active-header {
+		margin-bottom: $grid-unit-15;
+	}
+
+	&__user-actions {
+		margin-top: $grid-unit-15;
+		padding-top: $grid-unit-15;
+		border-top: 1px solid $gray-200;
+		display: flex;
+		gap: $grid-unit-10;
+	}
+
+	&__user-action-edit,
+	&__user-action-delete {
+		background-color: $gray-100;
+		border: 1px solid $gray-300;
+		color: $gray-700;
+		font-size: $font-size-small;
+		padding: $grid-unit-05 $grid-unit-15;
+		border-radius: $radius-small;
+		cursor: pointer;
+		
+		&:hover {
+			background-color: $gray-200;
+			border-color: $gray-400;
+			color: $gray-900;
+		}
+	}
+
+	&__user-action-delete {
+		color: #cc1818;
+		
+		&:hover {
+			color: #a00;
+			background-color: rgba(204, 24, 24, 0.04);
+			border-color: rgba(204, 24, 24, 0.2);
+		}
+	}
+
+	// MISC
 	&__comment-field {
 		flex: 1;
 	}
 
-&__replies {
-		margin-top: 16px;
-		margin-left: 0;
-	}
-
-	&__child-thread {
-		margin-top: 12px;
-		margin-left: 32px !important;
-		padding-left: 16px !important;
-		position: relative;
-		
-		// Vertical line for reply threads
-		&::before {
-			content: '' !important;
-			position: absolute !important;
-			left: -16px !important;
-			top: 0 !important;
-			bottom: 0 !important;
-			width: 2px !important;
-			background-color: $gray-300 !important;
-			display: block !important;
-		}
-		
-		// Ensure nested child threads are visible
-		.editor-collab-sidebar-panel__collapsed-comment,
-		.editor-collab-sidebar-panel__comment {
-			background-color: $white;
-			border-radius: 4px;
-		}
-	}
-
-	&__user-name {
-		font-size: 12px;
-		font-weight: 400;
-		line-height: 16px;
-		text-align: left;
-		color: $gray-700;
-		text-transform: capitalize;
-	}
-
-	&__user-time {
-		font-size: 12px;
-		font-weight: 400;
-		line-height: 16px;
-		text-align: left;
-		color: $gray-700;
-	}
-
 	&__user-comment {
-		font-size: 13px;
-		font-weight: 400;
-		line-height: 20px;
-		text-align: left;
+		font-size: $font-size-medium;
+		line-height: $default-line-height;
 		color: $gray-900;
 
 		p {
-			margin-bottom: 0;
+			margin: 0 0 $grid-unit-10 0;
+			
+			&:last-child {
+				margin-bottom: 0;
+			}
 		}
-	}
-
-	&__user-avatar {
-		border-radius: $radius-round;
-		flex-shrink: 0;
 	}
 
 	&__thread-overlay {
@@ -171,16 +389,16 @@
 		top: 0;
 		left: 0;
 		z-index: 1;
-		padding: 15px;
+		padding: $grid-unit-20;
 		border-radius: $radius-small;
 		color: $white;
 
 		p {
-			margin-bottom: 15px;
+			margin-bottom: $grid-unit-15;
 		}
 
 		button {
-			padding: 4px 10px;
+			padding: $grid-unit-05 $grid-unit-10;
 			color: $white;
 		}
 	}
@@ -209,270 +427,6 @@
 				width: 24px;
 				height: 24px;
 			}
-		}
-	}
-
-	&__show-more-reply {
-		font-weight: 500;
-		font-style: italic;
-		padding: 0;
-	}
-
-// Collapsed comment styles
-	&__collapsed-comment {
-		cursor: pointer;
-		transition: all 0.2s ease;
-		padding: 12px;
-		
-		&:hover {
-			background-color: rgba(0, 0, 0, 0.05);
-		}
-		
-		.editor-collab-sidebar-panel__comment-content {
-			margin-top: 8px;
-			color: $gray-900;
-			font-size: 13px;
-			line-height: 1.4;
-			
-			p {
-				margin-bottom: 0;
-			}
-		}
-	}
-
-// Legacy active header (kept for backwards compatibility)
-	&__active-header {
-		padding: 8px;
-		margin: -16px -16px 12px -16px;
-		background-color: $gray-50;
-		border-bottom: 1px solid $gray-200;
-		border-radius: 2px 2px 0 0;
-	}
-
-	// Legacy user actions (kept for backwards compatibility)
-	&__user-actions {
-		margin-top: 8px;
-		padding-top: 8px;
-		border-top: 1px solid $gray-200;
-	}
-
-	// Simplified reply form
-	&__reply-to-thread {
-		margin-top: $grid-unit-15;
-		
-		.editor-collab-sidebar-panel__reply-actions {
-			display: flex;
-			justify-content: flex-end;
-			margin-top: $grid-unit-05;
-		}
-	}
-
-	// Active thread styling
-	&__focus-thread {
-		// Override collapsed comment padding in active state
-		.editor-collab-sidebar-panel__collapsed-comment {
-			padding: 0;
-		}
-	}
-
-// Custom comment component styling
-	&__comment {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
-
-	&__comment-actions-header {
-		display: flex !important;
-		justify-content: flex-start !important;
-		gap: 8px !important;
-		padding: 8px !important;
-		margin: -16px -16px 8px -16px !important;
-		background-color: $gray-50 !important;
-		border-bottom: 1px solid $gray-200 !important;
-		border-radius: 2px 2px 0 0 !important;
-	}
-
-	&__header-action {
-		background: none !important;
-		border: none !important;
-		color: $gray-700 !important;
-		text-decoration: none !important;
-		font-size: 12px !important;
-		font-family: inherit !important;
-		padding: 4px 8px !important;
-		border-radius: 2px !important;
-		cursor: pointer !important;
-		margin: 0 !important;
-		line-height: 1.4 !important;
-		
-		&:hover {
-			color: $gray-900 !important;
-			background-color: rgba(0, 0, 0, 0.05) !important;
-		}
-		
-		&-resolve {
-			&:hover {
-				background-color: rgba(0, 128, 0, 0.1) !important;
-				color: #008000 !important;
-			}
-		}
-		
-		&-delete {
-			&:hover {
-				background-color: rgba(220, 38, 127, 0.1) !important;
-				color: #dc267f !important;
-			}
-		}
-	}
-
-	// Comment header styling for both collapsed and active states
-	&__comment-header {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		margin-bottom: 8px;
-		width: 100%;
-		
-		// Direct child styling to ensure specificity
-		> .editor-collab-sidebar-panel__user-avatar {
-			flex-shrink: 0;
-			border-radius: 50%;
-			width: 24px;
-			height: 24px;
-			object-fit: cover;
-		}
-		
-		> .editor-collab-sidebar-panel__user-name {
-			font-weight: 500;
-			font-size: 12px;
-			line-height: 16px;
-			color: $gray-700;
-			margin: 0;
-		}
-		
-		> .editor-collab-sidebar-panel__user-time {
-			margin-left: auto;
-			color: $gray-600;
-			font-size: 12px;
-			line-height: 16px;
-			white-space: nowrap;
-		}
-	}
-
-	// User avatar styling
-	&__user-avatar {
-		flex-shrink: 0 !important;
-		border-radius: 50% !important;
-		width: 24px !important;
-		height: 24px !important;
-		object-fit: cover !important;
-	}
-
-	// User name and time styling
-	&__user-name {
-		font-weight: 500 !important;
-		font-size: 12px !important;
-		line-height: 16px !important;
-		color: $gray-700 !important;
-		margin: 0 !important;
-	}
-
-	&__user-time {
-		color: $gray-600 !important;
-		font-size: 12px !important;
-		line-height: 16px !important;
-		margin-left: auto !important; // Push time to the right
-		white-space: nowrap !important;
-	}
-
-	// Header action buttons (resolve/delete in header)
-	&__header-action-resolve,
-	&__header-action-delete {
-		color: $gray-700;
-		text-decoration: none;
-		
-		&:hover {
-			color: $gray-900;
-			background-color: rgba(0, 0, 0, 0.05);
-		}
-	}
-
-// Comment content styling
-	&__comment-content {
-		margin-bottom: 8px;
-	}
-
-	&__comment-text {
-		color: $gray-900;
-		font-size: 13px;
-		line-height: 1.4;
-		
-		p {
-			margin-bottom: 0;
-		}
-	}
-
-	// Comment action buttons below content
-	&__comment-actions {
-		display: flex !important;
-		justify-content: flex-start !important;
-		gap: 8px !important;
-		padding-top: 8px !important;
-		margin-top: 8px !important;
-		border-top: 1px solid $gray-200 !important;
-	}
-
-	&__action-button {
-		background-color: $gray-100 !important;
-		border: 1px solid $gray-300 !important;
-		color: $gray-700 !important;
-		font-size: 12px !important;
-		font-family: inherit !important;
-		padding: 6px 12px !important;
-		border-radius: 3px !important;
-		cursor: pointer !important;
-		margin: 0 !important;
-		line-height: 1.4 !important;
-		text-decoration: none !important;
-		display: inline-block !important;
-		
-		&:hover {
-			background-color: $gray-200 !important;
-			border-color: $gray-400 !important;
-			color: $gray-900 !important;
-		}
-		
-		&:focus {
-			outline: 2px solid var(--wp-admin-theme-color, #3858e9) !important;
-			outline-offset: 1px !important;
-		}
-		
-		&-edit {
-			// Inherit from base styles
-		}
-		
-		&-delete {
-			// Inherit from base styles
-		}
-	}
-
-	&__resolved-icon {
-		margin-left: auto;
-		color: $green-500;
-	}
-
-	// User action buttons (edit/delete below content) - grey background
-	&__user-action-edit,
-	&__user-action-delete {
-		background-color: $gray-100;
-		border-color: $gray-300;
-		color: $gray-700;
-		
-		&:hover {
-			background-color: $gray-200;
-			border-color: $gray-400;
-			color: $gray-900;
 		}
 	}
 }
