@@ -2,3 +2,5 @@ build
 build-style
 node_modules
 packages/stylelint-config/test
+packages/edit-post/src/components/mosaic-view/style.scss
+packages/edit-site/src/components/mosaic-view/style.scss

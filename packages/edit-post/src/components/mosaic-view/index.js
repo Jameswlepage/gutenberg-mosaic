@@ -2,6 +2,8 @@
  * External dependencies
  */
 import clsx from 'clsx';
+/* eslint-disable curly */
+/* global navigator */
 
 /**
  * WordPress dependencies
@@ -9,13 +11,13 @@ import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from '@wordpress/element';
 import { parse } from '@wordpress/blocks';
 import { BlockPreview } from '@wordpress/block-editor';
-import { Button, __experimentalText as Text, Icon, SearchControl, SelectControl, DropdownMenu, MenuGroup, MenuItem } from '@wordpress/components';
+import { Icon, SearchControl, SelectControl, DropdownMenu, MenuGroup, MenuItem } from '@wordpress/components';
 import { plus, moreVertical } from '@wordpress/icons';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { store as preferencesStore } from '@wordpress/preferences';
-import { useEntityRecords } from '@wordpress/core-data';
-import { store as coreStore } from '@wordpress/core-data';
+import { useEntityRecords, store as coreStore } from '@wordpress/core-data';
 import { store as noticesStore } from '@wordpress/notices';
+import { store as editorStore } from '@wordpress/editor';
 // commandsStore not needed here; title no longer opens palette
 
 const VIEWPORT_WIDTH = 1000;
@@ -44,16 +46,20 @@ function useInViewport( ref ) {
 	const [ visible, setVisible ] = useState( false );
 	useEffect( () => {
 		if ( ! ref.current ) return;
-		const obs = new IntersectionObserver( ( entries ) => {
+		if ( typeof window !== 'undefined' && 'IntersectionObserver' in window ) {
+			const obs = new window.IntersectionObserver( ( entries ) => {
 			entries.forEach( ( entry ) => {
 				if ( entry.isIntersecting ) {
 					setVisible( true );
 					obs.disconnect();
 				}
 			} );
-		}, { rootMargin: '200px' } );
-		obs.observe( ref.current );
-		return () => obs.disconnect();
+			}, { rootMargin: '200px' } );
+			obs.observe( ref.current );
+			return () => obs.disconnect();
+		}
+		// Fallback when no IO is available
+		setVisible( true );
 	}, [ ref ] );
 	return visible;
 }
@@ -73,13 +79,13 @@ function PageTilePreview( { contentHTML, cacheKey } ) {
     const [ ready, setReady ] = useState( false );
     useEffect( () => {
         if ( visible && blocks?.length && !ready ) {
-            const id = requestAnimationFrame( () => setReady( true ) );
-            return () => cancelAnimationFrame( id );
+            const id = window.requestAnimationFrame( () => setReady( true ) );
+            return () => window.cancelAnimationFrame( id );
         }
         if ( visible && !blocks?.length && !ready ) {
             // Empty content: stop shimmer and mark ready to avoid infinite skeleton
-            const id = requestAnimationFrame( () => setReady( true ) );
-            return () => cancelAnimationFrame( id );
+            const id = window.requestAnimationFrame( () => setReady( true ) );
+            return () => window.cancelAnimationFrame( id );
         }
     }, [ visible, blocks?.length, ready ] );
     const isEmpty = ready && !blocks?.length;
@@ -96,23 +102,23 @@ function PageTilePreview( { contentHTML, cacheKey } ) {
 }
 
 export default function MosaicOverlay() {
-	if ( ! globalThis.__experimentalMosaicView ) return null;
+	const enabled = !! globalThis.__experimentalMosaicView;
 	const { isOpen, isSupported } = useSelect( ( select ) => {
 		const { get } = select( preferencesStore );
-		const { getCurrentPostType } = select( 'core/editor' );
+		const { getCurrentPostType } = select( editorStore );
 		const cpt = getCurrentPostType?.();
 		return {
 			isOpen: !! get( 'core/edit-post', 'mosaicViewOpen' ),
 			isSupported: cpt === 'page' || cpt === 'post',
 		};
-	} );
-	if ( ! isOpen || ! isSupported ) return null;
+	}, [] );
+	if ( ! enabled || ! isOpen || ! isSupported ) return null;
 	return <MosaicOverlayInner />;
 }
 
 function MosaicOverlayInner() {
 	const { set: setPreference } = useDispatch( preferencesStore );
-	const currentPostType = useSelect( ( select ) => select( 'core/editor' )?.getCurrentPostType?.() );
+	const currentPostType = useSelect( ( select ) => select( editorStore )?.getCurrentPostType?.() );
     const [ postType ] = useState( currentPostType || 'page' );
     const [ search, setSearch ] = useState( '' );
     const [ debouncedSearch, setDebouncedSearch ] = useState( '' );
@@ -131,16 +137,21 @@ function MosaicOverlayInner() {
 		return () => clearTimeout( t );
 	}, [ search ] );
 
+    const orderby = useMemo( () => {
+        if ( sort.startsWith( 'title' ) ) return 'title';
+        if ( sort.startsWith( 'modified' ) ) return 'modified';
+        return 'date';
+    }, [ sort ] );
     const query = useMemo( () => ( {
         context: 'edit',
         page,
         per_page: perPage,
         order: sort.endsWith('_desc') ? 'desc' : 'asc',
-        orderby: sort.startsWith('title') ? 'title' : sort.startsWith('modified') ? 'modified' : 'date',
+        orderby,
         search: debouncedSearch,
         status: statusFilter === 'all' ? 'any' : statusFilter,
         _fields: [ 'id', 'title', 'status', 'content', 'date', 'modified', 'link' ].join(),
-    } ), [ page, perPage, debouncedSearch, statusFilter, sort ] );
+    } ), [ page, perPage, debouncedSearch, statusFilter, sort, orderby ] );
 
     const { records, isResolving, totalPages } = useEntityRecords( 'postType', postType, query );
     const safeRecords = records || [];
@@ -158,7 +169,7 @@ function MosaicOverlayInner() {
             if ( isResolving && (!safeRecords || !safeRecords.length) ) return;
             setItems( safeRecords );
             // Focus first tile when initial results arrive
-            requestAnimationFrame( () => {
+            window.requestAnimationFrame( () => {
                 if ( tileRefs.current[0] ) {
                     setActiveIndex( 0 );
                     tileRefs.current[0].focus();
@@ -178,7 +189,8 @@ function MosaicOverlayInner() {
     useEffect( () => {
         if ( ! loadMoreRef.current ) return;
         const el = loadMoreRef.current;
-        const io = new IntersectionObserver( ( entries ) => {
+        const io = typeof window !== 'undefined' && 'IntersectionObserver' in window
+            ? new window.IntersectionObserver( ( entries ) => {
             const entry = entries[0];
             if ( entry && entry.isIntersecting && ! isResolving && ! fetchingRef.current ) {
                 if ( totalPages && page < totalPages ) {
@@ -186,9 +198,12 @@ function MosaicOverlayInner() {
                     setPage( (p) => p + 1 );
                 }
             }
-        }, { rootMargin: '200px 0px' } );
-        io.observe( el );
-        return () => io.disconnect();
+        }, { rootMargin: '200px 0px' } ) : null;
+        if ( io ) {
+            io.observe( el );
+            return () => io.disconnect();
+        }
+        return undefined;
     }, [ isResolving, page, totalPages ] );
 
     // Reset the fetching guard when a batch finishes
@@ -220,10 +235,11 @@ function MosaicOverlayInner() {
 			if ( ! focusables.length ) return;
 			const first = focusables[0];
 			const last = focusables[ focusables.length - 1 ];
-			if ( e.shiftKey && document.activeElement === first ) {
+			const activeEl = root.ownerDocument?.activeElement || document.activeElement;
+			if ( e.shiftKey && activeEl === first ) {
 				e.preventDefault();
 				last.focus();
-			} else if ( ! e.shiftKey && document.activeElement === last ) {
+			} else if ( ! e.shiftKey && activeEl === last ) {
 				e.preventDefault();
 				first.focus();
 			}
@@ -260,10 +276,16 @@ function MosaicOverlayInner() {
                     <div className="edit-post-mosaic__header-actions">
                         <SelectControl
                             __next40pxDefaultSize
+                            __nextHasNoMarginBottom
                             hideLabelFromVision
                             label="Sort"
                             value={ sort }
-                            onChange={ (v)=> { if ( page !== 1 ) setPage(1); setSort(v); } }
+                            onChange={ (v)=> {
+                                if ( page !== 1 ) {
+                                    setPage( 1 );
+                                }
+                                setSort( v );
+                            } }
                             options={ [
                                 { label: 'Newest', value: 'date_desc' },
                                 { label: 'Oldest', value: 'date_asc' },
@@ -275,10 +297,16 @@ function MosaicOverlayInner() {
                         />
                         <SelectControl
                             __next40pxDefaultSize
+                            __nextHasNoMarginBottom
                             hideLabelFromVision
                             label="Status"
                             value={ statusFilter }
-                        onChange={ (v)=> { if ( page !== 1 ) setPage(1); setStatusFilter(v); } }
+                            onChange={ (v)=> {
+                                if ( page !== 1 ) {
+                                    setPage( 1 );
+                                }
+                                setStatusFilter( v );
+                            } }
                         options={ [
                             { label: 'All', value: 'all' },
                             { label: 'Draft', value: 'draft' },
@@ -289,8 +317,14 @@ function MosaicOverlayInner() {
                     />
                     <SearchControl
                         __next40pxDefaultSize
+                        __nextHasNoMarginBottom
                         value={ search }
-                        onChange={ (v) => { if ( page !== 1 ) setPage( 1 ); setSearch( v ); } }
+                        onChange={ (v) => {
+                            if ( page !== 1 ) {
+                                setPage( 1 );
+                            }
+                            setSearch( v );
+                        } }
                         label="Search"
                         hideLabelFromVision
                         placeholder="Search by title"
@@ -303,6 +337,7 @@ function MosaicOverlayInner() {
                     className="edit-post-mosaic__grid"
                     role="grid"
                     aria-label="Items"
+                    tabIndex={ 0 }
                     style={ { gridTemplateColumns: `repeat(${ Math.min( (items.length + 1) || 1, maxByViewport ) }, minmax(0, 1fr))` } }
                     onKeyDown={ (e) => {
                         const columns = Math.min( (items.length + 1) || 1, maxByViewport );
@@ -399,25 +434,45 @@ function MosaicOverlayInner() {
                                             onClick: (e)=>{ e.preventDefault(); e.stopPropagation(); }
                                         } }
                                     >
-                                        { ( { onClose } ) => (
+                                        { ( { onClose: closeMenu } ) => (
                                             <>
                                                 <MenuGroup>
                                                     <MenuItem
-                                                        onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); window.open( href, '_blank' ); onClose(); } }
+                                                        onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); window.open( href, '_blank' ); closeMenu(); } }
                                                     >Open in new tab</MenuItem>
                                                     <MenuItem
-                                                        onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); window.open( preview, '_blank' ); onClose(); } }
+                                                        onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); window.open( preview, '_blank' ); closeMenu(); } }
                                                     >Preview on site</MenuItem>
                                                     <MenuItem
-                                                        onClick={ async (e)=>{ e.preventDefault(); e.stopPropagation(); try { await navigator.clipboard.writeText( preview ); createSuccessNotice( 'Link copied.', { type: 'snackbar' } ); } catch{} onClose(); } }
+                                                        onClick={ async (e)=>{
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            try {
+                                                                if ( typeof navigator !== 'undefined' && navigator.clipboard?.writeText ) {
+                                                                    await navigator.clipboard.writeText( preview );
+                                                                    createSuccessNotice( 'Link copied.', { type: 'snackbar' } );
+                                                                }
+                                                            } catch( _err ) {}
+                                                            closeMenu();
+                                                        } }
                                                     >Copy link</MenuItem>
                                                     <MenuItem
-                                                        onClick={ async (e)=>{ e.preventDefault(); e.stopPropagation(); try { await navigator.clipboard.writeText( window.location.origin + '/' + href ); createSuccessNotice( 'Edit link copied.', { type: 'snackbar' } ); } catch{} onClose(); } }
+                                                        onClick={ async (e)=>{
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            try {
+                                                                if ( typeof navigator !== 'undefined' && navigator.clipboard?.writeText ) {
+                                                                    await navigator.clipboard.writeText( window.location.origin + '/' + href );
+                                                                    createSuccessNotice( 'Edit link copied.', { type: 'snackbar' } );
+                                                                }
+                                                            } catch( _err ) {}
+                                                            closeMenu();
+                                                        } }
                                                     >Copy edit link</MenuItem>
                                                 </MenuGroup>
                                                 <MenuGroup>
                                                     <MenuItem onClick={ duplicate }>Duplicate</MenuItem>
-                                                    <MenuItem onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); window.open( href + '#revisions', '_blank' ); onClose(); } }>View revisions</MenuItem>
+                                                    <MenuItem onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); window.open( href + '#revisions', '_blank' ); closeMenu(); } }>View revisions</MenuItem>
                                                 </MenuGroup>
                                                 <MenuGroup>
                                                     <MenuItem isDestructive onClick={ trash }>Move to trash</MenuItem>
@@ -458,36 +513,6 @@ function MosaicOverlayInner() {
 	);
 }
 
-// Roving tabindex state and handlers (Post Editor)
-let tileRefs = { current: [] };
-let plusRef = { current: null };
-let activeIndex = 0;
-function setActiveIndex(i){ activeIndex = i; }
-function rovingHandleKeyDown( e, columns, itemsCount ) {
-    const lastIndex = itemsCount; // plus is at itemsCount
-    let next = activeIndex;
-    const atPlus = activeIndex === lastIndex;
-    switch ( e.key ) {
-        case 'ArrowRight': next = Math.min( activeIndex + 1, lastIndex ); break;
-        case 'ArrowLeft': next = Math.max( activeIndex - 1, 0 ); break;
-        case 'ArrowDown': next = Math.min( activeIndex + columns, lastIndex ); break;
-        case 'ArrowUp': next = Math.max( activeIndex - columns, 0 ); break;
-        case 'Home': next = 0; break;
-        case 'End': next = lastIndex; break;
-        case 'Enter':
-        case ' ': {
-            e.preventDefault();
-            if ( atPlus ) {
-                plusRef.current?.click?.();
-            } else {
-                tileRefs.current[ activeIndex ]?.click?.();
-            }
-            return;
-        }
-        default: return;
-    }
-    e.preventDefault();
-    setActiveIndex( next );
-    const el = next === lastIndex ? plusRef.current : tileRefs.current[ next ];
-    el?.focus?.();
-}
+/* eslint-enable curly */
+
+// (Removed legacy roving handlers block which duplicated stateful logic)

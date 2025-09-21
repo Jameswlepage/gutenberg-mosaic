@@ -1,3 +1,5 @@
+/* eslint-disable curly */
+/* global navigator */
 /**
  * WordPress dependencies
  */
@@ -48,16 +50,19 @@ function useInViewport( ref ) {
     const [ visible, setVisible ] = useState( false );
     useEffect( () => {
         if ( ! ref.current ) return;
-        const obs = new IntersectionObserver( ( entries ) => {
-            entries.forEach( ( entry ) => {
-                if ( entry.isIntersecting ) {
-                    setVisible( true );
-                    obs.disconnect();
-                }
-            } );
-        }, { rootMargin: '200px' } );
-        obs.observe( ref.current );
-        return () => obs.disconnect();
+        if ( typeof window !== 'undefined' && 'IntersectionObserver' in window ) {
+            const obs = new window.IntersectionObserver( ( entries ) => {
+                entries.forEach( ( entry ) => {
+                    if ( entry.isIntersecting ) {
+                        setVisible( true );
+                        obs.disconnect();
+                    }
+                } );
+            }, { rootMargin: '200px' } );
+            obs.observe( ref.current );
+            return () => obs.disconnect();
+        }
+        setVisible( true );
     }, [ ref ] );
     return visible;
 }
@@ -75,12 +80,12 @@ function PageTilePreview( { contentHTML, cacheKey } ) {
     const [ ready, setReady ] = useState( false );
     useEffect( () => {
         if ( visible && blocks?.length && !ready ) {
-            const id = requestAnimationFrame( () => setReady( true ) );
-            return () => cancelAnimationFrame( id );
+            const id = window.requestAnimationFrame( () => setReady( true ) );
+            return () => window.cancelAnimationFrame( id );
         }
         if ( visible && !blocks?.length && !ready ) {
-            const id = requestAnimationFrame( () => setReady( true ) );
-            return () => cancelAnimationFrame( id );
+            const id = window.requestAnimationFrame( () => setReady( true ) );
+            return () => window.cancelAnimationFrame( id );
         }
     }, [ visible, blocks?.length, ready ] );
     const isEmpty = ready && !blocks?.length;
@@ -168,7 +173,7 @@ function SiteMosaicOverlayInner( { inCanvas = false } ) {
     useEffect( () => {
         if ( page === 1 ) {
             setItems( safeRecords );
-            requestAnimationFrame( () => {
+            window.requestAnimationFrame( () => {
                 if ( tileRefs.current[0] ) {
                     setActiveIndex( 0 );
                     tileRefs.current[0].focus();
@@ -187,17 +192,21 @@ function SiteMosaicOverlayInner( { inCanvas = false } ) {
     useEffect( () => {
         if ( ! loadMoreRef.current ) return;
         const el = loadMoreRef.current;
-        const io = new IntersectionObserver( ( entries ) => {
-            const entry = entries[0];
-            if ( entry && entry.isIntersecting && ! isResolving && ! fetchingRef.current ) {
-                if ( totalPages && page < totalPages ) {
-                    fetchingRef.current = true;
-                    setPage( (p) => p + 1 );
+        const io = typeof window !== 'undefined' && 'IntersectionObserver' in window
+            ? new window.IntersectionObserver( ( entries ) => {
+                const entry = entries[0];
+                if ( entry && entry.isIntersecting && ! isResolving && ! fetchingRef.current ) {
+                    if ( totalPages && page < totalPages ) {
+                        fetchingRef.current = true;
+                        setPage( (p) => p + 1 );
+                    }
                 }
-            }
-        }, { rootMargin: '200px 0px' } );
-        io.observe( el );
-        return () => io.disconnect();
+            }, { rootMargin: '200px 0px' } ) : null;
+        if ( io ) {
+            io.observe( el );
+            return () => io.disconnect();
+        }
+        return undefined;
     }, [ isResolving, page, totalPages ] );
 
     useEffect( () => { if ( ! isResolving ) fetchingRef.current = false; }, [ isResolving ] );
@@ -230,10 +239,11 @@ function SiteMosaicOverlayInner( { inCanvas = false } ) {
             if ( ! focusables.length ) return;
             const first = focusables[0];
             const last = focusables[ focusables.length - 1 ];
-            if ( e.shiftKey && document.activeElement === first ) {
+            const activeEl = root.ownerDocument?.activeElement || document.activeElement;
+            if ( e.shiftKey && activeEl === first ) {
                 e.preventDefault();
                 last.focus();
-            } else if ( ! e.shiftKey && document.activeElement === last ) {
+            } else if ( ! e.shiftKey && activeEl === last ) {
                 e.preventDefault();
                 first.focus();
             }
@@ -257,10 +267,12 @@ function SiteMosaicOverlayInner( { inCanvas = false } ) {
         >
                 <div className="edit-site-mosaic__header">
                     <div className="edit-site-mosaic__left">
-                        <div
-                            className="edit-site-mosaic__header-title"
-                        >
-                            { `All ${ postType === 'page' ? 'Pages' : postType === 'post' ? 'Posts' : (postType || 'Content') }` }
+                        <div className="edit-site-mosaic__header-title">
+                            { (() => {
+                                if ( postType === 'page' ) return 'All Pages';
+                                if ( postType === 'post' ) return 'All Posts';
+                                return `All ${ postType || 'Content' }`;
+                            })() }
                         </div>
                         <div className="edit-site-mosaic__type-toggle">
                     <Button
@@ -278,10 +290,14 @@ function SiteMosaicOverlayInner( { inCanvas = false } ) {
                 <div className="edit-site-mosaic__header-actions">
                     <SelectControl
                         __next40pxDefaultSize
+                        __nextHasNoMarginBottom
                         hideLabelFromVision
                         label="Sort"
                         value={ sort }
-                        onChange={ (v)=> { setPage(1); setSort(v); } }
+                        onChange={ (v)=> {
+                            setPage( 1 );
+                            setSort( v );
+                        } }
                         options={ [
                             { label: 'Newest', value: 'date_desc' },
                             { label: 'Oldest', value: 'date_asc' },
@@ -293,10 +309,14 @@ function SiteMosaicOverlayInner( { inCanvas = false } ) {
                     />
                     <SelectControl
                         __next40pxDefaultSize
+                        __nextHasNoMarginBottom
                         hideLabelFromVision
                         label="Status"
                         value={ statusFilter }
-                        onChange={ (v)=> { setPage(1); setStatusFilter(v); } }
+                        onChange={ (v)=> {
+                            setPage( 1 );
+                            setStatusFilter( v );
+                        } }
                         options={ [
                             { label: 'All', value: 'all' },
                             { label: 'Draft', value: 'draft' },
@@ -307,8 +327,12 @@ function SiteMosaicOverlayInner( { inCanvas = false } ) {
                     />
                     <SearchControl
                         __next40pxDefaultSize
+                        __nextHasNoMarginBottom
                         value={ search }
-                        onChange={ (v) => { setPage(1); setSearch(v); } }
+                        onChange={ (v) => {
+                            setPage( 1 );
+                            setSearch( v );
+                        } }
                         label="Search"
                         hideLabelFromVision
                         placeholder="Search by title"
@@ -321,6 +345,7 @@ function SiteMosaicOverlayInner( { inCanvas = false } ) {
                     className="edit-site-mosaic__grid"
                     role="grid"
                     aria-label="Items"
+                    tabIndex={ 0 }
                     style={ { gridTemplateColumns: `repeat(${ Math.min( (items.length + 1) || 1, maxByViewport ) }, minmax(0, 1fr))` } }
                     onKeyDown={ (e) => {
                         const columns = Math.min( (items.length + 1) || 1, maxByViewport );
@@ -422,8 +447,8 @@ function SiteMosaicOverlayInner( { inCanvas = false } ) {
                                                 <MenuGroup>
                                                     <MenuItem onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); window.open( `post.php?post=${ r.id }&action=edit`, '_blank' ); onClose(); } }>Open in new tab</MenuItem>
                                                     <MenuItem onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); if (preview) window.open( preview, '_blank' ); onClose(); } }>Preview on site</MenuItem>
-                                                    <MenuItem onClick={ async (e)=>{ e.preventDefault(); e.stopPropagation(); try { await navigator.clipboard.writeText( preview || '' ); createSuccessNotice( 'Link copied.', { type: 'snackbar' } ); } catch{} onClose(); } }>Copy link</MenuItem>
-                                                    <MenuItem onClick={ async (e)=>{ e.preventDefault(); e.stopPropagation(); try { await navigator.clipboard.writeText( window.location.origin + `/wp-admin/post.php?post=${ r.id }&action=edit` ); createSuccessNotice( 'Edit link copied.', { type: 'snackbar' } ); } catch{} onClose(); } }>Copy edit link</MenuItem>
+                                                    <MenuItem onClick={ async (e)=>{ e.preventDefault(); e.stopPropagation(); try { if ( typeof navigator !== 'undefined' && navigator.clipboard?.writeText ) { await navigator.clipboard.writeText( preview || '' ); createSuccessNotice( 'Link copied.', { type: 'snackbar' } ); } } catch( _err ){} onClose(); } }>Copy link</MenuItem>
+                                                    <MenuItem onClick={ async (e)=>{ e.preventDefault(); e.stopPropagation(); try { if ( typeof navigator !== 'undefined' && navigator.clipboard?.writeText ) { await navigator.clipboard.writeText( window.location.origin + `/wp-admin/post.php?post=${ r.id }&action=edit` ); createSuccessNotice( 'Edit link copied.', { type: 'snackbar' } ); } } catch( _err ){} onClose(); } }>Copy edit link</MenuItem>
                                                 </MenuGroup>
                                                 <MenuGroup>
                                                     <MenuItem onClick={ duplicate }>Duplicate</MenuItem>

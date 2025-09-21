@@ -39,7 +39,7 @@ function DocumentTools( { className, disableBlockTools = false } ) {
         listViewToggleRef,
         showIconLabels,
         showTools,
-        isPostOrPage,
+        isMosaicEligible,
         isMosaicOpen,
         mosaicLabel,
     } = useSelect( ( select ) => {
@@ -59,7 +59,7 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 
         const renderingMode = getRenderingMode();
         const isPostOrPage = ['page','post'].includes( postType );
-        const isMosaicEligible = isPostOrPage || renderingMode !== 'post-only';
+        const eligible = isPostOrPage || renderingMode !== 'post-only';
 
         return {
             isInserterOpened: select( editorStore ).isInserterOpened(),
@@ -78,8 +78,7 @@ function DocumentTools( { className, disableBlockTools = false } ) {
             showTools:
                 !! window?.__experimentalEditorWriteMode &&
                 ( renderingMode !== 'post-only' || postType === 'wp_template' ),
-            isPostOrPage,
-            isMosaicEligible,
+            isMosaicEligible: eligible,
             isMosaicOpen: !! get( 'core/edit-post', 'mosaicViewOpen' ),
             mosaicLabel: mosaicLabelText,
         };

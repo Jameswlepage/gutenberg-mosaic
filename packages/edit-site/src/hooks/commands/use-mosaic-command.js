@@ -8,6 +8,9 @@ import { useCommandLoader } from '@wordpress/commands';
 import { plus, category as mosaicIcon, layout } from '@wordpress/icons';
 import { store as preferencesStore } from '@wordpress/preferences';
 import { privateApis as routerPrivateApis } from '@wordpress/router';
+/**
+ * Internal dependencies
+ */
 import { unlock } from '../../lock-unlock';
 
 const { useLocation, useHistory } = unlock( routerPrivateApis );
@@ -23,7 +26,7 @@ const getMosaicCommands = () =>
         const currentType = useMemo( () => {
             const match = typeof path === 'string' ? path.match(/^\/(\w+)\//) : null;
             const t = match?.[1];
-            if ( t === 'post' || t === 'page' ) return t;
+            if ( t === 'post' || t === 'page' ) { return t; }
             return 'page';
         }, [ path ] );
         const newLabel = currentType === 'post' ? __( 'New Post' ) : __( 'New Page' );
