@@ -34,7 +34,7 @@ import {
 } from '@wordpress/element';
 import { chevronDown, chevronUp } from '@wordpress/icons';
 import { store as noticesStore } from '@wordpress/notices';
-import { store as preferencesStore } from '@wordpress/preferences';
+// preferencesStore already imported above
 import { privateApis as commandsPrivateApis } from '@wordpress/commands';
 import { privateApis as blockLibraryPrivateApis } from '@wordpress/block-library';
 import { addQueryArgs } from '@wordpress/url';
@@ -73,6 +73,8 @@ import { usePaddingAppender } from './use-padding-appender';
 import { useShouldIframe } from './use-should-iframe';
 import useNavigateToEntityRecord from '../../hooks/use-navigate-to-entity-record';
 import { useMetaBoxInitialization } from '../meta-boxes/use-meta-box-initialization';
+import MosaicOverlay from '../mosaic-view';
+import { store as preferencesStore } from '@wordpress/preferences';
 
 const { getLayoutStyles } = unlock( blockEditorPrivateApis );
 const { useCommandContext } = unlock( commandsPrivateApis );
@@ -421,8 +423,9 @@ function Layout( {
 	settings,
 	initialEdits,
 } ) {
-	useEditPostCommands();
-	const shouldIframe = useShouldIframe();
+    useEditPostCommands();
+    const { set: setPreference } = useDispatch( preferencesStore );
+    const shouldIframe = useShouldIframe();
 	const { createErrorNotice } = useDispatch( noticesStore );
 	const {
 		currentPost: { postId: currentPostId, postType: currentPostType },
@@ -516,7 +519,14 @@ function Layout( {
 		]
 	);
 
-	useMetaBoxInitialization( hasActiveMetaboxes && hasResolvedMode );
+    useMetaBoxInitialization( hasActiveMetaboxes && hasResolvedMode );
+
+    // Ensure Mosaic is closed on fresh page load
+    useEffect( () => {
+        setPreference( 'core/edit-post', 'mosaicViewOpen', false );
+        // run once on mount
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [] );
 
 	const editableResolvedTemplateId = useSelect(
 		( select ) => {
@@ -692,6 +702,8 @@ function Layout( {
 						{ backButton }
 						<EditorSnackbars />
 					</Editor>
+					{/* Mosaic overlay mounts globally and self-guards on preference + post type */}
+					<MosaicOverlay />
 				</div>
 			</ErrorBoundary>
 		</SlotFillProvider>

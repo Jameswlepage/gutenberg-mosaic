@@ -11,10 +11,11 @@ import { useSelect, useDispatch } from '@wordpress/data';
 import { __, _x } from '@wordpress/i18n';
 import { NavigableToolbar, ToolSelector } from '@wordpress/block-editor';
 import { ToolbarButton, ToolbarItem } from '@wordpress/components';
-import { listView, plus } from '@wordpress/icons';
+import { listView, plus, category as mosaicIcon } from '@wordpress/icons';
 import { useCallback } from '@wordpress/element';
 import { store as keyboardShortcutsStore } from '@wordpress/keyboard-shortcuts';
 import { store as preferencesStore } from '@wordpress/preferences';
+import { store as coreStore } from '@wordpress/core-data';
 
 /**
  * Internal dependencies
@@ -25,46 +26,64 @@ import EditorHistoryRedo from '../editor-history/redo';
 import EditorHistoryUndo from '../editor-history/undo';
 
 function DocumentTools( { className, disableBlockTools = false } ) {
-	const { setIsInserterOpened, setIsListViewOpened } =
-		useDispatch( editorStore );
+    const { setIsInserterOpened, setIsListViewOpened } =
+        useDispatch( editorStore );
+    const { set: setPreference } = useDispatch( preferencesStore );
 	const {
-		isDistractionFree,
-		isInserterOpened,
-		isListViewOpen,
-		listViewShortcut,
-		inserterSidebarToggleRef,
-		listViewToggleRef,
-		showIconLabels,
-		showTools,
-	} = useSelect( ( select ) => {
-		const { get } = select( preferencesStore );
-		const {
-			isListViewOpened,
-			getEditorMode,
-			getInserterSidebarToggleRef,
-			getListViewToggleRef,
-			getRenderingMode,
-			getCurrentPostType,
-		} = unlock( select( editorStore ) );
-		const { getShortcutRepresentation } = select( keyboardShortcutsStore );
+        isDistractionFree,
+        isInserterOpened,
+        isListViewOpen,
+			listViewShortcut,
+			mosaicShortcut,
+        inserterSidebarToggleRef,
+        listViewToggleRef,
+        showIconLabels,
+        showTools,
+        isPostOrPage,
+        isMosaicOpen,
+        mosaicLabel,
+    } = useSelect( ( select ) => {
+        const { get } = select( preferencesStore );
+        const {
+            isListViewOpened,
+            getEditorMode,
+            getInserterSidebarToggleRef,
+            getListViewToggleRef,
+            getRenderingMode,
+            getCurrentPostType,
+        } = unlock( select( editorStore ) );
+        const { getShortcutRepresentation } = select( keyboardShortcutsStore );
+        const postType = getCurrentPostType();
+        const postTypeLabel = select( coreStore ).getPostType( postType )?.labels?.singular_name;
+        const mosaicLabelText = postTypeLabel ? `${ postTypeLabel } ${ __( 'mosaic' ) }` : __( 'Mosaic' );
 
-		return {
-			isInserterOpened: select( editorStore ).isInserterOpened(),
-			isListViewOpen: isListViewOpened(),
-			listViewShortcut: getShortcutRepresentation(
-				'core/editor/toggle-list-view'
-			),
-			inserterSidebarToggleRef: getInserterSidebarToggleRef(),
-			listViewToggleRef: getListViewToggleRef(),
-			showIconLabels: get( 'core', 'showIconLabels' ),
-			isDistractionFree: get( 'core', 'distractionFree' ),
-			isVisualMode: getEditorMode() === 'visual',
-			showTools:
-				!! window?.__experimentalEditorWriteMode &&
-				( getRenderingMode() !== 'post-only' ||
-					getCurrentPostType() === 'wp_template' ),
-		};
-	}, [] );
+        const renderingMode = getRenderingMode();
+        const isPostOrPage = ['page','post'].includes( postType );
+        const isMosaicEligible = isPostOrPage || renderingMode !== 'post-only';
+
+        return {
+            isInserterOpened: select( editorStore ).isInserterOpened(),
+            isListViewOpen: isListViewOpened(),
+            listViewShortcut: getShortcutRepresentation(
+                'core/editor/toggle-list-view'
+            ),
+            mosaicShortcut: getShortcutRepresentation(
+                'core/edit-post/toggle-mosaic'
+            ),
+            inserterSidebarToggleRef: getInserterSidebarToggleRef(),
+            listViewToggleRef: getListViewToggleRef(),
+            showIconLabels: get( 'core', 'showIconLabels' ),
+            isDistractionFree: get( 'core', 'distractionFree' ),
+            isVisualMode: getEditorMode() === 'visual',
+            showTools:
+                !! window?.__experimentalEditorWriteMode &&
+                ( renderingMode !== 'post-only' || postType === 'wp_template' ),
+            isPostOrPage,
+            isMosaicEligible,
+            isMosaicOpen: !! get( 'core/edit-post', 'mosaicViewOpen' ),
+            mosaicLabel: mosaicLabelText,
+        };
+    }, [] );
 
 	const preventDefault = ( event ) => {
 		// Because the inserter behaves like a dialog,
@@ -102,7 +121,7 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 	);
 	const shortLabel = ! isInserterOpened ? __( 'Add' ) : __( 'Close' );
 
-	return (
+    return (
 		// Some plugins expect and use the `edit-post-header-toolbar` CSS class to
 		// find the toolbar and inject UI elements into it. This is not officially
 		// supported, but we're keeping it in the list of class names for backwards
@@ -117,6 +136,27 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 			variant="unstyled"
 		>
 			<div className="editor-document-tools__left">
+				{ ! isDistractionFree && isMosaicEligible && globalThis.__experimentalMosaicView && (
+                        <ToolbarButton
+                            className="editor-document-tools__mosaic-toggle"
+                            disabled={ disableBlockTools }
+                            isPressed={ isMosaicOpen }
+                            icon={ mosaicIcon }
+                            /* translators: button label text should, if possible, be under 16 characters. */
+                            label={ mosaicLabel }
+                            onClick={ () =>
+                                setPreference(
+                                    'core/edit-post',
+                                    'mosaicViewOpen',
+                                    ! isMosaicOpen
+                                )
+                            }
+                            showTooltip={ ! showIconLabels }
+                            variant={ showIconLabels ? 'tertiary' : undefined }
+                            aria-pressed={ isMosaicOpen }
+                            shortcut={ mosaicShortcut }
+                        />
+				) }
 				{ ! isDistractionFree && (
 					<ToolbarButton
 						ref={ inserterSidebarToggleRef }
@@ -132,36 +172,37 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 						aria-expanded={ isInserterOpened }
 					/>
 				) }
-				{ ( isWideViewport || ! showIconLabels ) && (
-					<>
-						{ showTools && isLargeViewport && (
-							<ToolbarItem
-								as={ ToolSelector }
-								showTooltip={ ! showIconLabels }
-								variant={
-									showIconLabels ? 'tertiary' : undefined
-								}
-								disabled={ disableBlockTools }
-								size="compact"
-							/>
-						) }
-						<ToolbarItem
-							as={ EditorHistoryUndo }
-							showTooltip={ ! showIconLabels }
-							variant={ showIconLabels ? 'tertiary' : undefined }
-							size="compact"
-						/>
-						<ToolbarItem
-							as={ EditorHistoryRedo }
-							showTooltip={ ! showIconLabels }
-							variant={ showIconLabels ? 'tertiary' : undefined }
-							size="compact"
-						/>
-						{ ! isDistractionFree && (
-							<ToolbarButton
-								className="editor-document-tools__document-overview-toggle"
-								icon={ listView }
-								disabled={ disableBlockTools }
+                { ( isWideViewport || ! showIconLabels ) && (
+                    <>
+                        { showTools && isLargeViewport && (
+                            <ToolbarItem
+                                as={ ToolSelector }
+                                showTooltip={ ! showIconLabels }
+                                variant={
+                                    showIconLabels ? 'tertiary' : undefined
+                                }
+                                disabled={ disableBlockTools }
+                                size="compact"
+                            />
+                        ) }
+                        <ToolbarItem
+                            as={ EditorHistoryUndo }
+                            showTooltip={ ! showIconLabels }
+                            variant={ showIconLabels ? 'tertiary' : undefined }
+                            size="compact"
+                        />
+                        <ToolbarItem
+                            as={ EditorHistoryRedo }
+                            showTooltip={ ! showIconLabels }
+                            variant={ showIconLabels ? 'tertiary' : undefined }
+                            size="compact"
+                        />
+                        { /* Mosaic button moved nearer the inserter to ensure visibility */ }
+                        { ! isDistractionFree && (
+                            <ToolbarButton
+                                className="editor-document-tools__document-overview-toggle"
+                                icon={ listView }
+                                disabled={ disableBlockTools }
 								isPressed={ isListViewOpen }
 								/* translators: button label text should, if possible, be under 16 characters. */
 								label={ __( 'Document Overview' ) }
@@ -175,6 +216,7 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 								ref={ listViewToggleRef }
 							/>
 						) }
+
 					</>
 				) }
 			</div>

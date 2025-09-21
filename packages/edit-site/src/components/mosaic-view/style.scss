@@ -1,0 +1,245 @@
+
+.edit-site-mosaic__overlay {
+	position: fixed;
+	top: var(--wp-mosaic-top-offset, 64px);
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1000;
+	background: color-mix(in srgb, #0b0d12 92%, transparent);
+	backdrop-filter: blur(2px);
+	color: var(--wp-admin-theme-color--fg, #fff);
+	display: flex;
+	flex-direction: column;
+}
+
+.edit-site-mosaic__overlay--in-canvas {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 3; // above preview inside canvas
+}
+
+.edit-site-mosaic__header {
+	display: flex;
+	gap: 18px;
+	align-items: center;
+	justify-content: space-between;
+	padding: 18px 18px 0;
+}
+
+.edit-site-mosaic__left { display: flex; gap: 18px; align-items: center; }
+.edit-site-mosaic__header-title {
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 1.2;
+    color: #ffffff;
+    margin: 0;
+}
+
+.edit-site-mosaic__type-toggle {
+	display: flex;
+	gap: 18px;
+}
+
+.edit-site-mosaic__header-actions {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+}
+
+// Force search icon to black inside the header search control
+.edit-site-mosaic__header :is(.components-search-control, .components-input-control__container) :is(.components-input-control__prefix svg, .components-input-control__suffix svg) {
+	color: #000;
+	fill: #000;
+}
+
+.edit-site-mosaic__body {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 0;
+	padding: 18px;
+	overflow: auto; // allow scroll when content exceeds viewport (e.g., small screens, empty state)
+	-webkit-overflow-scrolling: touch;
+}
+
+.edit-site-mosaic__loading {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+}
+.edit-site-mosaic__loading--overlay { background: rgba(0,0,0,0.08); backdrop-filter: blur(1px); }
+
+.edit-site-mosaic__grid {
+	display: grid;
+	gap: 18px;
+	grid-template-columns: repeat(1, minmax(0, 1fr)); // mobile default
+
+	// Small tablet (>=600px): 2 columns
+	@media (min-width: 600px) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	// Tablet (>=782px): 3 columns
+	@media (min-width: 782px) {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	// Large (>=960px): 4 columns
+	@media (min-width: 960px) {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+
+	// Wide desktop (>=1280px): up to 5 columns
+	@media (min-width: 1280px) {
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+	}
+}
+
+.edit-site-mosaic__empty { color: #cbd5e1; }
+
+
+.edit-site-mosaic__tile-frame {
+	aspect-ratio: 4 / 3;
+	overflow: hidden;
+	border-radius: var(--wp-mosaic-radius, 4px);
+	background: var(--wp-mosaic-tile-bg, #45464A);
+	position: relative;
+}
+
+.edit-site-mosaic__tile-content { opacity: 0; transition: opacity 220ms ease-out; position: absolute; inset: 0; z-index: 1; }
+.edit-site-mosaic__tile-content.is-ready { opacity: 1; }
+
+.edit-site-mosaic__tile-skeleton {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: #45464A;
+    background-image: linear-gradient(90deg, rgba(255,255,255,0.04) 0, rgba(255,255,255,0.08) 40%, rgba(255,255,255,0.04) 80%);
+    background-size: 300% 100%;
+    animation: site-mosaic-skel 1.4s ease infinite;
+}
+
+.edit-site-mosaic__tile-frame.is-ready .edit-site-mosaic__tile-skeleton {
+    opacity: 0;
+    transition: opacity 220ms ease-out 60ms;
+    animation: none;
+}
+
+@keyframes site-mosaic-skel {
+	0% { background-position: 200% 0; }
+	100% { background-position: -100% 0; }
+}
+
+.edit-site-mosaic__tile {
+	display: flex;
+	flex-direction: column;
+	text-decoration: none;
+	color: inherit;
+	position: relative;
+	border-radius: var(--wp-mosaic-radius, 4px);
+	overflow: hidden; // clip inner overlays to rounded corners
+}
+
+.edit-site-mosaic__tile-menu {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    opacity: 0;
+    z-index: 2;
+    transition: opacity 120ms ease;
+}
+
+.edit-site-mosaic__tile:hover .edit-site-mosaic__tile-menu { opacity: 1; }
+.edit-site-mosaic__tile:focus-within .edit-site-mosaic__tile-menu { opacity: 1; }
+
+// Improve visibility of the dropdown toggle icon
+.edit-site-mosaic__tile-menu .components-button {
+    color: #ffffff;
+    border: none;
+    background: rgba(0,0,0,0.35);
+    border-radius: 4px;
+}
+.edit-site-mosaic__tile-menu .components-button:hover {
+    background: rgba(0,0,0,0.5);
+}
+.edit-site-mosaic__tile-menu .components-button:active,
+.edit-site-mosaic__tile-menu .components-button.is-pressed,
+.edit-site-mosaic__tile-menu .components-button[aria-expanded='true'] {
+    background: rgba(0,0,0,0.5);
+    color: #ffffff;
+}
+.edit-site-mosaic__tile-menu .components-button svg {
+    color: currentColor;
+    fill: currentColor;
+}
+.edit-site-mosaic__tile-menu .components-button:focus-visible { box-shadow: 0 0 0 2px rgba(255,255,255,0.6); }
+
+.edit-site-mosaic__tile--plus {
+	border-radius: var(--wp-mosaic-radius, 4px);
+	background: var(--wp-mosaic-tile-bg, #45464A);
+	cursor: pointer;
+	display: block;
+	color: #f3f4f6;
+	transition: background 120ms ease, color 120ms ease;
+	border: none;
+	outline: none;
+
+	&:hover {
+		background: #525459;
+		color: #ffffff;
+	}
+
+	&:focus-visible {
+		box-shadow: 0 0 0 2px rgba(255,255,255,0.6);
+	}
+
+	// Ensure the SVG icon uses the intended color
+	& svg {
+		color: #f3f4f6;
+		fill: #f3f4f6;
+		transition: color 120ms ease, fill 120ms ease;
+	}
+
+	&:hover svg {
+		color: #ffffff;
+		fill: #ffffff;
+	}
+}
+
+.edit-site-mosaic__tile-frame--center {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+
+.edit-site-mosaic__tile-meta {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 33%;
+    background: linear-gradient(180deg, rgba(69,70,74,0) 0%, rgba(69,70,74,0.6) 100%);
+	display: flex;
+	align-items: flex-end;
+    padding: 18px; // equal padding on all sides for consistent spacing
+	opacity: 0;
+	transition: opacity 130ms ease;
+}
+
+.edit-site-mosaic__tile:hover .edit-site-mosaic__tile-meta {
+	opacity: 1;
+}
+
+.edit-site-mosaic__tile-title {
+	font-size: 14px;
+	line-height: 1.2;
+	color: #ffffff;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}

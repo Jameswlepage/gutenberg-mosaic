@@ -93,6 +93,10 @@
 	}
 }
 
+// Subtle fade using transitions (avoid keyframe jank)
+.editor-header__settings { transition: opacity 140ms ease; will-change: opacity; opacity: 1; }
+html.is-mosaic-open .editor-header__settings { opacity: 0; pointer-events: none; }
+
 /**
  * Buttons on the right side
  */

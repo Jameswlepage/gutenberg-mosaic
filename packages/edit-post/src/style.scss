@@ -2,6 +2,9 @@
 @import "./components/layout/style.scss";
 @import "./components/meta-boxes/meta-boxes-area/style.scss";
 @import "./components/welcome-guide/style.scss";
+// Include DataViews base styles used by the Mosaic overlay
+@import "../../dataviews/src/style.scss";
+@import "./components/mosaic-view/style.scss";
 
 body.js.block-editor-page {
 	@include wp-admin-reset( ".block-editor" );

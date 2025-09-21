@@ -76,6 +76,13 @@ export function initializeEditor( id, settings ) {
 		enableChoosePatternModal: true,
 	} );
 
+	// Ensure Mosaic experiment is initialized and starts closed (shared pref key with edit-post)
+	dispatch( preferencesStore ).setDefaults( 'core/edit-post', {
+		mosaicViewOpen: false,
+	} );
+	// Force closed on each load to avoid auto-opening from a prior session
+	dispatch( preferencesStore ).set( 'core/edit-post', 'mosaicViewOpen', false );
+
 	if ( window.__experimentalMediaProcessing ) {
 		dispatch( preferencesStore ).setDefaults( 'core/media', {
 			requireApproval: true,
