@@ -26,7 +26,7 @@
     gap: 18px;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 18px 18px; // include bottom padding for proper scroll spacing
+    padding: 18px 18px 16px; // trim bottom by focus ring height to keep consistent gap
 }
 
 .edit-post-mosaic__left { display: flex; align-items: center; gap: 18px; }
@@ -52,7 +52,7 @@
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
-    padding: 0 18px 18px; // no top padding; header provides the top gutter
+    padding: 2px 18px 18px; // small top pad to prevent first tile focus ring from being clipped
     overflow: auto; // ensure content is scrollable within overlay
     -webkit-overflow-scrolling: touch;
 }

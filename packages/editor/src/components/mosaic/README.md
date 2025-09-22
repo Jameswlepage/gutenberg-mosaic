@@ -40,7 +40,7 @@ Key implementation notes
   - Focus indicator: tiles use the same focus ring style as native inputs (box‑shadow 0 0 0 2px var(--wp-admin-theme-color)).
 - Command Palette: while Mosaic is open, suggests Close Mosaic and New {type}; Site Editor also suggests Edit template.
 - List View CTA: When the experiment is enabled, a button labeled “Add new {Type}” appears at the bottom of the List View tab. Clicking it opens `post-new.php?post_type={Type}`.
-- Avatars: optional `getEditorsForItem(record)` renders a small avatar stack; wrappers currently pass the current user for the active item. There is no bulk “who is editing” endpoint today.
+- Avatars (collab editing): optional `getEditorsForItem(record)` renders a small avatar/indicator for active editors on that post/page. In this experiment we only surface the current user on the active item; when collaborative editing presence APIs are available, this can be expanded to show multiple concurrent editors.
 
 Styling tokens
 --------------

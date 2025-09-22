@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { useEffect, useMemo } from '@wordpress/element';
+import { useEffect, useMemo, useState } from '@wordpress/element';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { store as preferencesStore } from '@wordpress/preferences';
 import { MosaicOverlay } from '@wordpress/editor';
@@ -10,7 +10,7 @@ import { privateApis as routerPrivateApis } from '@wordpress/router';
 import { unlock } from '../../lock-unlock';
 import { createPortal } from '@wordpress/element';
 
-const { useLocation } = unlock( routerPrivateApis );
+const { useLocation, useHistory } = unlock( routerPrivateApis );
 
 export default function SiteMosaicOverlay() {
     // Stable hooks order
@@ -39,6 +39,8 @@ export default function SiteMosaicOverlay() {
 function SiteMosaicOverlayInner( { inCanvas, path } ) {
     const { set: setPreference } = useDispatch( preferencesStore );
     const currentUser = useSelect( ( select ) => select( coreStore )?.getCurrentUser?.() );
+    const history = useHistory();
+    const [ isClosing, setIsClosing ] = useState( false );
     useEffect( () => {
         const html = document?.documentElement;
         html?.classList?.add( 'is-mosaic-open' );
@@ -58,8 +60,9 @@ function SiteMosaicOverlayInner( { inCanvas, path } ) {
     };
     const onOpenItem = (e, r) => {
         e.preventDefault();
-        // Route to entity in Site Editor
-        window.location.href = `/wp-admin/site-editor.php?postType=${ r.type || 'page' }&postId=${ r.id }&canvas=edit`;
+        const t = r?.type || 'page';
+        history.navigate( `/${ t }/${ r.id }?canvas=edit` );
+        setPreference( 'core/edit-post', 'mosaicViewOpen', false );
     };
 
     return (
@@ -67,11 +70,18 @@ function SiteMosaicOverlayInner( { inCanvas, path } ) {
             classPrefix="edit-site-mosaic"
             initialPostType="page"
             allowTypeSwitch={ true }
-            overlayClassName={ inCanvas ? 'edit-site-mosaic__overlay--in-canvas' : '' }
+            overlayClassName={ `${ (!inCanvas || isClosing) ? '' : 'edit-site-mosaic__overlay--in-canvas' }${ isClosing ? ' is-closing' : '' }` }
             onClose={ () => setPreference( 'core/edit-post', 'mosaicViewOpen', false ) }
             onOpenNew={ onOpenNew }
-            onOpenItem={ onOpenItem }
-            getItemHref={ (r) => `/wp-admin/post.php?post=${ r.id }&action=edit` }
+            onOpenItem={ ( e, r ) => {
+                // Start closing to ensure overlay persists (fixed) over route change, navigate, then finish fade/close
+                e.preventDefault();
+                setIsClosing( true );
+                const t = r?.type || 'page';
+                history.navigate( `/${ t }/${ r.id }?canvas=edit` );
+                setTimeout( () => setPreference( 'core/edit-post', 'mosaicViewOpen', false ), 160 );
+            } }
+            getItemHref={ (r) => `/${ (r?.type || 'page') }/${ r.id }?canvas=edit` }
             isActiveItem={ (r) => activeEntityId === r?.id }
             getEditorsForItem={ (r) => ( activeEntityId === r?.id && currentUser ? [ currentUser ] : [] ) }
         />

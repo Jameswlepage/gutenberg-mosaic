@@ -58,7 +58,7 @@ function useInViewport( ref ) {
 }
 
 const blockParseCache = new Map();
-function PageTilePreview( { contentHTML, cacheKey, classPrefix } ) {
+function PageTilePreview( { contentHTML, cacheKey, classPrefix, postType, editors } ) {
     const containerRef = useRef( null );
     const visible = useInViewport( containerRef );
     const blocks = useMemo( () => {
@@ -78,9 +78,47 @@ function PageTilePreview( { contentHTML, cacheKey, classPrefix } ) {
     const isEmpty = ready && !blocks?.length;
     return (
         <div ref={ containerRef } className={ `${ classPrefix }__tile-frame${ ready ? ' is-ready' : '' }${ isEmpty ? ' is-empty' : '' }` }>
+            { (editors && editors.length) ? (
+                <div className={`${ classPrefix }__tile-avatars`}>
+                    { editors.slice(0,3).map( (u, i) => {
+                        const label = u?.name || 'User';
+                        const urls = u?.avatar_urls || {};
+                        const src = u.__placeholder ? '' : ( urls['96'] || urls['128'] || urls['48'] || urls['24'] || '' );
+                        const tooltipText = `Editing: ${ label }`;
+                        return src ? (
+                            <Tooltip key={ i } text={ tooltipText }>
+                                <img className={`${ classPrefix }__tile-avatar`} src={ src } alt={ label } />
+                            </Tooltip>
+                        ) : (
+                            <Tooltip key={ i } text={ tooltipText }>
+                                <div className={`${ classPrefix }__tile-avatar ${ classPrefix }__tile-avatar--placeholder`} aria-label={ tooltipText } />
+                            </Tooltip>
+                        );
+                    } ) }
+                </div>
+            ) : null }
             <div className={ `${ classPrefix }__tile-content${ ready ? ' is-ready' : '' }` }>
                 { visible && blocks?.length ? (
                     <BlockPreview blocks={ blocks } viewportWidth={ VIEWPORT_WIDTH } />
+                ) : isEmpty ? (
+                    postType === 'post' ? (
+                        <div className={`${ classPrefix }__wireframe ${ classPrefix }__wireframe--post`} aria-hidden="true">
+                            { Array.from({ length: 8 }).map( ( _, i ) => (
+                                <div key={ i } className={`${ classPrefix }__wireframe-row ${ classPrefix }__wireframe-row--flex`} />
+                            ) ) }
+                            <div className={`${ classPrefix }__wireframe-label`} title="No content yet">No content yet</div>
+                        </div>
+                    ) : (
+                        <div className={`${ classPrefix }__wireframe ${ classPrefix }__wireframe--page`} aria-hidden="true">
+                            <div className={`${ classPrefix }__wireframe-hero ${ classPrefix }__wireframe-hero--tall`} />
+                            <div className={`${ classPrefix }__wireframe-row ${ classPrefix }__wireframe-row--wide`} />
+                            <div className={`${ classPrefix }__wireframe-grid ${ classPrefix }__wireframe-grid--2col`}>
+                                <div />
+                                <div />
+                            </div>
+                            <div className={`${ classPrefix }__wireframe-label`} title="No content yet">No content yet</div>
+                        </div>
+                    )
                 ) : null }
             </div>
             <div className={`${ classPrefix }__tile-skeleton`} />
@@ -125,7 +163,7 @@ export default function MosaicOverlay( {
         orderby: sort.startsWith('title') ? 'title' : sort.startsWith('modified') ? 'modified' : 'date',
         search: debouncedSearch,
         status: statusFilter === 'all' ? 'any' : statusFilter,
-        _fields: [ 'id', 'title', 'status', 'content', 'date', 'modified', 'link' ].join(),
+        _fields: [ 'id', 'title', 'status', 'content', 'date', 'modified', 'link', 'type' ].join(),
     } ), [ page, perPage, debouncedSearch, statusFilter, sort, postType ] );
 
     const { records, isResolving, totalPages } = useEntityRecords( 'postType', postType, query );
@@ -410,6 +448,9 @@ export default function MosaicOverlay( {
                                 ? { href: '#', onClick: (e) => onOpenItem( e, r ) }
                                 : { href };
                             const editors = getEditorsForItem ? ( getEditorsForItem( r ) || [] ) : [];
+                            // Only show collaborator avatars when there are collaborators beyond the author themself.
+                            // Stub behavior: if there is more than one editor listed for the item, treat as collaborators and show.
+                            const showCollaborators = Array.isArray( editors ) && editors.length > 1;
                             const headerEditors = editors.length ? editors.slice(0,1) : ( isActive ? [ { __placeholder: true } ] : [] );
                             return (
                                 <a
@@ -422,23 +463,14 @@ export default function MosaicOverlay( {
                                     aria-label={`${ title } • ${ statusLabel( r?.status ) }`}
                                     { ...linkProps }
                                 >
+                                    { href ? <link rel="prefetch" href={ href } /> : null }
                                     <div className={`${ classPrefix }__tile-header`}>
                                         <div className={`${ classPrefix }__tile-header-left`}>
-                                            { headerEditors.map( (u, i) => {
-                                                const label = u?.name || 'User';
-                                                const urls = u?.avatar_urls || {};
-                                                const src = u.__placeholder ? '' : ( urls['96'] || urls['128'] || urls['48'] || urls['24'] || '' );
-                                                const tooltipText = `Editing: ${ label }`;
-                                                return src ? (
-                                                    <Tooltip key={ i } text={ tooltipText }>
-                                                        <img className={`${ classPrefix }__tile-avatar`} src={ src } alt="" />
-                                                    </Tooltip>
-                                                ) : (
-                                                    <span key={ i } className={`${ classPrefix }__tile-avatar ${ classPrefix }__tile-avatar--placeholder`} title={ tooltipText } aria-label={ tooltipText }>
-                                                        <Icon icon={ userIcon } size={ 18 } />
-                                                    </span>
-                                                );
-                                            } ) }
+                                            { isActive && (
+                                                <Tooltip text="Active post">
+                                                    <span className={`${ classPrefix }__tile-active-dot`} role="img" aria-label="Active post" />
+                                                </Tooltip>
+                                            ) }
                                         </div>
                                         <div className={`${ classPrefix }__tile-header-title`} title={ title }>{ title }</div>
                                         <div className={`${ classPrefix }__tile-header-right`}>
@@ -478,7 +510,13 @@ export default function MosaicOverlay( {
                                             </DropdownMenu>
                                         </div>
                                     </div>
-                                    <PageTilePreview contentHTML={ r?.content?.raw ?? r?.content?.rendered ?? '' } cacheKey={ cacheKey } classPrefix={ classPrefix } />
+                                    <PageTilePreview
+                                        contentHTML={ r?.content?.raw ?? r?.content?.rendered ?? '' }
+                                        cacheKey={ cacheKey }
+                                        classPrefix={ classPrefix }
+                                        postType={ r?.type || postType }
+                                        editors={ showCollaborators ? editors : [] }
+                                    />
                                 </a>
                             );
                         } ) }

@@ -12,6 +12,8 @@
 	color: var(--wp-admin-theme-color--fg, #fff);
 	display: flex;
 	flex-direction: column;
+	opacity: 1;
+	transition: opacity 180ms ease;
 }
 
 // Account for mobile admin bar height (46px) so the overlay clears it
@@ -28,6 +30,15 @@
 	right: 0;
 	bottom: 0;
 	z-index: 3; // above preview inside canvas
+	opacity: 1;
+	transition: opacity 180ms ease;
+}
+
+// Closing state: fade the overlay away smoothly
+.edit-site-mosaic__overlay.is-closing,
+.edit-site-mosaic__overlay--in-canvas.is-closing {
+	opacity: 0;
+	pointer-events: none;
 }
 
 .edit-site-mosaic__header {
@@ -35,7 +46,7 @@
 	gap: 18px;
 	align-items: center;
 	justify-content: space-between;
-	padding: 18px 18px 18px; // include bottom padding for proper scroll spacing
+    padding: 18px 18px 16px; // trim bottom by focus ring height to keep consistent gap
 }
 
 .edit-site-mosaic__left { display: flex; gap: 18px; align-items: center; }
@@ -68,7 +79,7 @@
 	position: relative;
 	flex: 1 1 auto;
 	min-height: 0;
-	padding: 0 18px 18px; // no top padding; header provides the top gutter
+    padding: 2px 18px 18px; // small top pad to prevent first tile focus ring from being clipped
 	overflow: auto; // allow scroll when content exceeds viewport (e.g., small screens, empty state)
 	-webkit-overflow-scrolling: touch;
 }
