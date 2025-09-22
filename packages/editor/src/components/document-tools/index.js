@@ -59,10 +59,14 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 			showIconLabels: get( 'core', 'showIconLabels' ),
 			isDistractionFree: get( 'core', 'distractionFree' ),
 			isVisualMode: getEditorMode() === 'visual',
+			// Expose Write/Design tools when experimental write mode is enabled.
+			// AI mode experiment extends support to pages and posts.
 			showTools:
 				!! window?.__experimentalEditorWriteMode &&
 				( getRenderingMode() !== 'post-only' ||
-					getCurrentPostType() === 'wp_template' ),
+					getCurrentPostType() === 'wp_template' ||
+					( !! window?.__experimentalAIMode &&
+						[ 'page', 'post' ].includes( getCurrentPostType() ) ) ),
 		};
 	}, [] );
 

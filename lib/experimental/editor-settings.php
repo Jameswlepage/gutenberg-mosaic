@@ -31,11 +31,38 @@ function gutenberg_enable_experiments() {
 	if ( $gutenberg_experiments && array_key_exists( 'gutenberg-quick-edit-dataviews', $gutenberg_experiments ) ) {
 		wp_add_inline_script( 'wp-block-editor', 'window.__experimentalQuickEditDataViews = true', 'before' );
 	}
+
+	// Mosaic experiment flag.
+	if ( $gutenberg_experiments && array_key_exists( 'gutenberg-mosaic-view', $gutenberg_experiments ) ) {
+		wp_add_inline_script( 'wp-block-editor', 'window.__experimentalMosaicView = true', 'before' );
+	}
+
+	// Launch banner experiment flag and configuration.
+	if ( $gutenberg_experiments && array_key_exists( 'gutenberg-launch-banner', $gutenberg_experiments ) ) {
+		$banner_config = array(
+			'previewUrl' => '#',
+			'launchUrl'  => '#',
+		);
+		wp_add_inline_script(
+			'wp-block-editor',
+			'window.__experimentalLaunchBanner = ' . wp_json_encode( $banner_config ) . ';',
+			'before'
+		);
+	}
 	if ( $gutenberg_experiments && array_key_exists( 'gutenberg-media-processing', $gutenberg_experiments ) ) {
 		wp_add_inline_script( 'wp-block-editor', 'window.__experimentalMediaProcessing = true', 'before' );
 	}
 	if ( $gutenberg_experiments && array_key_exists( 'gutenberg-editor-write-mode', $gutenberg_experiments ) ) {
 		wp_add_inline_script( 'wp-block-editor', 'window.__experimentalEditorWriteMode = true', 'before' );
+	}
+
+	// AI mode depends on Simplified site editing (Write mode).
+	if (
+		$gutenberg_experiments &&
+		array_key_exists( 'gutenberg-editor-write-mode', $gutenberg_experiments ) &&
+		array_key_exists( 'gutenberg-ai-mode', $gutenberg_experiments )
+	) {
+		wp_add_inline_script( 'wp-block-editor', 'window.__experimentalAIMode = true', 'before' );
 	}
 	if ( $gutenberg_experiments && array_key_exists( 'gutenberg-content-only-pattern-insertion', $gutenberg_experiments ) ) {
 		wp_add_inline_script( 'wp-block-editor', 'window.__experimentalContentOnlyPatternInsertion = true', 'before' );
