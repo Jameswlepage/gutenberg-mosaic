@@ -130,6 +130,7 @@ export default function MosaicOverlay( {
     classPrefix,
     initialPostType = 'page',
     allowTypeSwitch = false,
+    typeOptions = [],
     onClose,
     onOpenNew,
     onOpenItem, // (event, record) => void, optional
@@ -276,13 +277,34 @@ export default function MosaicOverlay( {
         >
                 <div className={`${ classPrefix }__header`}>
                     <div className={`${ classPrefix }__left`}>
-                        <div className={`${ classPrefix }__header-title`}>
-                            { `All ${ postType === 'page' ? 'Pages' : postType === 'post' ? 'Posts' : (postType || 'Content') }` }
-                        </div>
-                        { allowTypeSwitch && (
-                            <div className={`${ classPrefix }__type-toggle`}>
-                                <Button __next40pxDefaultSize variant={ postType === 'page' ? 'primary' : 'tertiary' } onClick={ () => { setPage(1); setPostType('page'); } }>Pages</Button>
-                                <Button __next40pxDefaultSize variant={ postType === 'post' ? 'primary' : 'tertiary' } onClick={ () => { setPage(1); setPostType('post'); } }>Posts</Button>
+                        { allowTypeSwitch && Array.isArray( typeOptions ) && typeOptions.length > 0 ? (
+                            <Dropdown
+                                popoverProps={ { placement: 'bottom-start' } }
+                                renderToggle={ ( { isOpen, onToggle } ) => (
+                                    <Button
+                                        className={`${ classPrefix }__header-title`}
+                                        onClick={ onToggle }
+                                        isPressed={ isOpen }
+                                        __next40pxDefaultSize
+                                    >
+                                        { `All ${ ( typeOptions.find( o => o.value === postType )?.label || postType || 'Content' ) }` }
+                                    </Button>
+                                ) }
+                                renderContent={ ( { onClose } ) => (
+                                    <MenuGroup>
+                                        { typeOptions.map( ( opt ) => (
+                                            <MenuItem
+                                                key={ opt.value }
+                                                isSelected={ opt.value === postType }
+                                                onClick={ () => { setPage(1); setPostType( opt.value ); onClose(); } }
+                                            >{ opt.label }</MenuItem>
+                                        ) ) }
+                                    </MenuGroup>
+                                ) }
+                            />
+                        ) : (
+                            <div className={`${ classPrefix }__header-title`}>
+                                { `All ${ postType === 'page' ? 'Pages' : postType === 'post' ? 'Posts' : (postType || 'Content') }` }
                             </div>
                         ) }
                     </div>
@@ -312,6 +334,15 @@ export default function MosaicOverlay( {
                             ) }
                             renderContent={ () => (
                                 <div style={ { padding: 12, minWidth: 280, display: 'grid', gap: 10 } }>
+                                    { allowTypeSwitch && Array.isArray( typeOptions ) && typeOptions.length > 0 && (
+                                        <SelectControl
+                                            __next40pxDefaultSize
+                                            label="Type"
+                                            value={ postType }
+                                            onChange={ ( v ) => { if ( page !== 1 ) setPage( 1 ); setPostType( v ); } }
+                                            options={ typeOptions.map( (o)=> ( { label: o.label, value: o.value } ) ) }
+                                        />
+                                    ) }
                                     <SelectControl
                                         __next40pxDefaultSize
                                         label="Status"

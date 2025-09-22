@@ -39,6 +39,12 @@ export default function SiteMosaicOverlay() {
 function SiteMosaicOverlayInner( { inCanvas, path } ) {
     const { set: setPreference } = useDispatch( preferencesStore );
     const currentUser = useSelect( ( select ) => select( coreStore )?.getCurrentUser?.() );
+    const typeOptions = useSelect( ( select ) => {
+        const types = select( coreStore ).getPostTypes?.( { per_page: -1 } ) || [];
+        // Limit to posts and pages for now; expand to CPTs later if desired.
+        const allowed = types.filter( ( t ) => [ 'page', 'post' ].includes( t.slug ) );
+        return allowed.map( ( t ) => ( { value: t.slug, label: t.labels?.name || t.labels?.singular_name || t.name || t.slug } ) );
+    }, [] );
     const history = useHistory();
     const [ isClosing, setIsClosing ] = useState( false );
     useEffect( () => {
@@ -70,6 +76,7 @@ function SiteMosaicOverlayInner( { inCanvas, path } ) {
             classPrefix="edit-site-mosaic"
             initialPostType="page"
             allowTypeSwitch={ true }
+            typeOptions={ typeOptions }
             overlayClassName={ `${ (!inCanvas || isClosing) ? '' : 'edit-site-mosaic__overlay--in-canvas' }${ isClosing ? ' is-closing' : '' }` }
             onClose={ () => setPreference( 'core/edit-post', 'mosaicViewOpen', false ) }
             onOpenNew={ onOpenNew }
