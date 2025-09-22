@@ -110,21 +110,21 @@
 		grid-template-columns: repeat(4, minmax(0, 1fr));
 	}
 
-	// Wide desktop (>=1280px): up to 5 columns
-	@media (min-width: 1280px) {
-		grid-template-columns: repeat(5, minmax(0, 1fr));
-	}
+    // Wide desktop (>=1280px): cap at 4 columns
+    @media (min-width: 1280px) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
 }
 
 .edit-site-mosaic__empty { color: #cbd5e1; }
 
 
 .edit-site-mosaic__tile-frame {
-	aspect-ratio: 4 / 3;
-	overflow: hidden;
-	border-radius: var(--wp-mosaic-radius, 4px);
-	background: var(--wp-mosaic-tile-bg, #45464A);
-	position: relative;
+    /* Tile container provides the clipping radius; frame has no radius */
+    overflow: hidden;
+    background: var(--wp-mosaic-tile-bg, #45464A);
+    position: relative;
+    flex: 1 1 auto;
 }
 
 .edit-site-mosaic__tile-content { opacity: 0; transition: opacity 220ms ease-out; position: absolute; inset: 0; z-index: 1; }
@@ -159,25 +159,14 @@
 	position: relative;
 	border-radius: var(--wp-mosaic-radius, 4px);
 	overflow: hidden; // clip inner overlays to rounded corners
+	background: #3B3C40; // darker background than plus tile
+    aspect-ratio: 4 / 3; // entire container maintains 4:3
 }
 
-// Focus ring for keyboard selection uses admin primary color
-.edit-site-mosaic__tile:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--wp-admin-theme-color, #3858e9);
-}
+// Remove focus ring visuals; header/menu are always visible
+.edit-site-mosaic__tile:focus-visible { outline: none; box-shadow: none; }
 
-.edit-site-mosaic__tile-menu {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    opacity: 0;
-    z-index: 2;
-    transition: opacity 120ms ease;
-}
-
-.edit-site-mosaic__tile:hover .edit-site-mosaic__tile-menu { opacity: 1; }
-.edit-site-mosaic__tile:focus-within .edit-site-mosaic__tile-menu { opacity: 1; }
+.edit-site-mosaic__tile-menu { position: static; opacity: 1; z-index: auto; }
 
 // Active item indicator (top-left blue dot)
 .edit-site-mosaic__tile-active-dot {
@@ -191,15 +180,8 @@
     z-index: 3;
 }
 
-// Avatar stack for editors
-.edit-site-mosaic__tile-avatars {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    display: flex;
-    gap: 4px;
-    z-index: 3;
-}
+// Avatar area in header
+.edit-site-mosaic__tile-avatars { position: static; display: flex; gap: 4px; z-index: auto; }
 .edit-site-mosaic__tile-avatar {
     width: 20px;
     height: 20px;
@@ -218,9 +200,10 @@
     color: #fff;
 }
 
-// Native-like menu trigger: only black dots, no background
-.edit-site-mosaic__tile-menu .components-button {
-    color: #000;
+// Menu trigger: white icon, no background
+.edit-site-mosaic__tile-menu .components-button,
+.edit-site-mosaic__tile-header-right .components-button {
+    color: #fff;
     background: transparent;
     border: none;
     border-radius: 0;
@@ -228,12 +211,18 @@
 .edit-site-mosaic__tile-menu .components-button:hover,
 .edit-site-mosaic__tile-menu .components-button:active,
 .edit-site-mosaic__tile-menu .components-button.is-pressed,
-.edit-site-mosaic__tile-menu .components-button[aria-expanded='true'] {
-    color: #000;
+.edit-site-mosaic__tile-menu .components-button[aria-expanded='true'],
+.edit-site-mosaic__tile-header-right .components-button:hover,
+.edit-site-mosaic__tile-header-right .components-button:active,
+.edit-site-mosaic__tile-header-right .components-button.is-pressed,
+.edit-site-mosaic__tile-header-right .components-button[aria-expanded='true'] {
+    color: #fff;
     background: transparent;
 }
-.edit-site-mosaic__tile-menu .components-button svg { color: currentColor; fill: currentColor; }
-.edit-site-mosaic__tile-menu .components-button:focus-visible { box-shadow: none; }
+.edit-site-mosaic__tile-menu .components-button svg,
+.edit-site-mosaic__tile-header-right .components-button svg { color: #fff; fill: #fff; }
+.edit-site-mosaic__tile-menu .components-button:focus-visible,
+.edit-site-mosaic__tile-header-right .components-button:focus-visible { box-shadow: none; }
 
 .edit-site-mosaic__tile--plus {
 	border-radius: var(--wp-mosaic-radius, 4px);
@@ -265,10 +254,43 @@
 	}
 }
 
+/* Ensure inner frame doesn't override plus tile background */
+.edit-site-mosaic__tile--plus .edit-site-mosaic__tile-frame { background: transparent; }
+
 .edit-site-mosaic__tile-frame--center {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+// Persistent header on each tile
+.edit-site-mosaic__tile-header {
+	display: grid;
+	grid-template-columns: 1fr auto 1fr; // keep center truly centered
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px; // tighter header to reduce overall height
+	background: #3B3C40;
+}
+.edit-site-mosaic__tile-header-left { display: flex; align-items: center; justify-self: start; }
+.edit-site-mosaic__tile-header-right { display: flex; align-items: center; justify-self: end; }
+.edit-site-mosaic__tile-header-title {
+	color: #ffffff;
+	font-size: 13px;
+	line-height: 1.2;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	grid-column: 2;
+}
+
+// Make the three-dots trigger compact to reduce header height
+.edit-site-mosaic__tile-header-right .components-button.has-icon {
+	padding: 0;
+	min-height: 24px;
+	height: 24px;
+	width: 24px;
 }
 
 

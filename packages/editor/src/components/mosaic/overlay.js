@@ -24,7 +24,8 @@ function useMaxColumnsByViewport() {
     useEffect( () => {
         const compute = () => {
             const w = window.innerWidth || 0;
-            if ( w >= 1280 ) return 5;
+            // Cap at 4 columns on widest viewports
+            if ( w >= 1280 ) return 4;
             if ( w >= 960 ) return 4;
             if ( w >= 782 ) return 3;
             if ( w >= 600 ) return 2;
@@ -409,6 +410,7 @@ export default function MosaicOverlay( {
                                 ? { href: '#', onClick: (e) => onOpenItem( e, r ) }
                                 : { href };
                             const editors = getEditorsForItem ? ( getEditorsForItem( r ) || [] ) : [];
+                            const headerEditors = editors.length ? editors.slice(0,1) : ( isActive ? [ { __placeholder: true } ] : [] );
                             return (
                                 <a
                                     key={ r.id }
@@ -420,83 +422,63 @@ export default function MosaicOverlay( {
                                     aria-label={`${ title } • ${ statusLabel( r?.status ) }`}
                                     { ...linkProps }
                                 >
-                                    { ( isActive || ( editors && editors.length > 0 ) ) ? (
-                                        <div className={`${ classPrefix }__tile-avatars`}>
-                                            { ( isActive && ! editors.length ) && (
-                                                <div className={`${ classPrefix }__tile-active-dot`} title="Currently editing" aria-label="Currently editing" />
-                                            ) }
-                                            { editors.map( (u, i) => {
+                                    <div className={`${ classPrefix }__tile-header`}>
+                                        <div className={`${ classPrefix }__tile-header-left`}>
+                                            { headerEditors.map( (u, i) => {
                                                 const label = u?.name || 'User';
-                                                // Prefer higher‑res avatar for sharper rendering in small sizes.
                                                 const urls = u?.avatar_urls || {};
-                                                const src = urls['96'] || urls['128'] || urls['48'] || urls['24'] || '';
+                                                const src = u.__placeholder ? '' : ( urls['96'] || urls['128'] || urls['48'] || urls['24'] || '' );
                                                 const tooltipText = `Editing: ${ label }`;
                                                 return src ? (
                                                     <Tooltip key={ i } text={ tooltipText }>
-                                                        <img
-                                                            className={`${ classPrefix }__tile-avatar`}
-                                                            src={ src }
-                                                            alt={ label }
-                                                        />
+                                                        <img className={`${ classPrefix }__tile-avatar`} src={ src } alt="" />
                                                     </Tooltip>
                                                 ) : (
-                                                    <Tooltip key={ i } text={ tooltipText }>
-                                                        <div className={`${ classPrefix }__tile-avatar ${ classPrefix }__tile-avatar--placeholder`} aria-label={ tooltipText }>
-                                                            <Icon icon={ userIcon } size={ 14 } />
-                                                        </div>
-                                                    </Tooltip>
+                                                    <span key={ i } className={`${ classPrefix }__tile-avatar ${ classPrefix }__tile-avatar--placeholder`} title={ tooltipText } aria-label={ tooltipText }>
+                                                        <Icon icon={ userIcon } size={ 18 } />
+                                                    </span>
                                                 );
                                             } ) }
                                         </div>
-                                    ) : null }
-                                    <div className={`${ classPrefix }__tile-menu`}>
-                                        <DropdownMenu
-                                            icon={ moreVertical }
-                                            label={ `More actions for ${ title }` }
-                                            toggleProps={ {
-                                                isSmall: true,
-                                                variant: 'tertiary',
-                                                tabIndex: -1,
-                                                ref: (el) => {
-                                                    if (!menuButtonRefs.current) menuButtonRefs.current = [];
-                                                    menuButtonRefs.current[idx] = el;
-                                                },
-                                                onClick: (e)=>{ e.preventDefault(); e.stopPropagation(); }
-                                            } }
-                                        >
-                                            { ( { onClose } ) => (
-                                                <>
-                                                    <MenuGroup>
-                                                        <MenuItem
-                                                            onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); if (href) window.open( href, '_blank' ); onClose(); } }
-                                                        >Open in new tab</MenuItem>
-                                                        <MenuItem
-                                                            onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); if (r?.link) window.open( r.link, '_blank' ); onClose(); } }
-                                                        >Preview on site</MenuItem>
-                                                        <MenuItem
-                                                            onClick={ async (e)=>{ e.preventDefault(); e.stopPropagation(); try { await navigator.clipboard.writeText( r?.link || '' ); createSuccessNotice( 'Link copied.', { type: 'snackbar' } ); } catch{} onClose(); } }
-                                                        >Copy link</MenuItem>
-                                                        { href && (
-                                                            <MenuItem
-                                                                onClick={ async (e)=>{ e.preventDefault(); e.stopPropagation(); try { await navigator.clipboard.writeText( window.location.origin + '/' + href ); createSuccessNotice( 'Edit link copied.', { type: 'snackbar' } ); } catch{} onClose(); } }
-                                                            >Copy edit link</MenuItem>
-                                                        ) }
-                                                    </MenuGroup>
-                                                    <MenuGroup>
-                                                        <MenuItem onClick={ duplicate }>Duplicate</MenuItem>
-                                                        <MenuItem onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); if (href) window.open( href + '#revisions', '_blank' ); onClose(); } }>View revisions</MenuItem>
-                                                    </MenuGroup>
-                                                    <MenuGroup>
-                                                        <MenuItem isDestructive onClick={ trash }>Move to trash</MenuItem>
-                                                    </MenuGroup>
-                                                </>
-                                            ) }
-                                        </DropdownMenu>
+                                        <div className={`${ classPrefix }__tile-header-title`} title={ title }>{ title }</div>
+                                        <div className={`${ classPrefix }__tile-header-right`}>
+                                            <DropdownMenu
+                                                icon={ moreVertical }
+                                                label={ `More actions for ${ title }` }
+                                                toggleProps={ {
+                                                    isSmall: true,
+                                                    variant: 'tertiary',
+                                                    tabIndex: -1,
+                                                    ref: (el) => {
+                                                        if (!menuButtonRefs.current) menuButtonRefs.current = [];
+                                                        menuButtonRefs.current[idx] = el;
+                                                    },
+                                                    onClick: (e)=>{ e.preventDefault(); e.stopPropagation(); }
+                                                } }
+                                            >
+                                                { ( { onClose } ) => (
+                                                    <>
+                                                        <MenuGroup>
+                                                            <MenuItem onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); if (href) window.open( href, '_blank' ); onClose(); } }>Open in new tab</MenuItem>
+                                                            <MenuItem onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); if (r?.link) window.open( r.link, '_blank' ); onClose(); } }>Preview on site</MenuItem>
+                                                            <MenuItem onClick={ async (e)=>{ e.preventDefault(); e.stopPropagation(); try { await navigator.clipboard.writeText( r?.link || '' ); createSuccessNotice( 'Link copied.', { type: 'snackbar' } ); } catch{} onClose(); } }>Copy link</MenuItem>
+                                                            { href && (
+                                                                <MenuItem onClick={ async (e)=>{ e.preventDefault(); e.stopPropagation(); try { await navigator.clipboard.writeText( window.location.origin + '/' + href ); createSuccessNotice( 'Edit link copied.', { type: 'snackbar' } ); } catch{} onClose(); } }>Copy edit link</MenuItem>
+                                                            ) }
+                                                        </MenuGroup>
+                                                        <MenuGroup>
+                                                            <MenuItem onClick={ duplicate }>Duplicate</MenuItem>
+                                                            <MenuItem onClick={ (e)=>{ e.preventDefault(); e.stopPropagation(); if (href) window.open( href + '#revisions', '_blank' ); onClose(); } }>View revisions</MenuItem>
+                                                        </MenuGroup>
+                                                        <MenuGroup>
+                                                            <MenuItem isDestructive onClick={ trash }>Move to trash</MenuItem>
+                                                        </MenuGroup>
+                                                    </>
+                                                ) }
+                                            </DropdownMenu>
+                                        </div>
                                     </div>
                                     <PageTilePreview contentHTML={ r?.content?.raw ?? r?.content?.rendered ?? '' } cacheKey={ cacheKey } classPrefix={ classPrefix } />
-                                    <div className={`${ classPrefix }__tile-meta`}>
-                                        <span className={`${ classPrefix }__tile-title`}>{ title } <span aria-hidden="true"> • </span>{ statusLabel( r?.status ) }</span>
-                                    </div>
                                 </a>
                             );
                         } ) }
