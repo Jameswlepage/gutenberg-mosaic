@@ -58,7 +58,7 @@ function useInViewport( ref ) {
 }
 
 const blockParseCache = new Map();
-function PageTilePreview( { contentHTML, cacheKey, classPrefix, postType, editors } ) {
+function PageTilePreview( { contentHTML, cacheKey, classPrefix, postType } ) {
     const containerRef = useRef( null );
     const visible = useInViewport( containerRef );
     const blocks = useMemo( () => {
@@ -78,25 +78,6 @@ function PageTilePreview( { contentHTML, cacheKey, classPrefix, postType, editor
     const isEmpty = ready && !blocks?.length;
     return (
         <div ref={ containerRef } className={ `${ classPrefix }__tile-frame${ ready ? ' is-ready' : '' }${ isEmpty ? ' is-empty' : '' }` }>
-            { (editors && editors.length) ? (
-                <div className={`${ classPrefix }__tile-avatars`}>
-                    { editors.slice(0,3).map( (u, i) => {
-                        const label = u?.name || 'User';
-                        const urls = u?.avatar_urls || {};
-                        const src = u.__placeholder ? '' : ( urls['96'] || urls['128'] || urls['48'] || urls['24'] || '' );
-                        const tooltipText = `Editing: ${ label }`;
-                        return src ? (
-                            <Tooltip key={ i } text={ tooltipText }>
-                                <img className={`${ classPrefix }__tile-avatar`} src={ src } alt={ label } />
-                            </Tooltip>
-                        ) : (
-                            <Tooltip key={ i } text={ tooltipText }>
-                                <div className={`${ classPrefix }__tile-avatar ${ classPrefix }__tile-avatar--placeholder`} aria-label={ tooltipText } />
-                            </Tooltip>
-                        );
-                    } ) }
-                </div>
-            ) : null }
             <div className={ `${ classPrefix }__tile-content${ ready ? ' is-ready' : '' }` }>
                 { visible && blocks?.length ? (
                     <BlockPreview blocks={ blocks } viewportWidth={ VIEWPORT_WIDTH } />
@@ -265,6 +246,33 @@ export default function MosaicOverlay( {
             html?.classList?.remove( 'is-mosaic-dirty' );
         };
     }, [ onClose, isDirty ] );
+
+    // Read presence advertised by other editor tabs via localStorage
+    const presenceMap = useMemo( () => {
+        const map = new Map();
+        try {
+            if ( typeof window === 'undefined' ) return map;
+            const now = Date.now();
+            for ( let i = 0; i < window.localStorage.length; i++ ) {
+                const k = window.localStorage.key( i );
+                if ( !k || !k.startsWith( 'gb:mosaic:presence:' ) ) continue;
+                const raw = window.localStorage.getItem( k );
+                if ( !raw ) continue;
+                const data = JSON.parse( raw );
+                if ( !data || !data.type || !data.id ) continue;
+                if ( data.ts && now - data.ts > 30000 ) continue; // stale >30s
+                const key = `${ data.type }:${ data.id }`;
+                const entry = { name: data.name, avatar_urls: data.avatar_urls, userId: data.userId };
+                const arr = map.get( key ) || [];
+                // avoid duplicates by userId if present
+                if ( !arr.some( (u) => u.userId && data.userId && u.userId === data.userId ) ) {
+                    arr.push( entry );
+                }
+                map.set( key, arr );
+            }
+        } catch {}
+        return map;
+    }, [ items.length, postType ] );
 
     return (
         <div
@@ -478,7 +486,7 @@ export default function MosaicOverlay( {
                             const linkProps = onOpenItem
                                 ? { href: '#', onClick: (e) => onOpenItem( e, r ) }
                                 : { href };
-                            const editors = getEditorsForItem ? ( getEditorsForItem( r ) || [] ) : [];
+                            const editors = presenceMap.get( `${ r?.type || postType }:${ r.id }` ) || [];
                             // Only show collaborator avatars when there are collaborators beyond the author themself.
                             // Stub behavior: if there is more than one editor listed for the item, treat as collaborators and show.
                             const showCollaborators = Array.isArray( editors ) && editors.length > 1;
@@ -502,6 +510,25 @@ export default function MosaicOverlay( {
                                                     <span className={`${ classPrefix }__tile-active-dot`} role="img" aria-label="Active post" />
                                                 </Tooltip>
                                             ) }
+                                            { editors && editors.length ? (
+                                                <div className={`${ classPrefix }__tile-avatars`}>
+                                                    { editors.slice(0,3).map( (u, i) => {
+                                                        const label = u?.name || 'User';
+                                                        const urls = u?.avatar_urls || {};
+                                                        const src = urls['96'] || urls['128'] || urls['48'] || urls['24'] || '';
+                                                        const tooltipText = `Editing: ${ label }`;
+                                                        return src ? (
+                                                            <Tooltip key={ i } text={ tooltipText }>
+                                                                <img className={`${ classPrefix }__tile-avatar`} src={ src } alt={ label } />
+                                                            </Tooltip>
+                                                        ) : (
+                                                            <Tooltip key={ i } text={ tooltipText }>
+                                                                <div className={`${ classPrefix }__tile-avatar ${ classPrefix }__tile-avatar--placeholder`} aria-label={ tooltipText } />
+                                                            </Tooltip>
+                                                        );
+                                                    } ) }
+                                                </div>
+                                            ) : null }
                                         </div>
                                         <div className={`${ classPrefix }__tile-header-title`} title={ title }>{ title }</div>
                                         <div className={`${ classPrefix }__tile-header-right`}>
