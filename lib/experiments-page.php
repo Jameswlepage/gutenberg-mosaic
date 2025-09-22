@@ -211,6 +211,19 @@ function gutenberg_initialize_experiments_settings() {
 		)
 	);
 
+	// Chat sidebar experiment — shows an experimental chat panel in the editor UI.
+	add_settings_field(
+		'gutenberg-chat-sidebar',
+		__( 'Editor: Chat sidebar (experimental)', 'gutenberg' ),
+		'gutenberg_display_experiment_field',
+		'gutenberg-experiments',
+		'gutenberg_experiments_section',
+		array(
+			'label' => __( 'Enables an experimental chat sidebar within the editor.', 'gutenberg' ),
+			'id'    => 'gutenberg-chat-sidebar',
+		)
+	);
+
 	register_setting(
 		'gutenberg-experiments',
 		'gutenberg-experiments'
