@@ -14,7 +14,6 @@
 	flex-direction: column;
 }
 
-// Account for mobile admin bar height (46px) so the overlay clears it
 @media screen and (max-width: 782px) {
 	body.admin-bar .edit-post-mosaic__overlay {
 		top: calc(var(--wp-mosaic-top-offset, 64px) + 46px);
@@ -26,237 +25,21 @@
     gap: 18px;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 18px 16px; // trim bottom by focus ring height to keep consistent gap
+    padding: 18px 18px 16px;
 }
 
 .edit-post-mosaic__left { display: flex; align-items: center; gap: 18px; }
-.edit-post-mosaic__header-title {
-    font-weight: 600;
-    font-size: 18px;
-    line-height: 1.2;
-    color: #ffffff;
-    margin: 0;
-}
-
-// Force search icon to black inside the header search control
-.edit-post-mosaic__header :is(.components-search-control, .components-input-control__container) :is(.components-input-control__prefix svg, .components-input-control__suffix svg) {
-	color: #000;
-	fill: #000;
-}
-
-.edit-post-mosaic__close {
-	margin-left: auto;
-}
+.edit-post-mosaic__header-title { font-weight: 600; font-size: 18px; line-height: 1.2; color: #ffffff; margin: 0; }
+.edit-post-mosaic__header-actions { display: flex; align-items: center; gap: 18px; }
+.edit-post-mosaic__header :is(.components-search-control, .components-input-control__container) :is(.components-input-control__prefix svg, .components-input-control__suffix svg) { color:#000; fill:#000; }
 
 .edit-post-mosaic__body {
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
-    padding: 2px 18px 18px; // small top pad to prevent first tile focus ring from being clipped
-    overflow: auto; // ensure content is scrollable within overlay
+    padding: 2px 18px 18px;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
-}
-
-// Single-column "only plus tile" empty state: fill the available height, avoid scroll
-.edit-post-mosaic__body--single-empty { overflow: hidden; }
-.edit-post-mosaic__body--single-empty .edit-post-mosaic__grid { height: 100%; }
-.edit-post-mosaic__grid--single-empty .edit-post-mosaic__tile,
-.edit-post-mosaic__grid--single-empty .edit-post-mosaic__tile-frame { height: 100%; }
-.edit-post-mosaic__grid--single-empty .edit-post-mosaic__tile-frame { aspect-ratio: auto; }
-.edit-post-mosaic__grid--single-empty .edit-post-mosaic__sentinel { display: none; }
-
-.edit-post-mosaic__grid {
-    display: grid;
-    gap: 18px;
-    grid-template-columns: repeat(1, minmax(0, 1fr)); // mobile default
-
-    // Small tablet (>=600px): 2 columns
-    @media (min-width: 600px) {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    // Tablet (>=782px): 3 columns
-    @media (min-width: 782px) {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    // Large (>=960px): 4 columns
-    @media (min-width: 960px) {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-
-    // Wide desktop (>=1280px): cap at 4 columns
-    @media (min-width: 1280px) {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-}
-
-.edit-post-mosaic__loading {
-	position: absolute;
-	inset: 0;
-	display: grid;
-	place-items: center;
-}
-
-.edit-post-mosaic__loading--overlay {
-	background: rgba(0,0,0,0.08);
-	backdrop-filter: blur(1px);
-}
-
-.edit-post-mosaic__empty {
-	color: #cbd5e1;
-}
-
-
-.edit-post-mosaic__tile-frame {
-    /* Tile container provides the clipping radius; frame has no radius */
-    overflow: hidden;
-    background: transparent; /* allow translucent tile background to show */
-    position: relative;
-    flex: 1 1 auto;
-}
-
-.edit-post-mosaic__tile-content { opacity: 0; transition: opacity 220ms ease-out; position: absolute; inset: 0; z-index: 1; }
-.edit-post-mosaic__tile-content.is-ready { opacity: 1; }
-
-.edit-post-mosaic__tile-skeleton {
-	position: absolute;
-	inset: 0;
-	z-index: 0;
-	background: #45464A;
-	background-image: linear-gradient(90deg, rgba(255,255,255,0.04) 0, rgba(255,255,255,0.08) 40%, rgba(255,255,255,0.04) 80%);
-	background-size: 300% 100%;
-	animation: mosaic-skel 1.4s ease infinite;
-}
-
-// Fade the skeleton away once content is ready and stop shimmer
-.edit-post-mosaic__tile-frame.is-ready .edit-post-mosaic__tile-skeleton {
-	opacity: 0;
-	transition: opacity 220ms ease-out 60ms; // slight delay so content appears first
-	animation: none;
-}
-
-@keyframes mosaic-skel {
-	0% { background-position: 200% 0; }
-	100% { background-position: -100% 0; }
-}
-
-.edit-post-mosaic__tile {
-    display: flex;
-    flex-direction: column;
-    text-decoration: none;
-    color: inherit;
-    position: relative;
-    border-radius: var(--wp-mosaic-radius, 4px);
-    overflow: hidden; // ensure inner overlays respect rounded corners
-    /* Translucent dark background with subtle blur for depth */
-    background: rgba(59, 60, 64, 0.78);
-    backdrop-filter: blur(3px);
-    aspect-ratio: 4 / 3; // entire container keeps 4:3
-}
-
-// Focus ring: match native input focus using admin primary color
-.edit-post-mosaic__tile:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--wp-admin-theme-color, #3858e9);
-}
-
-.edit-post-mosaic__tile-menu { position: static; opacity: 1; z-index: auto; }
-
-// Active item indicator (top-left blue dot)
-.edit-post-mosaic__tile-active-dot {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--wp-admin-theme-color, #3858e9);
-    z-index: 3;
-}
-
-// Avatar stack for editors
-.edit-post-mosaic__tile-avatars { position: static; display: flex; gap: 4px; z-index: auto; }
-.edit-post-mosaic__tile-avatar {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    object-fit: cover;
-    display: block;
-}
-.edit-post-mosaic__tile-avatar--placeholder {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.2);
-    color: #fff;
-}
-
-// Menu trigger: white icon, no background
-.edit-post-mosaic__tile-menu .components-button,
-.edit-post-mosaic__tile-header-right .components-button {
-    color: #fff;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-}
-.edit-post-mosaic__tile-menu .components-button:hover,
-.edit-post-mosaic__tile-menu .components-button:active,
-.edit-post-mosaic__tile-menu .components-button.is-pressed,
-.edit-post-mosaic__tile-menu .components-button[aria-expanded='true'],
-.edit-post-mosaic__tile-header-right .components-button:hover,
-.edit-post-mosaic__tile-header-right .components-button:active,
-.edit-post-mosaic__tile-header-right .components-button.is-pressed,
-.edit-post-mosaic__tile-header-right .components-button[aria-expanded='true'] {
-    color: #fff;
-    background: transparent;
-}
-.edit-post-mosaic__tile-menu .components-button svg,
-.edit-post-mosaic__tile-header-right .components-button svg {
-    color: #fff;
-    fill: #fff;
-}
-.edit-post-mosaic__tile-menu .components-button:focus-visible,
-.edit-post-mosaic__tile-header-right .components-button:focus-visible { box-shadow: none; }
-
-// Show menu when focusing within for keyboard users
-.edit-post-mosaic__tile:focus-within .edit-post-mosaic__tile-menu {
-    opacity: 1;
-}
-
-.edit-post-mosaic__tile--plus {
-	border-radius: var(--wp-mosaic-radius, 4px);
-	background: var(--wp-mosaic-tile-bg, #45464A);
-	cursor: pointer;
-	display: block;
-	color: #f3f4f6;
-	transition: background 120ms ease, color 120ms ease;
-	border: none;
-	outline: none;
-
-	&:hover {
-		background: #525459;
-		color: #ffffff;
-	}
-
-	&:focus-visible {
-		box-shadow: 0 0 0 2px var(--wp-admin-theme-color, #3858e9);
-	}
-
-	// Ensure the SVG icon uses the intended color
-	& svg {
-		color: #f3f4f6;
-		fill: #f3f4f6;
-		transition: color 120ms ease, fill 120ms ease;
-	}
-
-	&:hover svg {
-		color: #ffffff;
-		fill: #ffffff;
-	}
 }
 
 /* Ensure the inner frame doesn't override the tile background on the plus tile */

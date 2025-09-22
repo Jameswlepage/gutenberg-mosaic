@@ -15,6 +15,7 @@ Highlights
 - Command Palette: while Mosaic is open, suggests Close Mosaic and New {type}; Site Editor also suggests Edit template.
 - Infinite scroll; debounced search; block parse cache; preview skeleton cross‑fade.
 - Tile UI: persistent header inside each tile (left avatar, centered title, right ⋯ menu). Entire tile frame is 4:3; preview fills space below the header.
+- Type switcher: in Site Editor, the header title (“All {Type}”) is a dropdown to switch content types (Pages/Posts), and the Filters popover includes a “Type” control as well.
 - Visuals: translucent dark tile backgrounds with subtle backdrop blur for depth; hover title overlay removed in favor of the always‑visible header.
 - Columns: responsive grid caps at a maximum of 4 columns on wide viewports.
 

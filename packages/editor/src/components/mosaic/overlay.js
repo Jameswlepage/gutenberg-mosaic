@@ -477,7 +477,6 @@ export default function MosaicOverlay( {
                                     aria-label={`${ title } • ${ statusLabel( r?.status ) }`}
                                     { ...linkProps }
                                 >
-                                    { href ? <link rel="prefetch" href={ href } /> : null }
                                     <div className={`${ classPrefix }__tile-header`}>
                                         <div className={`${ classPrefix }__tile-header-left`}>
                                             { isActive && (

@@ -16,6 +16,7 @@ export default function SiteMosaicOverlay() {
     // Stable hooks order
     const { query, path } = useLocation();
     const isCanvasEdit = query?.canvas === 'edit';
+    const { set: setPreference } = useDispatch( preferencesStore );
 
     const [ canvasEl ] = useMemo( () => {
         if ( isCanvasEdit ) return [ null ];
@@ -26,7 +27,14 @@ export default function SiteMosaicOverlay() {
     const { isOpen } = useSelect( ( select ) => ({
         isOpen: !! select( preferencesStore ).get( 'core/edit-post', 'mosaicViewOpen' ),
     }) );
-    if ( ! globalThis.__experimentalMosaicView || ! isOpen ) return null;
+    // If we're on a built-in list context (e.g. /page or /post), auto-close Mosaic even if the flag was on.
+    const isListContext = typeof path === 'string' && /^\/(?:page|post)$/.test( path );
+    useEffect( () => {
+        if ( globalThis.__experimentalMosaicView && isOpen && isListContext ) {
+            setPreference( 'core/edit-post', 'mosaicViewOpen', false );
+        }
+    }, [ isOpen, isListContext, setPreference ] );
+    if ( ! globalThis.__experimentalMosaicView || ! isOpen || isListContext ) return null;
 
     const overlay = <SiteMosaicOverlayInner inCanvas={ ! isCanvasEdit } path={ path } />;
     if ( ! isCanvasEdit ) {
