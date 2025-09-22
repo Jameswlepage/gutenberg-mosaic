@@ -187,6 +187,20 @@ function gutenberg_initialize_experiments_settings() {
 		)
 	);
 
+	// AI mode experiment — depends on Simplified site editing being enabled.
+	add_settings_field(
+		'gutenberg-ai-mode',
+		__( 'Editor: AI mode (experimental)', 'gutenberg' ),
+		'gutenberg_display_ai_experiment_field',
+		'gutenberg-experiments',
+		'gutenberg_experiments_section',
+		array(
+			/* translators: the parentheses note the dependency on simplified site editing */
+			'label' => __( 'Enable AI mode features that extend Write mode. (Requires Simplified site editing)', 'gutenberg' ),
+			'id'    => 'gutenberg-ai-mode',
+		)
+	);
+
 	add_settings_field(
 		'gutenberg-full-page-client-side-navigation',
 		__( 'Interactivity API: Full-page client-side navigation', 'gutenberg' ),
@@ -259,6 +273,29 @@ function gutenberg_display_experiment_field( $args ) {
 			<input type="checkbox" name="<?php echo 'gutenberg-experiments[' . $args['id'] . ']'; ?>" id="<?php echo $args['id']; ?>" value="1" <?php checked( 1, $value ); ?> />
 			<?php echo $args['label']; ?>
 		</label>
+	<?php
+}
+
+/**
+ * Display the AI mode experiment checkbox, disabled unless Simplified site editing is enabled.
+ *
+ * @since 6.7.0
+ *
+ * @param array $args ( $label, $id ).
+ */
+function gutenberg_display_ai_experiment_field( $args ) {
+	$options            = get_option( 'gutenberg-experiments' );
+	$ai_enabled         = isset( $options[ $args['id'] ] ) ? 1 : 0;
+	$write_mode_enabled = isset( $options['gutenberg-editor-write-mode'] );
+	$disabled_attr      = $write_mode_enabled ? '' : 'disabled="disabled"';
+	?>
+		<label for="<?php echo $args['id']; ?>">
+			<input type="checkbox" name="<?php echo 'gutenberg-experiments[' . $args['id'] . ']'; ?>" id="<?php echo $args['id']; ?>" value="1" <?php echo $disabled_attr; ?> <?php checked( 1, $ai_enabled ); ?> />
+			<?php echo $args['label']; ?>
+		</label>
+		<?php if ( ! $write_mode_enabled ) : ?>
+			<p class="description"><?php echo esc_html__( 'Requires Simplified site editing to be enabled.', 'gutenberg' ); ?></p>
+		<?php endif; ?>
 	<?php
 }
 
