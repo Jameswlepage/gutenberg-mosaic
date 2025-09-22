@@ -34,6 +34,7 @@ import { store as editorStore } from '../../store';
 import { unlock } from '../../lock-unlock';
 import EditTemplateBlocksNotification from './edit-template-blocks-notification';
 import ResizableEditor from '../resizable-editor';
+import LaunchBanner from '../launch-banner';
 import useSelectNearestEditableBlock from './use-select-nearest-editable-block';
 import {
 	NAVIGATION_POST_TYPE,
@@ -491,6 +492,8 @@ function VisualEditor( {
 							/>
 						) }
 					</RecursionProvider>
+					{ /* Experiment: fixed launch banner inside iframe canvas */ }
+					<LaunchBanner />
 				</BlockCanvas>
 			</ResizableEditor>
 		</div>
