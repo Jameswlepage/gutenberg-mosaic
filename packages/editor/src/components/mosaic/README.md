@@ -58,6 +58,7 @@ What’s experiment‑specific (current scope)
 Future work
 -----------
 - Seamless open/close animations and intra‑editor navigation without full page reloads. The goal is SPA‑style transitions (e.g., fade/scale canvas to open Mosaic; cross‑fade when opening an item) so moving between items feels instantaneous. This likely involves deeper integration with Post/Site editor routing and preloading.
+- Presence indicators: show collaborator avatars on items when other authors are editing those posts/pages, and indicate the active post more explicitly. This requires a real presence/locking API; we deliberately do not roll our own. When available, use it to surface stacked avatars (with proper a11y) in the header.
 
 Caveats (experiment)
 --------------------

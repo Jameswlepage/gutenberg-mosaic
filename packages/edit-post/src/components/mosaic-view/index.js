@@ -22,30 +22,6 @@ export default function MosaicOverlayWrapper() {
             postId: pid,
         };
     }, [] );
-    // Lightweight presence writer: advertise current user editing this post in localStorage
-    const currentUser = useSelect( ( select ) => select( coreStore )?.getCurrentUser?.() );
-    useEffect( () => {
-        if ( ! enabled || ! isSupported || ! postId || ! postType ) return;
-        const key = `gb:mosaic:presence:${ currentUser?.id || 'me' }:${ postType }:${ postId }`;
-        const write = () => {
-            try {
-                const payload = {
-                    userId: currentUser?.id,
-                    name: currentUser?.name || '',
-                    avatar_urls: currentUser?.avatar_urls || {},
-                    type: postType,
-                    id: postId,
-                    ts: Date.now(),
-                };
-                localStorage.setItem( key, JSON.stringify( payload ) );
-            } catch {}
-        };
-        const iv = setInterval( write, 5000 );
-        write();
-        const onUnload = () => { try { localStorage.removeItem( key ); } catch {} };
-        window.addEventListener( 'beforeunload', onUnload );
-        return () => { clearInterval( iv ); window.removeEventListener( 'beforeunload', onUnload ); try { localStorage.removeItem( key ); } catch {} };
-    }, [ enabled, isSupported, postId, postType, currentUser ] );
 
     if ( ! enabled || ! isOpen || ! isSupported ) return null;
     return <MosaicOverlayInner initialPostType={ postType || 'page' } activeId={ postId } />;

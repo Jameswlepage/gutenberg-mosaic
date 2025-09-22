@@ -60,37 +60,7 @@ function SiteMosaicOverlayInner( { inCanvas, path } ) {
         }
         return undefined;
     }, [ path ] );
-    const activeType = useMemo( () => {
-        if ( typeof path === 'string' ) {
-            const m = path.match(/^\/(post|page)\//);
-            if ( m ) return m[1];
-        }
-        return 'page';
-    }, [ path ] );
-
-    // Presence writer for Site Editor
-    useEffect( () => {
-        if ( ! activeEntityId ) return;
-        const key = `gb:mosaic:presence:${ currentUser?.id || 'me' }:${ activeType }:${ activeEntityId }`;
-        const write = () => {
-            try {
-                const payload = {
-                    userId: currentUser?.id,
-                    name: currentUser?.name || '',
-                    avatar_urls: currentUser?.avatar_urls || {},
-                    type: activeType,
-                    id: activeEntityId,
-                    ts: Date.now(),
-                };
-                localStorage.setItem( key, JSON.stringify( payload ) );
-            } catch {}
-        };
-        const iv = setInterval( write, 5000 );
-        write();
-        const onUnload = () => { try { localStorage.removeItem( key ); } catch {} };
-        window.addEventListener( 'beforeunload', onUnload );
-        return () => { clearInterval( iv ); window.removeEventListener( 'beforeunload', onUnload ); try { localStorage.removeItem( key ); } catch {} };
-    }, [ activeEntityId, activeType, currentUser ] );
+    // Presence not implemented — reserved for future API integration.
 
     const onOpenNew = (type) => {
         window.location.href = `post-new.php?post_type=${ type }`;
