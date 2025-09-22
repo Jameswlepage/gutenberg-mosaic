@@ -19,6 +19,7 @@ import { chevronLeftSmall, chevronRightSmall, layout } from '@wordpress/icons';
 import { displayShortcut } from '@wordpress/keycodes';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as commandsStore } from '@wordpress/commands';
+import { store as preferencesStore } from '@wordpress/preferences';
 import { useRef, useEffect } from '@wordpress/element';
 import { useReducedMotion } from '@wordpress/compose';
 import { decodeEntities } from '@wordpress/html-entities';
@@ -63,6 +64,7 @@ export default function DocumentBar( props ) {
 		templateTitle,
 		onNavigateToPreviousEntityRecord,
 		isTemplatePreview,
+		isMosaicOpen,
 	} = useSelect( ( select ) => {
 		const {
 			getCurrentPostType,
@@ -94,6 +96,8 @@ export default function DocumentBar( props ) {
 		} );
 		const _postTypeLabel = getPostType( _postType )?.labels?.singular_name;
 
+		const { get } = select( preferencesStore );
+
 		return {
 			postId: _postId,
 			postType: _postType,
@@ -111,6 +115,7 @@ export default function DocumentBar( props ) {
 			onNavigateToPreviousEntityRecord:
 				getEditorSettings().onNavigateToPreviousEntityRecord,
 			isTemplatePreview: getRenderingMode() === 'template-locked',
+			isMosaicOpen: !! get( 'core/edit-post', 'mosaicViewOpen' ),
 		};
 	}, [] );
 
@@ -199,25 +204,27 @@ export default function DocumentBar( props ) {
 					>
 						{ icon && <BlockIcon icon={ icon } /> }
 						<Text size="body" as="h1">
-							<span className="editor-document-bar__post-title">
-								{ title
-									? stripHTML( title )
-									: __( 'No title' ) }
-							</span>
-							{ pageTypeBadge && (
-								<span className="editor-document-bar__post-type-label">
-									{ `· ${ pageTypeBadge }` }
+							{ isMosaicOpen ? (
+								<span className="editor-document-bar__post-title">
+									{ postType === 'post' ? __( 'All Posts Open' ) : __( 'All Pages Open' ) }
 								</span>
-							) }
-							{ postTypeLabel &&
-								! props.title &&
-								! pageTypeBadge && (
-									<span className="editor-document-bar__post-type-label">
-										{ `· ${ decodeEntities(
-											postTypeLabel
-										) }` }
+							) : (
+								<>
+									<span className="editor-document-bar__post-title">
+										{ title ? stripHTML( title ) : __( 'No title' ) }
 									</span>
-								) }
+									{ pageTypeBadge && (
+										<span className="editor-document-bar__post-type-label">
+											{ `· ${ pageTypeBadge }` }
+										</span>
+									) }
+									{ postTypeLabel && ! props.title && ! pageTypeBadge && (
+										<span className="editor-document-bar__post-type-label">
+											{ `· ${ decodeEntities( postTypeLabel ) }` }
+										</span>
+									) }
+								</>
+							) }
 						</Text>
 					</motion.div>
 					<span className="editor-document-bar__shortcut">

@@ -1,0 +1,45 @@
+/* stylelint-disable -- experimental mosaic styles WIP */
+
+.edit-site-mosaic__overlay {
+	position: fixed;
+	top: var(--wp-mosaic-top-offset, 64px);
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1000;
+	background: color-mix(in srgb, #0b0d12 92%, transparent);
+	backdrop-filter: blur(2px);
+	color: var(--wp-admin-theme-color--fg, #fff);
+	display: flex;
+	flex-direction: column;
+	opacity: 1;
+	transition: opacity 180ms ease;
+}
+
+@media screen and (max-width: 782px) {
+	body.admin-bar .edit-site-mosaic__overlay {
+		top: calc(var(--wp-mosaic-top-offset, 64px) + 46px);
+	}
+}
+
+.edit-site-mosaic__overlay--in-canvas {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 3;
+	opacity: 1;
+	transition: opacity 180ms ease;
+}
+
+.edit-site-mosaic__overlay.is-closing,
+.edit-site-mosaic__overlay--in-canvas.is-closing { opacity: 0; pointer-events: none; }
+
+.edit-site-mosaic__header { display: flex; gap: 18px; align-items: center; justify-content: space-between; padding: 18px 18px 16px; }
+.edit-site-mosaic__left { display: flex; gap: 18px; align-items: center; }
+.edit-site-mosaic__header-title { font-weight: 600; font-size: 18px; line-height: 1.2; color: #fff; margin: 0; }
+.edit-site-mosaic__header-actions { display: flex; align-items: center; gap: 18px; }
+.edit-site-mosaic__header :is(.components-search-control, .components-input-control__container) :is(.components-input-control__prefix svg, .components-input-control__suffix svg) { color:#000; fill:#000; }
+
+.edit-site-mosaic__body { position: relative; flex: 1 1 auto; min-height: 0; padding: 2px 18px 18px; overflow: auto; -webkit-overflow-scrolling: touch; }

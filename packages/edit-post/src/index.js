@@ -57,7 +57,12 @@ export function initializeEditor(
 		themeStyles: true,
 		welcomeGuide: true,
 		welcomeGuideTemplate: true,
+		mosaicViewOpen: false,
 	} );
+
+	// Ensure Mosaic view starts closed on every editor load.
+	// This overrides any persisted value from a previous session.
+	dispatch( preferencesStore ).set( 'core/edit-post', 'mosaicViewOpen', false );
 
 	dispatch( preferencesStore ).setDefaults( 'core', {
 		allowRightClickOverrides: true,

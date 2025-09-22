@@ -13,6 +13,8 @@ import Layout from '../layout';
 import { unlock } from '../../lock-unlock';
 import { store as editSiteStore } from '../../store';
 import { useCommonCommands } from '../../hooks/commands/use-common-commands';
+import { useMosaicCommand } from '../../hooks/commands/use-mosaic-command';
+import MosaicKeyboardShortcut from '../mosaic-keyboard-shortcut';
 import useSetCommandContext from '../../hooks/commands/use-set-command-context';
 import { useRegisterSiteEditorRoutes } from '../site-editor-routes';
 import {
@@ -23,10 +25,14 @@ import {
 const { RouterProvider } = unlock( routerPrivateApis );
 
 function AppLayout() {
-	useCommonCommands();
-	useSetCommandContext();
+    useCommonCommands();
+    useSetCommandContext();
+    useMosaicCommand();
 
-	return <Layout />;
+    return <>
+        <Layout />
+        <MosaicKeyboardShortcut />
+    </>;
 }
 
 export default function App() {

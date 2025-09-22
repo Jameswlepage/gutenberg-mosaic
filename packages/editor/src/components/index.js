@@ -99,6 +99,8 @@ export { default as UnsavedChangesWarning } from './unsaved-changes-warning';
 export { default as WordCount } from './word-count';
 export { default as TimeToRead } from './time-to-read';
 export { default as CharacterCount } from './character-count';
+// Experimental: Mosaic overlay (shared)
+export { default as MosaicOverlay } from './mosaic/overlay';
 
 // State Related Components.
 export { default as EditorProvider } from './provider';

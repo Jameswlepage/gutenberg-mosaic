@@ -211,6 +211,19 @@ function gutenberg_initialize_experiments_settings() {
 		)
 	);
 
+	// Mosaic experiment — keep at the bottom of the list.
+	add_settings_field(
+		'gutenberg-mosaic-view',
+		__( 'Editor: Mosaic content overview', 'gutenberg' ),
+		'gutenberg_display_experiment_field',
+		'gutenberg-experiments',
+		'gutenberg_experiments_section',
+		array(
+			'label' => __( 'Enables an in‑editor mosaic overview and navigation for Posts and Pages.', 'gutenberg' ),
+			'id'    => 'gutenberg-mosaic-view',
+		)
+	);
+
 	register_setting(
 		'gutenberg-experiments',
 		'gutenberg-experiments'

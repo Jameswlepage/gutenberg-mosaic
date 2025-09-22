@@ -16,7 +16,8 @@ import { __ } from '@wordpress/i18n';
 import { store as coreStore } from '@wordpress/core-data';
 import { decodeEntities } from '@wordpress/html-entities';
 import { memo, forwardRef, useContext } from '@wordpress/element';
-import { search } from '@wordpress/icons';
+import { search, category as mosaicIcon } from '@wordpress/icons';
+import { store as preferencesStore } from '@wordpress/preferences';
 import { store as commandsStore } from '@wordpress/commands';
 import { displayShortcut } from '@wordpress/keycodes';
 import { filterURLForDisplay } from '@wordpress/url';
@@ -48,6 +49,8 @@ const SiteHub = memo(
 			};
 		}, [] );
 		const { open: openCommandCenter } = useDispatch( commandsStore );
+		const { set: setPreference } = useDispatch( preferencesStore );
+		const isMosaicOpen = useSelect( ( select ) => !! select( preferencesStore ).get( 'core/edit-post', 'mosaicViewOpen' ) );
 
 		return (
 			<div className="edit-site-site-hub">
@@ -97,14 +100,24 @@ const SiteHub = memo(
 							expanded={ false }
 							className="edit-site-site-hub__actions"
 						>
-							<Button
-								size="compact"
-								className="edit-site-site-hub_toggle-command-center"
-								icon={ search }
-								onClick={ () => openCommandCenter() }
-								label={ __( 'Open command palette' ) }
-								shortcut={ displayShortcut.primary( 'k' ) }
-							/>
+                    <Button
+                        size="compact"
+                        className="edit-site-site-hub_toggle-command-center"
+                        icon={ search }
+                        onClick={ () => openCommandCenter() }
+                        label={ __( 'Open command palette' ) }
+                        shortcut={ displayShortcut.primary( 'k' ) }
+                    />
+                    { globalThis.__experimentalMosaicView && (
+                        <Button
+                            size="compact"
+                            className="edit-site-site-hub_toggle-mosaic"
+                            icon={ mosaicIcon }
+                            onClick={ () => setPreference( 'core/edit-post', 'mosaicViewOpen', ! isMosaicOpen ) }
+                            label={ __( 'Mosaic' ) }
+                            shortcut={ displayShortcut.primaryShift( 'm' ) }
+                        />
+                    ) }
 						</HStack>
 					</HStack>
 				</HStack>
