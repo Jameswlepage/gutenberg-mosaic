@@ -507,6 +507,10 @@ _Parameters_
 
 > **Deprecated** since 5.3, use `wp.blockEditor.MediaUploadCheck` instead.
 
+### MosaicOverlay
+
+Undocumented declaration.
+
 ### MultiSelectScrollIntoView
 
 > **Deprecated** since 5.3, use `wp.blockEditor.MultiSelectScrollIntoView` instead.

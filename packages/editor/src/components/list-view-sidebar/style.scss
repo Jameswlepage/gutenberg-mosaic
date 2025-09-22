@@ -35,8 +35,13 @@
 	padding: $grid-unit-20;
 	// Ensure footer is non-shrinking and stays at the bottom.
 	flex: 0 0 auto;
-}
 
+	// Make primary action button span full width.
+	.components-button {
+		width: 100%;
+		justify-content: center;
+	}
+}
 .editor-list-view-sidebar__tab-panel {
 	height: 100%;
 }

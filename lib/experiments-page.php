@@ -211,6 +211,19 @@ function gutenberg_initialize_experiments_settings() {
 		)
 	);
 
+	// Launch banner experiment — shown as a fixed bottom banner in the editor canvas.
+	add_settings_field(
+		'gutenberg-launch-banner',
+		__( 'Editor: Trial launch banner', 'gutenberg' ),
+		'gutenberg_display_experiment_field',
+		'gutenberg-experiments',
+		'gutenberg_experiments_section',
+		array(
+			'label' => __( 'Shows a fixed bottom banner in the editor canvas for trial sites with Preview and Launch actions.', 'gutenberg' ),
+			'id'    => 'gutenberg-launch-banner',
+		)
+	);
+
 	// Mosaic experiment — keep at the bottom of the list.
 	add_settings_field(
 		'gutenberg-mosaic-view',
@@ -223,7 +236,6 @@ function gutenberg_initialize_experiments_settings() {
 			'id'    => 'gutenberg-mosaic-view',
 		)
 	);
-
 	register_setting(
 		'gutenberg-experiments',
 		'gutenberg-experiments'
