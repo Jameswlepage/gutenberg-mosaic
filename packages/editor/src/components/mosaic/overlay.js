@@ -14,7 +14,8 @@ import { plus, moreVertical, postAuthor as userIcon, funnel } from '@wordpress/i
 import { useDispatch, useSelect } from '@wordpress/data';
 import { useEntityRecords, store as coreStore } from '@wordpress/core-data';
 import { store as noticesStore } from '@wordpress/notices';
-import { store as editorStore } from '@wordpress/editor';
+// Avoid self-dependency on @wordpress/editor to prevent dependency cycles in PHP dependency resolution
+import { store as editorStore } from '../../store';
 
 const VIEWPORT_WIDTH = 1000;
 
@@ -257,11 +258,11 @@ export default function MosaicOverlay( {
                         />
                         <Dropdown
                             popoverProps={ { placement: 'bottom-end', className: `${ classPrefix }__filters-popover` } }
-                            renderToggle={ ( { isOpen, onToggle, reference } ) => (
+                            renderToggle={ ( { isOpen, onToggle } ) => (
                                 <Button
                                     __next40pxDefaultSize
                                     icon={ funnel }
-                                    ref={ (el) => { filtersButtonRef.current = el; reference( el ); } }
+                                    ref={ (el) => { filtersButtonRef.current = el; } }
                                     aria-expanded={ isOpen }
                                     aria-haspopup="true"
                                     onClick={ onToggle }
