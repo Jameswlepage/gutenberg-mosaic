@@ -14,6 +14,9 @@ Highlights
 - Keyboard: Esc closes; Arrow keys move focus across tiles; Enter opens; Shift+F10/ContextMenu opens tile menu.
 - Command Palette: while Mosaic is open, suggests Close Mosaic and New {type}; Site Editor also suggests Edit template.
 - Infinite scroll; debounced search; block parse cache; preview skeleton cross‑fade.
+- Tile UI: persistent header inside each tile (left avatar, centered title, right ⋯ menu). Entire tile frame is 4:3; preview fills space below the header.
+- Visuals: translucent dark tile backgrounds with subtle backdrop blur for depth; hover title overlay removed in favor of the always‑visible header.
+- Columns: responsive grid caps at a maximum of 4 columns on wide viewports.
 
 Files (entry points)
 --------------------
@@ -28,12 +31,13 @@ Key implementation notes
 - Feature flag: Toggle in wp-admin → Gutenberg → Experiments.
 - State: open/close uses preferencesStore key `core/edit-post:mosaicViewOpen` (shared across editors by design).
 - Data: `useEntityRecords` for ‘post’/‘page’ with search/sort/status/pagination.
-- Previews: BlockPreview inside a 4:3 frame; skeleton shimmer fades to content.
-- Layout: responsive grid, columns 1→5 by viewport; clamp to `min(items+plus, maxByViewport)`.
+- Previews: BlockPreview fills the tile body; skeleton shimmer fades to content.
+- Layout: responsive grid, columns 1→4 by viewport; clamp to `min(items+plus, maxByViewport)`.
 - Keyboard & a11y:
   - Esc closes; Arrow keys move focus across tiles; Enter/Space open; Shift+F10/ContextMenu opens the tile menu.
   - Tab/Shift+Tab step through tiles inside the grid; overlay focus trap manages Tab only when focus is outside the grid.
   - role="dialog" + aria-modal="true"; roving tabindex across tiles.
+  - Focus indicator: tiles use the same focus ring style as native inputs (box‑shadow 0 0 0 2px var(--wp-admin-theme-color)).
 - Command Palette: while Mosaic is open, suggests Close Mosaic and New {type}; Site Editor also suggests Edit template.
 - List View CTA: When the experiment is enabled, a button labeled “Add new {Type}” appears at the bottom of the List View tab. Clicking it opens `post-new.php?post_type={Type}`.
 - Avatars: optional `getEditorsForItem(record)` renders a small avatar stack; wrappers currently pass the current user for the active item. There is no bulk “who is editing” endpoint today.
@@ -44,6 +48,12 @@ The overlay and tiles support CSS variables with fallbacks:
 - --wp-mosaic-top-offset (default 64px)
 - --wp-mosaic-radius (default 4px)
 - --wp-mosaic-tile-bg (default #45464A)
+
+What’s experiment‑specific (current scope)
+-----------------------------------------
+- Toolbar integration hides most right‑side controls while Mosaic is open; if there are unsaved changes, only the Save/Publish button remains visible.
+- Site Editor portals overlay into the canvas when viewing content (canvas=view), and uses a fixed overlay otherwise.
+- Header inside each tile (avatar | centered title | ⋯ menu) replaces the previous hover title overlay.
 
 Caveats (experiment)
 --------------------

@@ -14,6 +14,13 @@
 	flex-direction: column;
 }
 
+// Account for mobile admin bar height (46px) so the overlay clears it
+@media screen and (max-width: 782px) {
+	body.admin-bar .edit-site-mosaic__overlay {
+		top: calc(var(--wp-mosaic-top-offset, 64px) + 46px);
+	}
+}
+
 .edit-site-mosaic__overlay--in-canvas {
 	position: absolute;
 	top: 0;
@@ -122,7 +129,7 @@
 .edit-site-mosaic__tile-frame {
     /* Tile container provides the clipping radius; frame has no radius */
     overflow: hidden;
-    background: var(--wp-mosaic-tile-bg, #45464A);
+    background: transparent; /* allow translucent tile background to show */
     position: relative;
     flex: 1 1 auto;
 }
@@ -159,12 +166,17 @@
 	position: relative;
 	border-radius: var(--wp-mosaic-radius, 4px);
 	overflow: hidden; // clip inner overlays to rounded corners
-	background: #3B3C40; // darker background than plus tile
+    /* Translucent dark background with subtle blur for depth */
+    background: rgba(59, 60, 64, 0.78);
+    backdrop-filter: blur(3px);
     aspect-ratio: 4 / 3; // entire container maintains 4:3
 }
 
-// Remove focus ring visuals; header/menu are always visible
-.edit-site-mosaic__tile:focus-visible { outline: none; box-shadow: none; }
+// Focus ring: match native input focus using admin primary color
+.edit-site-mosaic__tile:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--wp-admin-theme-color, #3858e9);
+}
 
 .edit-site-mosaic__tile-menu { position: static; opacity: 1; z-index: auto; }
 
@@ -270,7 +282,8 @@
 	align-items: center;
 	gap: 8px;
 	padding: 6px 10px; // tighter header to reduce overall height
-	background: #3B3C40;
+	background: rgba(59, 60, 64, 0.72);
+	backdrop-filter: inherit; // inherit blur from tile
 }
 .edit-site-mosaic__tile-header-left { display: flex; align-items: center; justify-self: start; }
 .edit-site-mosaic__tile-header-right { display: flex; align-items: center; justify-self: end; }
