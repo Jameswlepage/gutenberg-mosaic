@@ -12,6 +12,8 @@ import { useCallback, useRef, useState } from '@wordpress/element';
 import { __, _x } from '@wordpress/i18n';
 import { useShortcut } from '@wordpress/keyboard-shortcuts';
 import { ESCAPE } from '@wordpress/keycodes';
+import { Button } from '@wordpress/components';
+import { store as coreStore } from '@wordpress/core-data';
 
 /**
  * Internal dependencies
@@ -25,6 +27,14 @@ const { TabbedSidebar } = unlock( blockEditorPrivateApis );
 export default function ListViewSidebar() {
 	const { setIsListViewOpened } = useDispatch( editorStore );
 	const { getListViewToggleRef } = unlock( useSelect( editorStore ) );
+
+    // Current post type and label for the List View CTA (experiment)
+    const { postType, postTypeLabel } = useSelect( ( select ) => {
+        const type = select( editorStore ).getCurrentPostType?.();
+        const typeObj = type ? select( coreStore ).getPostType?.( type ) : undefined;
+        const label = typeObj?.labels?.singular_name || typeObj?.name || type || '';
+        return { postType: type, postTypeLabel: label };
+    }, [] );
 
 	// This hook handles focus when the sidebar first renders.
 	const focusOnMountRef = useFocusOnMount( 'firstElement' );
@@ -126,10 +136,21 @@ export default function ListViewSidebar() {
 						panel: (
 							<div className="editor-list-view-sidebar__list-view-container">
 								<div className="editor-list-view-sidebar__list-view-panel-content">
-									<ListView
-										dropZoneElement={ dropZoneElement }
-									/>
+									<ListView dropZoneElement={ dropZoneElement } />
 								</div>
+								{ globalThis.__experimentalMosaicView && postType && (
+									<div className="editor-list-view-sidebar__footer">
+										<Button
+											variant="secondary"
+											__next40pxDefaultSize
+											onClick={ () => {
+												window.location.href = `post-new.php?post_type=${ postType }`;
+											} }
+										>
+											{ __( 'Add new' ) } { postTypeLabel }
+										</Button>
+									</div>
+								) }
 							</div>
 						),
 						panelRef: listViewContainerRef,

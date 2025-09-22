@@ -9,11 +9,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from '@wordpress/element';
 import { parse } from '@wordpress/blocks';
 import { BlockPreview } from '@wordpress/block-editor';
-import { Button, __experimentalText as Text, Icon, SearchControl, SelectControl, DropdownMenu, MenuGroup, MenuItem, Spinner } from '@wordpress/components';
-import { plus, moreVertical } from '@wordpress/icons';
-import { useDispatch } from '@wordpress/data';
+import { Button, __experimentalText as Text, Icon, SearchControl, SelectControl, DropdownMenu, MenuGroup, MenuItem, Spinner, Dropdown, Tooltip } from '@wordpress/components';
+import { plus, moreVertical, postAuthor as userIcon, funnel } from '@wordpress/icons';
+import { useDispatch, useSelect } from '@wordpress/data';
 import { useEntityRecords, store as coreStore } from '@wordpress/core-data';
 import { store as noticesStore } from '@wordpress/notices';
+import { store as editorStore } from '@wordpress/editor';
 
 const VIEWPORT_WIDTH = 1000;
 
@@ -85,7 +86,7 @@ function PageTilePreview( { contentHTML, cacheKey, classPrefix } ) {
     );
 }
 
-export default function MosaicOverlayCore( {
+export default function MosaicOverlay( {
     classPrefix,
     initialPostType = 'page',
     allowTypeSwitch = false,
@@ -93,6 +94,9 @@ export default function MosaicOverlayCore( {
     onOpenNew,
     onOpenItem, // (event, record) => void, optional
     getItemHref, // (record) => string, optional
+    isActiveItem, // (record) => boolean, optional
+    getEditorsForItem, // (record) => Array<{ id?:number, name?:string, avatar_urls?:Record<string,string> }>
+    overlayClassName = '',
 } ) {
     const [ postType, setPostType ] = useState( initialPostType );
     const [ search, setSearch ] = useState( '' );
@@ -104,6 +108,7 @@ export default function MosaicOverlayCore( {
     const maxByViewport = useMaxColumnsByViewport();
     const { saveEntityRecord, deleteEntityRecord } = useDispatch( coreStore );
     const { createSuccessNotice, createErrorNotice } = useDispatch( noticesStore );
+    const filtersButtonRef = useRef( null );
 
     useEffect( () => {
         const t = setTimeout( () => setDebouncedSearch( search ), 250 );
@@ -131,6 +136,11 @@ export default function MosaicOverlayCore( {
     const menuButtonRefs = useRef( [] );
     const plusRef = useRef( null );
     const overlayRef = useRef();
+    // Track dirty state to control header save button visibility while Mosaic is open
+    const isDirty = useSelect( ( select ) => {
+        const ed = select( editorStore );
+        return !! ( ed?.isEditedPostDirty?.() || ed?.hasNonPostEntityChanges?.() );
+    }, [] );
 
     useEffect( () => {
         if ( page === 1 ) {
@@ -168,18 +178,30 @@ export default function MosaicOverlayCore( {
 
     useEffect( () => {
         overlayRef.current?.focus?.();
+        // Reflect dirty state on the root element to show the Save button in header while Mosaic is open
+        const html = document?.documentElement;
+        if ( isDirty ) html?.classList?.add( 'is-mosaic-dirty' );
+        else html?.classList?.remove( 'is-mosaic-dirty' );
         const onKey = ( e ) => {
             if ( e.key === 'Escape' ) onClose?.();
             if ( e.key === '/' ) {
-                const input = overlayRef.current?.querySelector?.( 'input[type="search"], input[role="searchbox"]' );
-                input?.focus?.();
-                e.preventDefault();
+                // Focus the header search input
+                requestAnimationFrame( () => {
+                    const input = overlayRef.current?.querySelector?.( 'input[type="search"], input[role="searchbox"]' );
+                    if ( input ) {
+                        input.focus();
+                        e.preventDefault();
+                    }
+                } );
             }
         };
         const onTabKey = ( e ) => {
             if ( e.key !== 'Tab' ) return;
             const root = overlayRef.current;
             if ( ! root ) return;
+            // If focus is inside the grid, let the grid manage Tab navigation.
+            const gridEl = root.querySelector( `.${ classPrefix }__grid` );
+            if ( gridEl && gridEl.contains( e.target ) ) return;
             const focusables = root.querySelectorAll(
                 'a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"])'
             );
@@ -199,78 +221,121 @@ export default function MosaicOverlayCore( {
         return () => {
             document.removeEventListener( 'keydown', onKey, true );
             document.removeEventListener( 'keydown', onTabKey, true );
+            html?.classList?.remove( 'is-mosaic-dirty' );
         };
-    }, [ onClose ] );
+    }, [ onClose, isDirty ] );
 
     return (
         <div
-            className={ `${ classPrefix }__overlay` }
+            className={ `${ classPrefix }__overlay${ overlayClassName ? ' ' + overlayClassName : '' }` }
             role="dialog"
             aria-modal="true"
             aria-label="Mosaic overview"
             tabIndex={ -1 }
             ref={ overlayRef }
         >
-            <div className={`${ classPrefix }__header`}>
-                <div className={`${ classPrefix }__left`}>
-                    <div className={`${ classPrefix }__header-title`}>
-                        { `All ${ postType === 'page' ? 'Pages' : postType === 'post' ? 'Posts' : (postType || 'Content') }` }
-                    </div>
-                    { allowTypeSwitch && (
-                        <div className={`${ classPrefix }__type-toggle`}>
-                            <Button __next40pxDefaultSize variant={ postType === 'page' ? 'primary' : 'tertiary' } onClick={ () => { setPage(1); setPostType('page'); } }>Pages</Button>
-                            <Button __next40pxDefaultSize variant={ postType === 'post' ? 'primary' : 'tertiary' } onClick={ () => { setPage(1); setPostType('post'); } }>Posts</Button>
+                <div className={`${ classPrefix }__header`}>
+                    <div className={`${ classPrefix }__left`}>
+                        <div className={`${ classPrefix }__header-title`}>
+                            { `All ${ postType === 'page' ? 'Pages' : postType === 'post' ? 'Posts' : (postType || 'Content') }` }
                         </div>
-                    ) }
+                        { allowTypeSwitch && (
+                            <div className={`${ classPrefix }__type-toggle`}>
+                                <Button __next40pxDefaultSize variant={ postType === 'page' ? 'primary' : 'tertiary' } onClick={ () => { setPage(1); setPostType('page'); } }>Pages</Button>
+                                <Button __next40pxDefaultSize variant={ postType === 'post' ? 'primary' : 'tertiary' } onClick={ () => { setPage(1); setPostType('post'); } }>Posts</Button>
+                            </div>
+                        ) }
+                    </div>
+                    <div className={`${ classPrefix }__header-actions`}>
+                        <SearchControl
+                            __next40pxDefaultSize
+                            value={ search }
+                            onChange={ (v) => { if ( page !== 1 ) setPage( 1 ); setSearch( v ); } }
+                            label="Search"
+                            hideLabelFromVision
+                            placeholder="Search by title"
+                        />
+                        <Dropdown
+                            popoverProps={ { placement: 'bottom-end', className: `${ classPrefix }__filters-popover` } }
+                            renderToggle={ ( { isOpen, onToggle, reference } ) => (
+                                <Button
+                                    __next40pxDefaultSize
+                                    icon={ funnel }
+                                    ref={ (el) => { filtersButtonRef.current = el; reference( el ); } }
+                                    aria-expanded={ isOpen }
+                                    aria-haspopup="true"
+                                    onClick={ onToggle }
+                                    label="Filters"
+                                    style={ { color: '#fff' } }
+                                    isPressed={ isOpen }
+                                />
+                            ) }
+                            renderContent={ () => (
+                                <div style={ { padding: 12, minWidth: 280, display: 'grid', gap: 10 } }>
+                                    <SelectControl
+                                        __next40pxDefaultSize
+                                        label="Status"
+                                        value={ statusFilter }
+                                        onChange={ ( v ) => { if ( page !== 1 ) setPage( 1 ); setStatusFilter( v ); } }
+                                        options={ [
+                                            { label: 'All', value: 'all' },
+                                            { label: 'Draft', value: 'draft' },
+                                            { label: 'Published', value: 'publish' },
+                                            { label: 'Scheduled', value: 'future' },
+                                            { label: 'Private', value: 'private' },
+                                        ] }
+                                    />
+                                    <SelectControl
+                                        __next40pxDefaultSize
+                                        label="Sort"
+                                        value={ sort }
+                                        onChange={ ( v ) => { if ( page !== 1 ) setPage( 1 ); setSort( v ); } }
+                                        options={ [
+                                            { label: 'Newest', value: 'date_desc' },
+                                            { label: 'Oldest', value: 'date_asc' },
+                                            { label: 'Recently modified', value: 'modified_desc' },
+                                            { label: 'Least recently modified', value: 'modified_asc' },
+                                            { label: 'Title A–Z', value: 'title_asc' },
+                                            { label: 'Title Z–A', value: 'title_desc' },
+                                        ] }
+                                    />
+                                </div>
+                            ) }
+                        />
+                    </div>
                 </div>
-                <div className={`${ classPrefix }__header-actions`}>
-                    <SelectControl
-                        __next40pxDefaultSize
-                        hideLabelFromVision
-                        label="Sort"
-                        value={ sort }
-                        onChange={ (v)=> { if ( page !== 1 ) setPage(1); setSort(v); } }
-                        options={ [
-                            { label: 'Newest', value: 'date_desc' },
-                            { label: 'Oldest', value: 'date_asc' },
-                            { label: 'Recently modified', value: 'modified_desc' },
-                            { label: 'Least recently modified', value: 'modified_asc' },
-                            { label: 'Title A–Z', value: 'title_asc' },
-                            { label: 'Title Z–A', value: 'title_desc' },
-                        ] }
-                    />
-                    <SelectControl
-                        __next40pxDefaultSize
-                        hideLabelFromVision
-                        label="Status"
-                        value={ statusFilter }
-                        onChange={ (v)=> { if ( page !== 1 ) setPage(1); setStatusFilter(v); } }
-                        options={ [
-                            { label: 'All', value: 'all' },
-                            { label: 'Draft', value: 'draft' },
-                            { label: 'Published', value: 'publish' },
-                            { label: 'Scheduled', value: 'future' },
-                            { label: 'Private', value: 'private' },
-                        ] }
-                    />
-                    <SearchControl
-                        __next40pxDefaultSize
-                        value={ search }
-                        onChange={ (v) => { if ( page !== 1 ) setPage( 1 ); setSearch( v ); } }
-                        label="Search"
-                        hideLabelFromVision
-                        placeholder="Search by title"
-                    />
-                </div>
-            </div>
-            <div className={`${ classPrefix }__body`}>
+            <div className={`${ classPrefix }__body${ (page === 1 && items.length === 0) ? ' ' + classPrefix + '__body--single-empty' : '' }`}>
                 { page === 1 && isResolving && ! items.length ? null : (
                     <div
-                        className={`${ classPrefix }__grid`}
+                        className={`${ classPrefix }__grid${ (page === 1 && items.length === 0) ? ' ' + classPrefix + '__grid--single-empty' : '' }`}
                         role="grid"
                         aria-label="Items"
                         style={ { gridTemplateColumns: `repeat(${ Math.min( (items.length + 1) || 1, maxByViewport ) }, minmax(0, 1fr))` } }
                         onKeyDown={ (e) => {
+                            if ( e.key === 'Tab' ) {
+                                const lastIndex = items.length; // plus tile is last
+                                if ( e.shiftKey ) {
+                                    if ( activeIndex > 0 ) {
+                                        e.preventDefault();
+                                        const prev = activeIndex - 1;
+                                        setActiveIndex( prev );
+                                        tileRefs.current[ prev ]?.focus?.();
+                                    }
+                                    // if at first, allow default to go back to header controls
+                                    return;
+                                }
+                                // forward tab
+                                if ( activeIndex < lastIndex ) {
+                                    e.preventDefault();
+                                    const next = activeIndex + 1;
+                                    setActiveIndex( next );
+                                    const el = next === lastIndex ? plusRef.current : tileRefs.current[ next ];
+                                    el?.focus?.();
+                                    return;
+                                }
+                                // at last (+) allow default to move to next control after grid
+                                return;
+                            }
                             const columns = Math.min( (items.length + 1) || 1, maxByViewport );
                             const lastIndex = items.length;
                             let next = activeIndex;
@@ -315,6 +380,7 @@ export default function MosaicOverlayCore( {
                             const statusLabel = (s)=>({ draft: 'Draft', publish: 'Published', future: 'Scheduled', private: 'Private', pending: 'Pending' })[s] || s;
                             const href = getItemHref?.( r );
                             const cacheKey = `${ r.id }:${ r.modified || r.date || '' }`;
+                            const isActive = !! isActiveItem?.( r );
                             const duplicate = async (e) => {
                                 e.preventDefault(); e.stopPropagation();
                                 try {
@@ -341,6 +407,7 @@ export default function MosaicOverlayCore( {
                             const linkProps = onOpenItem
                                 ? { href: '#', onClick: (e) => onOpenItem( e, r ) }
                                 : { href };
+                            const editors = getEditorsForItem ? ( getEditorsForItem( r ) || [] ) : [];
                             return (
                                 <a
                                     key={ r.id }
@@ -352,6 +419,35 @@ export default function MosaicOverlayCore( {
                                     aria-label={`${ title } • ${ statusLabel( r?.status ) }`}
                                     { ...linkProps }
                                 >
+                                    { ( isActive || ( editors && editors.length > 0 ) ) ? (
+                                        <div className={`${ classPrefix }__tile-avatars`}>
+                                            { ( isActive && ! editors.length ) && (
+                                                <div className={`${ classPrefix }__tile-active-dot`} title="Currently editing" aria-label="Currently editing" />
+                                            ) }
+                                            { editors.map( (u, i) => {
+                                                const label = u?.name || 'User';
+                                                // Prefer higher‑res avatar for sharper rendering in small sizes.
+                                                const urls = u?.avatar_urls || {};
+                                                const src = urls['96'] || urls['128'] || urls['48'] || urls['24'] || '';
+                                                const tooltipText = `Editing: ${ label }`;
+                                                return src ? (
+                                                    <Tooltip key={ i } text={ tooltipText }>
+                                                        <img
+                                                            className={`${ classPrefix }__tile-avatar`}
+                                                            src={ src }
+                                                            alt={ label }
+                                                        />
+                                                    </Tooltip>
+                                                ) : (
+                                                    <Tooltip key={ i } text={ tooltipText }>
+                                                        <div className={`${ classPrefix }__tile-avatar ${ classPrefix }__tile-avatar--placeholder`} aria-label={ tooltipText }>
+                                                            <Icon icon={ userIcon } size={ 14 } />
+                                                        </div>
+                                                    </Tooltip>
+                                                );
+                                            } ) }
+                                        </div>
+                                    ) : null }
                                     <div className={`${ classPrefix }__tile-menu`}>
                                         <DropdownMenu
                                             icon={ moreVertical }
@@ -424,4 +520,3 @@ export default function MosaicOverlayCore( {
         </div>
     );
 }
-

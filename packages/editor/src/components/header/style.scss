@@ -95,7 +95,14 @@
 
 // Subtle fade using transitions (avoid keyframe jank)
 .editor-header__settings { transition: opacity 140ms ease; will-change: opacity; opacity: 1; }
-html.is-mosaic-open .editor-header__settings { opacity: 0; pointer-events: none; }
+// When Mosaic is open, hide all right-side items by default…
+html.is-mosaic-open .editor-header__settings > * { opacity: 0; pointer-events: none; }
+// …but if there are unsaved changes, show only the Save/Publish button.
+html.is-mosaic-open.is-mosaic-dirty .editor-header__settings .editor-post-publish-button__button,
+html.is-mosaic-open.is-mosaic-dirty .editor-header__settings .edit-site-save-button__button {
+    opacity: 1;
+    pointer-events: auto;
+}
 
 /**
  * Buttons on the right side

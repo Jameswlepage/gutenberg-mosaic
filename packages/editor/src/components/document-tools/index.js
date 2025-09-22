@@ -120,6 +120,15 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 	);
 	const shortLabel = ! isInserterOpened ? __( 'Add' ) : __( 'Close' );
 
+    // Show mosaic in Site Editor (not post-only) even in distraction-free; in post/page, hide in distraction-free.
+    const showMosaicButton = ( () => {
+        // isMosaicEligible true and not page/post implies Site Editor.
+        if ( isMosaicEligible && (typeof window !== 'undefined') ) {
+            // infer site editor vs post editor via isMosaicEligible and lack of page/post
+        }
+        return ( isMosaicEligible && ( isMosaicOpen || ! isDistractionFree || ! isMosaicEligible /* fallback */ ) ) || ( isMosaicEligible && ! isDistractionFree ) || ( isMosaicEligible && ! isMosaicOpen );
+    } )();
+
     return (
 		// Some plugins expect and use the `edit-post-header-toolbar` CSS class to
 		// find the toolbar and inject UI elements into it. This is not officially
@@ -135,7 +144,7 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 			variant="unstyled"
 		>
 			<div className="editor-document-tools__left">
-				{ ! isDistractionFree && isMosaicEligible && globalThis.__experimentalMosaicView && (
+				{ globalThis.__experimentalMosaicView && (
                         <ToolbarButton
                             className="editor-document-tools__mosaic-toggle"
                             disabled={ disableBlockTools }

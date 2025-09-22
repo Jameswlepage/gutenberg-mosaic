@@ -66,6 +66,22 @@
 	-webkit-overflow-scrolling: touch;
 }
 
+// Single-column "only plus tile" empty state: fill the available height, avoid scroll
+.edit-site-mosaic__body--single-empty {
+	overflow: hidden;
+}
+.edit-site-mosaic__body--single-empty .edit-site-mosaic__grid {
+	height: 100%;
+}
+.edit-site-mosaic__grid--single-empty .edit-site-mosaic__tile,
+.edit-site-mosaic__grid--single-empty .edit-site-mosaic__tile-frame {
+	height: 100%;
+}
+.edit-site-mosaic__grid--single-empty .edit-site-mosaic__tile-frame {
+	aspect-ratio: auto; // let it grow to container height
+}
+.edit-site-mosaic__grid--single-empty .edit-site-mosaic__sentinel { display: none; }
+
 .edit-site-mosaic__loading {
 	position: absolute;
 	inset: 0;
@@ -145,6 +161,12 @@
 	overflow: hidden; // clip inner overlays to rounded corners
 }
 
+// Focus ring for keyboard selection uses admin primary color
+.edit-site-mosaic__tile:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--wp-admin-theme-color, #3858e9);
+}
+
 .edit-site-mosaic__tile-menu {
     position: absolute;
     top: 6px;
@@ -157,27 +179,61 @@
 .edit-site-mosaic__tile:hover .edit-site-mosaic__tile-menu { opacity: 1; }
 .edit-site-mosaic__tile:focus-within .edit-site-mosaic__tile-menu { opacity: 1; }
 
-// Improve visibility of the dropdown toggle icon
+// Active item indicator (top-left blue dot)
+.edit-site-mosaic__tile-active-dot {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--wp-admin-theme-color, #3858e9);
+    z-index: 3;
+}
+
+// Avatar stack for editors
+.edit-site-mosaic__tile-avatars {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    display: flex;
+    gap: 4px;
+    z-index: 3;
+}
+.edit-site-mosaic__tile-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+.edit-site-mosaic__tile-avatar--placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+// Native-like menu trigger: only black dots, no background
 .edit-site-mosaic__tile-menu .components-button {
-    color: #ffffff;
+    color: #000;
+    background: transparent;
     border: none;
-    background: rgba(0,0,0,0.35);
-    border-radius: 4px;
+    border-radius: 0;
 }
-.edit-site-mosaic__tile-menu .components-button:hover {
-    background: rgba(0,0,0,0.5);
-}
+.edit-site-mosaic__tile-menu .components-button:hover,
 .edit-site-mosaic__tile-menu .components-button:active,
 .edit-site-mosaic__tile-menu .components-button.is-pressed,
 .edit-site-mosaic__tile-menu .components-button[aria-expanded='true'] {
-    background: rgba(0,0,0,0.5);
-    color: #ffffff;
+    color: #000;
+    background: transparent;
 }
-.edit-site-mosaic__tile-menu .components-button svg {
-    color: currentColor;
-    fill: currentColor;
-}
-.edit-site-mosaic__tile-menu .components-button:focus-visible { box-shadow: 0 0 0 2px rgba(255,255,255,0.6); }
+.edit-site-mosaic__tile-menu .components-button svg { color: currentColor; fill: currentColor; }
+.edit-site-mosaic__tile-menu .components-button:focus-visible { box-shadow: none; }
 
 .edit-site-mosaic__tile--plus {
 	border-radius: var(--wp-mosaic-radius, 4px);
@@ -194,9 +250,7 @@
 		color: #ffffff;
 	}
 
-	&:focus-visible {
-		box-shadow: 0 0 0 2px rgba(255,255,255,0.6);
-	}
+	&:focus-visible { box-shadow: 0 0 0 2px var(--wp-admin-theme-color, #3858e9); }
 
 	// Ensure the SVG icon uses the intended color
 	& svg {
@@ -224,12 +278,15 @@
 	right: 0;
 	bottom: 0;
 	height: 33%;
-    background: linear-gradient(180deg, rgba(69,70,74,0) 0%, rgba(69,70,74,0.6) 100%);
+    // Darker gradient for higher contrast with white title
+    background: linear-gradient(180deg, rgba(69,70,74,0) 0%, rgba(69,70,74,0.8) 100%);
 	display: flex;
 	align-items: flex-end;
     padding: 18px; // equal padding on all sides for consistent spacing
 	opacity: 0;
 	transition: opacity 130ms ease;
+    z-index: 2; // ensure it sits above preview content
+    pointer-events: none; // do not block tile clicks
 }
 
 .edit-site-mosaic__tile:hover .edit-site-mosaic__tile-meta {
