@@ -1,0 +1,434 @@
+/* Shared styles for Mosaic tiles across Post and Site editors */
+
+/* Grid */
+.edit-post-mosaic__grid,
+.edit-site-mosaic__grid {
+	display: grid;
+	gap: 18px;
+	grid-template-columns: repeat(1, minmax(0, 1fr));
+
+	@media (min-width: 600px) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	@media (min-width: 782px) {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+	@media (min-width: 960px) {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+	@media (min-width: 1280px) {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+}
+
+/* Single-empty state: make plus tile fill available height */
+.edit-post-mosaic__body--single-empty .edit-post-mosaic__grid,
+.edit-site-mosaic__body--single-empty .edit-site-mosaic__grid {
+	height: 100%;
+}
+.edit-post-mosaic__grid--single-empty .edit-post-mosaic__tile,
+.edit-post-mosaic__grid--single-empty .edit-post-mosaic__tile-frame,
+.edit-site-mosaic__grid--single-empty .edit-site-mosaic__tile,
+.edit-site-mosaic__grid--single-empty .edit-site-mosaic__tile-frame {
+	height: 100%;
+}
+.edit-post-mosaic__grid--single-empty .edit-post-mosaic__tile-frame,
+.edit-site-mosaic__grid--single-empty .edit-site-mosaic__tile-frame {
+	aspect-ratio: auto;
+}
+.edit-post-mosaic__grid--single-empty .edit-post-mosaic__sentinel,
+.edit-site-mosaic__grid--single-empty .edit-site-mosaic__sentinel {
+	display: none;
+}
+
+/* Loading and empty placeholders */
+.edit-post-mosaic__loading,
+.edit-site-mosaic__loading {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+}
+.edit-post-mosaic__loading--overlay,
+.edit-site-mosaic__loading--overlay {
+	background: rgba(0, 0, 0, 0.08);
+	backdrop-filter: blur(1px);
+}
+.edit-post-mosaic__empty,
+.edit-site-mosaic__empty {
+	color: #cbd5e1;
+}
+
+/* Tile and frame */
+.edit-post-mosaic__tile,
+.edit-site-mosaic__tile {
+	display: flex;
+	flex-direction: column;
+	text-decoration: none;
+	color: inherit;
+	position: relative;
+	border-radius: var(--wp-mosaic-radius, 4px);
+	overflow: hidden;
+	background: rgba(59, 60, 64, 0.78);
+	backdrop-filter: blur(3px);
+	aspect-ratio: 4 / 3;
+}
+
+.edit-post-mosaic__tile-frame,
+.edit-site-mosaic__tile-frame {
+	overflow: hidden;
+	background: transparent;
+	position: relative;
+	flex: 1 1 auto;
+}
+
+.edit-post-mosaic__tile-content,
+.edit-site-mosaic__tile-content {
+	opacity: 0;
+	transition: opacity 220ms ease-out;
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+}
+.edit-post-mosaic__tile-content.is-ready,
+.edit-site-mosaic__tile-content.is-ready {
+	opacity: 1;
+}
+
+.edit-post-mosaic__tile-skeleton,
+.edit-site-mosaic__tile-skeleton {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	background: #45464a;
+	background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.08) 40%, rgba(255, 255, 255, 0.04) 80%);
+	background-size: 300% 100%;
+	animation: mosaic-skel 1.4s ease infinite;
+}
+
+.edit-post-mosaic__tile-frame.is-ready .edit-post-mosaic__tile-skeleton,
+.edit-site-mosaic__tile-frame.is-ready .edit-site-mosaic__tile-skeleton {
+	opacity: 0;
+	transition: opacity 220ms ease-out 60ms;
+	animation: none;
+}
+
+@keyframes mosaic-skel {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -100% 0;
+	}
+}
+
+/* Focus ring */
+.edit-post-mosaic__tile:focus-visible,
+.edit-site-mosaic__tile:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 2px var(--wp-admin-theme-color, #3858e9);
+}
+
+/* Empty-state wireframe for content-less items */
+.edit-post-mosaic__wireframe,
+.edit-site-mosaic__wireframe {
+	position: absolute;
+	inset: 0;
+	padding: 10px 10px 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.edit-post-mosaic__wireframe--page,
+.edit-site-mosaic__wireframe--page {
+	display: flex;
+	flex-direction: column;
+}
+.edit-post-mosaic__wireframe--post,
+.edit-site-mosaic__wireframe--post {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: stretch;
+}
+.edit-post-mosaic__wireframe-hero,
+.edit-site-mosaic__wireframe-hero {
+	flex: 1 1 auto;
+	background: rgba(255, 255, 255, 0.12);
+	border-radius: 6px;
+}
+.edit-post-mosaic__wireframe-hero--tall,
+.edit-site-mosaic__wireframe-hero--tall {
+	flex: 0 0 55%;
+	height: 55%;
+}
+.edit-post-mosaic__wireframe-row,
+.edit-site-mosaic__wireframe-row {
+	height: 10px;
+	background: rgba(255, 255, 255, 0.14);
+	border-radius: 4px;
+}
+.edit-post-mosaic__wireframe-row--wide,
+.edit-site-mosaic__wireframe-row--wide {
+	width: 100%;
+	height: 12px;
+}
+.edit-post-mosaic__wireframe--post .edit-post-mosaic__wireframe-row,
+.edit-site-mosaic__wireframe--post .edit-site-mosaic__wireframe-row {
+	height: 10px;
+	width: 66%;
+	border-radius: 6px;
+}
+.edit-post-mosaic__wireframe-row--flex,
+.edit-site-mosaic__wireframe-row--flex {
+	flex: 1 1 0;
+	min-height: 8px;
+}
+.edit-post-mosaic__wireframe--page .edit-post-mosaic__wireframe-row,
+.edit-site-mosaic__wireframe--page .edit-site-mosaic__wireframe-row {
+	height: 10px;
+	width: 70%;
+}
+.edit-post-mosaic__wireframe-grid,
+.edit-site-mosaic__wireframe-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 8px;
+}
+.edit-post-mosaic__wireframe-grid--2col,
+.edit-site-mosaic__wireframe-grid--2col {
+	grid-template-columns: repeat(2, 1fr);
+}
+.edit-post-mosaic__wireframe-grid > div,
+.edit-site-mosaic__wireframe-grid > div {
+	height: 40px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 6px;
+}
+.edit-post-mosaic__tile:hover .edit-post-mosaic__wireframe-hero,
+.edit-site-mosaic__tile:hover .edit-site-mosaic__wireframe-hero {
+	background: rgba(255, 255, 255, 0.16);
+}
+.edit-post-mosaic__tile:hover .edit-post-mosaic__wireframe-row,
+.edit-site-mosaic__tile:hover .edit-site-mosaic__wireframe-row {
+	background: rgba(255, 255, 255, 0.18);
+}
+.edit-post-mosaic__tile:hover .edit-post-mosaic__wireframe-grid > div,
+.edit-site-mosaic__tile:hover .edit-site-mosaic__wireframe-grid > div {
+	background: rgba(255, 255, 255, 0.14);
+}
+
+/* Wireframe label */
+.edit-post-mosaic__wireframe-label,
+.edit-site-mosaic__wireframe-label {
+	align-self: center;
+	margin-top: 8px; /* match gap to last item */
+	text-align: center;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: rgba(255, 255, 255, 0.55);
+	pointer-events: none;
+}
+.edit-post-mosaic__tile:hover .edit-post-mosaic__wireframe-label,
+.edit-post-mosaic__tile:focus-within .edit-post-mosaic__wireframe-label,
+.edit-site-mosaic__tile:hover .edit-site-mosaic__wireframe-label,
+.edit-site-mosaic__tile:focus-within .edit-site-mosaic__wireframe-label {
+	color: rgba(255, 255, 255, 0.8);
+}
+
+/* Header inside tile */
+.edit-post-mosaic__tile-header,
+.edit-site-mosaic__tile-header {
+	position: relative;
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	background: rgba(59, 60, 64, 0.72);
+	backdrop-filter: inherit;
+	transition: background 120ms ease;
+}
+.edit-post-mosaic__tile-header-left,
+.edit-site-mosaic__tile-header-left {
+	display: flex;
+	align-items: center;
+	justify-self: start;
+}
+.edit-post-mosaic__tile-header-right,
+.edit-site-mosaic__tile-header-right {
+	display: flex;
+	align-items: center;
+	justify-self: end;
+}
+.edit-post-mosaic__tile-header-title,
+.edit-site-mosaic__tile-header-title {
+	color: #fff;
+	font-size: 13px;
+	line-height: 1.2;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	grid-column: 2;
+}
+.edit-post-mosaic__tile-header-right .components-button.has-icon,
+.edit-site-mosaic__tile-header-right .components-button.has-icon {
+	padding: 0;
+	min-height: 24px;
+	height: 24px;
+	width: 24px;
+}
+
+/* Menu trigger icon color */
+.edit-post-mosaic__tile-menu .components-button,
+.edit-post-mosaic__tile-header-right .components-button,
+.edit-site-mosaic__tile-menu .components-button,
+.edit-site-mosaic__tile-header-right .components-button {
+	color: #fff;
+	background: transparent;
+	border: none;
+	border-radius: 0;
+}
+.edit-post-mosaic__tile-menu .components-button:hover,
+.edit-post-mosaic__tile-menu .components-button:active,
+.edit-post-mosaic__tile-menu .components-button.is-pressed,
+.edit-post-mosaic__tile-menu .components-button[aria-expanded="true"],
+.edit-post-mosaic__tile-header-right .components-button:hover,
+.edit-post-mosaic__tile-header-right .components-button:active,
+.edit-post-mosaic__tile-header-right .components-button.is-pressed,
+.edit-post-mosaic__tile-header-right .components-button[aria-expanded="true"],
+.edit-site-mosaic__tile-menu .components-button:hover,
+.edit-site-mosaic__tile-menu .components-button:active,
+.edit-site-mosaic__tile-menu .components-button.is-pressed,
+.edit-site-mosaic__tile-menu .components-button[aria-expanded="true"],
+.edit-site-mosaic__tile-header-right .components-button:hover,
+.edit-site-mosaic__tile-header-right .components-button:active,
+.edit-site-mosaic__tile-header-right .components-button.is-pressed,
+.edit-site-mosaic__tile-header-right .components-button[aria-expanded="true"] {
+	color: #fff;
+	background: transparent;
+}
+.edit-post-mosaic__tile-menu .components-button svg,
+.edit-post-mosaic__tile-header-right .components-button svg,
+.edit-site-mosaic__tile-menu .components-button svg,
+.edit-site-mosaic__tile-header-right .components-button svg {
+	color: #fff;
+	fill: #fff;
+}
+
+/* Avatars */
+.edit-post-mosaic__tile-avatar,
+.edit-site-mosaic__tile-avatar {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	object-fit: cover;
+	display: block;
+}
+.edit-post-mosaic__tile-avatar--placeholder,
+.edit-site-mosaic__tile-avatar--placeholder {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.2);
+	color: #fff;
+}
+/* In-preview avatar placement (top-left of frame) */
+/* Header-left avatar placement (stacked) */
+.edit-post-mosaic__tile-header-left > .edit-post-mosaic__tile-avatars,
+.edit-site-mosaic__tile-header-left > .edit-site-mosaic__tile-avatars {
+	display: flex;
+	align-items: center;
+	margin-left: 18px;
+}
+.edit-post-mosaic__tile-header-left > .edit-post-mosaic__tile-avatars > *,
+.edit-site-mosaic__tile-header-left > .edit-site-mosaic__tile-avatars > * {
+	position: relative;
+	z-index: 1;
+	border-radius: 50%;
+}
+.edit-post-mosaic__tile-header-left > .edit-post-mosaic__tile-avatars > * + *,
+.edit-site-mosaic__tile-header-left > .edit-site-mosaic__tile-avatars > * + * {
+	margin-left: -12px;
+}
+/* Ensure the first avatar is on top of the stack */
+.edit-post-mosaic__tile-frame > .edit-post-mosaic__tile-avatars > *:nth-child(1),
+.edit-site-mosaic__tile-frame > .edit-site-mosaic__tile-avatars > *:nth-child(1) {
+	z-index: 3;
+}
+.edit-post-mosaic__tile-frame > .edit-post-mosaic__tile-avatars > *:nth-child(2),
+.edit-site-mosaic__tile-frame > .edit-site-mosaic__tile-avatars > *:nth-child(2) {
+	z-index: 2;
+}
+.edit-post-mosaic__tile-frame > .edit-post-mosaic__tile-avatars > *:nth-child(3),
+.edit-site-mosaic__tile-frame > .edit-site-mosaic__tile-avatars > *:nth-child(3) {
+	z-index: 1;
+}
+
+/* Active post dot (primary color), shown inline in header-left */
+.edit-post-mosaic__tile-active-dot,
+.edit-site-mosaic__tile-active-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--wp-admin-theme-color, #3858e9);
+	display: inline-block;
+	vertical-align: middle;
+}
+.edit-post-mosaic__tile-header-left .edit-post-mosaic__tile-active-dot,
+.edit-site-mosaic__tile-header-left .edit-site-mosaic__tile-active-dot {
+	position: absolute;
+	left: 10px;
+	top: 50%;
+	transform: translateY(-50%);
+	margin-right: 0;
+}
+
+/* Plus tile */
+.edit-post-mosaic__tile--plus,
+.edit-site-mosaic__tile--plus {
+	border-radius: var(--wp-mosaic-radius, 4px);
+	background: var(--wp-mosaic-tile-bg, #45464a);
+	cursor: pointer;
+	display: block;
+	color: #f3f4f6;
+	transition: background 120ms ease, color 120ms ease;
+	border: none;
+	outline: none;
+}
+.edit-post-mosaic__tile--plus:hover,
+.edit-site-mosaic__tile--plus:hover {
+	background: #525459;
+	color: #fff;
+}
+.edit-post-mosaic__tile--plus:focus-visible,
+.edit-site-mosaic__tile--plus:focus-visible {
+	box-shadow: 0 0 0 2px var(--wp-admin-theme-color, #3858e9);
+}
+.edit-post-mosaic__tile--plus svg,
+.edit-site-mosaic__tile--plus svg {
+	color: #f3f4f6;
+	fill: #f3f4f6;
+	transition: color 120ms ease, fill 120ms ease;
+}
+.edit-post-mosaic__tile--plus:hover svg,
+.edit-site-mosaic__tile--plus:hover svg {
+	color: #fff;
+	fill: #fff;
+}
+.edit-post-mosaic__tile--plus .edit-post-mosaic__tile-frame,
+.edit-site-mosaic__tile--plus .edit-site-mosaic__tile-frame {
+	background: transparent;
+}
+
+/* Hover: match header bar hover to plus-tile hover color */
+.edit-post-mosaic__tile:hover .edit-post-mosaic__tile-header,
+.edit-site-mosaic__tile:hover .edit-site-mosaic__tile-header {
+	background: #525459;
+}
