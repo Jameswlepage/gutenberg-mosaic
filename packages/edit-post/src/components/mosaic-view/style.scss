@@ -26,7 +26,7 @@
     gap: 18px;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 18px 0; // remove bottom padding to avoid double-gap
+    padding: 18px 18px 18px; // include bottom padding for proper scroll spacing
 }
 
 .edit-post-mosaic__left { display: flex; align-items: center; gap: 18px; }
@@ -52,8 +52,8 @@
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
-    padding: 18px; // top padding provides the single gutter between header and grid
-    overflow: auto; // ensure content (incl. empty-state + tile) is scrollable within overlay
+    padding: 0 18px 18px; // no top padding; header provides the top gutter
+    overflow: auto; // ensure content is scrollable within overlay
     -webkit-overflow-scrolling: touch;
 }
 

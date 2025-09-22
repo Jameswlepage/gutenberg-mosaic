@@ -55,6 +55,10 @@ What’s experiment‑specific (current scope)
 - Site Editor portals overlay into the canvas when viewing content (canvas=view), and uses a fixed overlay otherwise.
 - Header inside each tile (avatar | centered title | ⋯ menu) replaces the previous hover title overlay.
 
+Future work
+-----------
+- Seamless open/close animations and intra‑editor navigation without full page reloads. The goal is SPA‑style transitions (e.g., fade/scale canvas to open Mosaic; cross‑fade when opening an item) so moving between items feels instantaneous. This likely involves deeper integration with Post/Site editor routing and preloading.
+
 Caveats (experiment)
 --------------------
 - Uses an html class `is-mosaic-open` for some UI fades; acceptable for the experiment.

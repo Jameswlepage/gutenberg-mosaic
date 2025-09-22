@@ -35,7 +35,7 @@
 	gap: 18px;
 	align-items: center;
 	justify-content: space-between;
-	padding: 18px 18px 0;
+	padding: 18px 18px 18px; // include bottom padding for proper scroll spacing
 }
 
 .edit-site-mosaic__left { display: flex; gap: 18px; align-items: center; }
@@ -68,7 +68,7 @@
 	position: relative;
 	flex: 1 1 auto;
 	min-height: 0;
-	padding: 18px;
+	padding: 0 18px 18px; // no top padding; header provides the top gutter
 	overflow: auto; // allow scroll when content exceeds viewport (e.g., small screens, empty state)
 	-webkit-overflow-scrolling: touch;
 }
