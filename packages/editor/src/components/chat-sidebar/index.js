@@ -230,6 +230,7 @@ export default function ChatSidebar( {
                         </button>
                     </div>
                 </div>
+                </div>
             </motion.div>
         </motion.aside>
     );

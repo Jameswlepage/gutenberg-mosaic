@@ -20,6 +20,14 @@
 	display: flex;
 	flex-direction: column;
 
+	// Ensure inner shell can stretch to full height so content can anchor to bottom
+	&__shell {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		min-height: 0; // allow inner scrollers to size/scroll correctly
+	}
+
 	&__header {
 		display: flex;
 		align-items: center;
@@ -89,7 +97,7 @@
 
 	&__content {
 		flex: 1 1 auto;
-		overflow: auto;
+		min-height: 0; // critical for proper flexbox scrolling behavior
 		padding: 0; // no internal padding; spacing handled by child
 		display: flex;
 		flex-direction: column;
@@ -99,7 +107,14 @@
 
 	// No top/bottom padding on the sidebar container; only lateral spacing
 	&__scroll {
+		flex: 1 1 auto; // takes remaining space above the input
+		min-height: 0;
+		overflow: auto; // scroll messages, keep input anchored
 		padding: 0;
+		// Make messages sit at the bottom when content height is less than the viewport
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
 	}
 
 	&__greeting {
