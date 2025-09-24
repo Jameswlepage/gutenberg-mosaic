@@ -50,6 +50,9 @@
 	&__icon-button {
 		color: #fff;
 	}
+	&__icon-button[aria-pressed='true'] {
+		color: var(--wp-admin-theme-color);
+	}
 	&__leading {
 		display: none;
 	}
@@ -167,16 +170,30 @@
 		width: 100%;
 		height: 100%;
 		overflow: hidden;
+		display: flex; // center contents
+		align-items: center;
+		justify-content: center;
 		// Uniform rounding across panel and studio
 		border-radius: 24px;
 		transition: none;
 	}
 
-	&__image-tag {
-		display: block;
+	// Rotator wrapper to keep image centered and visible when rotated
+	&__image-rotator {
 		width: 100%;
 		height: 100%;
-		object-fit: cover;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		will-change: transform;
+	}
+
+	&__image-tag {
+		display: block;
+		max-width: 100%;
+		max-height: 100%;
+		width: auto;
+		height: auto;
 		border-radius: inherit;
 		transition: none; // ensure image doesn't animate separately
 	}
@@ -206,6 +223,8 @@
 		width: 80%;
 		max-width: 920px;
 		max-height: 66vh;
+		margin-bottom: 0; // remove bottom spacing so it centers perfectly
+		margin-inline: auto; // ensure horizontal centering in any layout
 	}
 	&.is-studio &__image-frame {
 		border-radius: 24px;
@@ -234,6 +253,18 @@
 		box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35) inset;
 	}
 
+	&__crop-box .crop-handle {
+		position: absolute;
+		width: 10px;
+		height: 10px;
+		background: #fff;
+		border-radius: 2px;
+	}
+	&__crop-box .crop-handle--nw { left: -5px; top: -5px; cursor: nwse-resize; }
+	&__crop-box .crop-handle--ne { right: -5px; top: -5px; cursor: nesw-resize; }
+	&__crop-box .crop-handle--sw { left: -5px; bottom: -5px; cursor: nesw-resize; }
+	&__crop-box .crop-handle--se { right: -5px; bottom: -5px; cursor: nwse-resize; }
+
 	&__image-action.components-button {
 		position: absolute;
 		top: 6px;
@@ -254,6 +285,31 @@
 	}
 
 	&__image:hover .editor-chat-sidebar__image-action {
+		opacity: 1;
+		transform: translateY( 0 );
+	}
+
+	// Replace on Canvas button (only visible on hover)
+	&__replace-action.components-button {
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		padding: 0;
+		border-radius: 0;
+		background: transparent;
+		color: #fff;
+		opacity: 0;
+		transform: translateY( -4px );
+		transition:
+			opacity 0.15s ease,
+			transform 0.15s ease;
+		svg {
+			width: 18px;
+			height: 18px;
+		}
+	}
+
+	&__image:hover .editor-chat-sidebar__replace-action {
 		opacity: 1;
 		transform: translateY( 0 );
 	}
@@ -308,6 +364,70 @@
 		bottom: 0;
 		padding: $grid-unit-15 0 0; // no left/right or bottom padding
 		background: transparent; // no gradients on containers
+	}
+
+	// Selected block indicator above the prompt input
+	&__selection {
+		max-width: 720px;
+		margin: 0 auto $grid-unit-10;
+		display: flex;
+		align-items: center;
+		gap: 4px; // much tighter spacing between icon, label, and X
+		color: rgba( 255, 255, 255, 0.7 ); // light gray
+		font-size: 11px; // slightly smaller
+		line-height: 1.2;
+		text-transform: uppercase;
+	}
+
+	&__selection-icon {
+		line-height: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: rgba( 255, 255, 255, 0.7 ); // ensure icon uses light gray (currentColor)
+		svg {
+			width: 12px; // slightly smaller icon
+			height: 12px;
+			fill: currentColor;
+			stroke: currentColor;
+		}
+		svg * {
+			fill: currentColor !important;
+			stroke: currentColor !important;
+		}
+	}
+
+	&__selection-label {
+		min-width: 0;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	&__selection-clear {
+		margin-left: 2px;
+		background: transparent;
+		border: 0;
+		padding: 0;
+		color: rgba( 255, 255, 255, 0.7 );
+		cursor: pointer;
+		line-height: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		svg {
+			width: 12px;
+			height: 12px;
+			fill: currentColor;
+			stroke: currentColor;
+		}
+		svg * {
+			fill: currentColor !important;
+			stroke: currentColor !important;
+		}
+		&:hover {
+			color: #fff;
+		}
 	}
 	&__input-wrap {
 		position: relative;

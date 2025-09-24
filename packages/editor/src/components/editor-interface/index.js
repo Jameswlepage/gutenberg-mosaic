@@ -150,9 +150,11 @@ export default function EditorInterface( {
             <motion.div
                 className="editor-chat-wrap"
                 initial={ false }
-                animate={{ padding: phase === 'closed' ? 0 : 16 }}
+                animate={{
+                    padding: phase === 'closed' ? 0 : 16,
+                }}
+                style={{ columnGap: phase === 'expanded' ? 0 : 16 }}
                 transition={{ duration: dur, ease, delay: isClosing ? dur : 0 }}
-                style={{ columnGap: 16 }}
             >
 				<motion.div
 					className="editor-chat-inner"

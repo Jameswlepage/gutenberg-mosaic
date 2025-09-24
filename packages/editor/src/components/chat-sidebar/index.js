@@ -3,9 +3,12 @@
  */
 import { Button, Icon, Tooltip, __unstableMotion as motion, __unstableAnimatePresence as AnimatePresence } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { image, rotateLeft, closeSmall } from '@wordpress/icons';
+import { image, rotateLeft, closeSmall, crop, plus } from '@wordpress/icons';
 
 import { useState, useRef } from '@wordpress/element';
+import { useSelect, useDispatch } from '@wordpress/data';
+import { BlockTitle, BlockIcon, store as blockEditorStore } from '@wordpress/block-editor';
+import { store as blocksStore } from '@wordpress/blocks';
 
 export default function ChatSidebar( {
     isOpen,
@@ -19,7 +22,10 @@ export default function ChatSidebar( {
     const [ isStudio, setIsStudio ] = useState( false );
     const [ tool, setTool ] = useState( 'none' ); // 'none' | 'crop' | 'annotate'
     const [ rotation, setRotation ] = useState( 0 );
-    const [ isDirty, setIsDirty ] = useState( false );
+    const [ dirtyRotate, setDirtyRotate ] = useState( false );
+    const [ dirtyCrop, setDirtyCrop ] = useState( false );
+    const [ dirtyAnnotate, setDirtyAnnotate ] = useState( false );
+    const isDirty = dirtyRotate || dirtyCrop || dirtyAnnotate;
     const imgRef = useRef();
     const frameRef = useRef();
     const inputRef = useRef();
@@ -28,6 +34,27 @@ export default function ChatSidebar( {
     const phase = ! isOpen ? 'closed' : isExpanded ? 'expanded' : 'open';
     const dur = 0.28;
     const ease = [ 0.6, 0, 0.4, 1 ];
+
+    // Current block selection info
+    const { selectedClientId, selectedIcon, isImageSelected } = useSelect( ( select ) => {
+        const be = select( blockEditorStore );
+        const clientId = be.getSelectedBlockClientId?.();
+        const name = clientId ? be.getBlockName?.( clientId ) : null;
+        const blk = select( blocksStore );
+        const icon = name ? blk.getBlockType?.( name )?.icon : null;
+        return { selectedClientId: clientId, selectedIcon: icon, isImageSelected: name === 'core/image' };
+    } );
+
+    const { updateBlockAttributes, clearSelectedBlock } = useDispatch( blockEditorStore );
+
+    function handleReplaceOnCanvas() {
+        if ( ! isImageSelected || ! selectedClientId ) return;
+        const img = imgRef.current;
+        const url = img?.getAttribute?.( 'src' );
+        if ( url ) {
+            updateBlockAttributes( selectedClientId, { url } );
+        }
+    }
 
     function playFLIP( expand ) {
         const img = imgRef.current;
@@ -87,7 +114,7 @@ export default function ChatSidebar( {
     // Image Studio actions
     function handleRotate() {
         setRotation( ( r ) => ( ( r + 90 ) % 360 ) );
-        setIsDirty( true );
+        setDirtyRotate( true );
     }
 
     function handleToggleCrop() {
@@ -109,7 +136,17 @@ export default function ChatSidebar( {
     }
 
     function handleToggleAnnotate() {
-        setTool( ( t ) => ( t === 'annotate' ? 'none' : 'annotate' ) );
+        if ( tool === 'annotate' ) {
+            const canvas = annotateRef.current;
+            const ctx = canvas?.getContext?.( '2d' );
+            if ( ctx && canvas ) {
+                ctx.clearRect( 0, 0, canvas.width, canvas.height );
+            }
+            setDirtyAnnotate( false );
+            setTool( 'none' );
+        } else {
+            setTool( 'annotate' );
+        }
     }
 
     // Simple in-place annotate drawing
@@ -122,13 +159,13 @@ export default function ChatSidebar( {
         let x = e.clientX - rect.left;
         let y = e.clientY - rect.top;
         let drawing = true;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#2d7cf6';
+        ctx.lineWidth = 3.5;
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo( x, y );
-        setIsDirty( true );
+        setDirtyAnnotate( true );
 
         function move( ev ) {
             if ( ! drawing ) return;
@@ -154,14 +191,46 @@ export default function ChatSidebar( {
         const startX = e.clientX;
         const startY = e.clientY;
         const start = { ...cropRect };
+        const rect = frame.getBoundingClientRect();
+
+        const target = e.target;
+        const isHandle = target?.classList?.contains?.( 'crop-handle' );
+        const handle = isHandle ? Array.from( target.classList ).find( ( c ) => c.startsWith( 'crop-handle--' ) ) : null;
+
         function move( ev ) {
             const dx = ev.clientX - startX;
             const dy = ev.clientY - startY;
-            const { width, height } = frame.getBoundingClientRect();
-            let x = Math.max( 0, Math.min( width - start.w, start.x + dx ) );
-            let y = Math.max( 0, Math.min( height - start.h, start.y + dy ) );
-            setCropRect( { ...start, x, y } );
-            setIsDirty( true );
+            const maxW = rect.width;
+            const maxH = rect.height;
+            let { x, y, w, h } = start;
+
+            if ( isHandle ) {
+                // Resize from the handle
+                if ( handle?.endsWith( 'nw' ) ) {
+                    x = Math.max( 0, Math.min( x + dx, x + w - 20 ) );
+                    y = Math.max( 0, Math.min( y + dy, y + h - 20 ) );
+                    w = Math.max( 20, start.w - ( x - start.x ) );
+                    h = Math.max( 20, start.h - ( y - start.y ) );
+                } else if ( handle?.endsWith( 'ne' ) ) {
+                    y = Math.max( 0, Math.min( y + dy, y + h - 20 ) );
+                    w = Math.max( 20, Math.min( maxW - x, start.w + dx ) );
+                    h = Math.max( 20, start.h - ( y - start.y ) );
+                } else if ( handle?.endsWith( 'sw' ) ) {
+                    x = Math.max( 0, Math.min( x + dx, x + w - 20 ) );
+                    w = Math.max( 20, start.w - ( x - start.x ) );
+                    h = Math.max( 20, Math.min( maxH - y, start.h + dy ) );
+                } else if ( handle?.endsWith( 'se' ) ) {
+                    w = Math.max( 20, Math.min( maxW - x, start.w + dx ) );
+                    h = Math.max( 20, Math.min( maxH - y, start.h + dy ) );
+                }
+            } else {
+                // Move the crop box
+                x = Math.max( 0, Math.min( maxW - w, start.x + dx ) );
+                y = Math.max( 0, Math.min( maxH - h, start.y + dy ) );
+            }
+
+            setCropRect( { x, y, w, h } );
+            setDirtyCrop( true );
         }
         function up() {
             window.removeEventListener( 'pointermove', move );
@@ -173,7 +242,9 @@ export default function ChatSidebar( {
 
     function handleSave() {
         // Placeholder save: mark clean. Exporting image composition can be added here.
-        setIsDirty( false );
+        setDirtyRotate( false );
+        setDirtyCrop( false );
+        setDirtyAnnotate( false );
         setTool( 'none' );
     }
 
@@ -230,11 +301,9 @@ export default function ChatSidebar( {
                                     className="editor-chat-sidebar__icon-button"
                                     label={ __( 'Crop' ) }
                                     onClick={ handleToggleCrop }
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-                                        <path d="M7 3v12a2 2 0 0 0 2 2h12v-2H9V3H7zm-4 4h2v10a2 2 0 0 0 2 2h10v2H7a4 4 0 0 1-4-4V7zM17 3h-2v6h6V7h-4V3z" fill="currentColor"/>
-                                    </svg>
-                                </Button>
+                                    aria-pressed={ tool === 'crop' }
+                                    icon={ <Icon icon={ crop } /> }
+                                />
                                 {/* Rotate */}
                                 <Button
                                     className="editor-chat-sidebar__icon-button"
@@ -247,6 +316,7 @@ export default function ChatSidebar( {
                                     className="editor-chat-sidebar__icon-button"
                                     label={ __( 'Annotate' ) }
                                     onClick={ handleToggleAnnotate }
+                                    aria-pressed={ tool === 'annotate' }
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
                                         <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.33H5v-.92l9.06-9.06.92.92L5.92 19.58zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
@@ -278,13 +348,14 @@ export default function ChatSidebar( {
                     </div>
                     <div className="editor-chat-sidebar__image">
                         <div className="editor-chat-sidebar__image-frame" ref={ frameRef }>
-                            <img
-                                ref={ imgRef }
-                                className="editor-chat-sidebar__image-tag"
-                                src="https://images.unsplash.com/photo-1502085671122-2d218cd434e6?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                                alt={ __( 'Placeholder image' ) }
-                                style={{ transform: `rotate(${ rotation }deg)`, transformOrigin: 'center center' }}
-                            />
+                            <div className="editor-chat-sidebar__image-rotator" style={{ transform: `rotate(${ rotation }deg)`, transformOrigin: 'center center' }}>
+                                <img
+                                    ref={ imgRef }
+                                    className="editor-chat-sidebar__image-tag"
+                                    src="https://images.unsplash.com/photo-1502085671122-2d218cd434e6?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                                    alt={ __( 'Placeholder image' ) }
+                                />
+                            </div>
                             { isExpanded && isStudio && tool === 'annotate' && (
                                 <canvas
                                     ref={ annotateRef }
@@ -311,6 +382,17 @@ export default function ChatSidebar( {
                                 tooltipPosition="top"
                             />
                         </Tooltip>
+                        { isImageSelected && (
+                            <Tooltip text={ __( 'Replace on Canvas' ) }>
+                                <Button
+                                    className="editor-chat-sidebar__replace-action"
+                                    icon={ <Icon icon={ plus } /> }
+                                    label={ __( 'Replace on Canvas' ) }
+                                    onClick={ handleReplaceOnCanvas }
+                                    tooltipPosition="top"
+                                />
+                            </Tooltip>
+                        ) }
                     </div>
                     {/* No inline CTA; use image overlay action only */}
                     { children }
@@ -319,6 +401,28 @@ export default function ChatSidebar( {
                     </div>
                 </div>
                 <div className="editor-chat-sidebar__input">
+                    { selectedClientId && (
+                        <Tooltip text={ __( 'The AI will focus more on this selection' ) }>
+                            <div className="editor-chat-sidebar__selection" aria-live="polite">
+                                { selectedIcon ? (
+                                    <span className="editor-chat-sidebar__selection-icon">
+                                        <BlockIcon icon={ selectedIcon } />
+                                    </span>
+                                ) : null }
+                                <span className="editor-chat-sidebar__selection-label">
+                                    <BlockTitle clientId={ selectedClientId } maximumLength={ 80 } />
+                                </span>
+                                <button
+                                    type="button"
+                                    className="editor-chat-sidebar__selection-clear"
+                                    aria-label={ __( 'Deselect block' ) }
+                                    onClick={ () => clearSelectedBlock() }
+                                >
+                                    <Icon icon={ closeSmall } />
+                                </button>
+                            </div>
+                        </Tooltip>
+                    ) }
                     <div className="editor-chat-sidebar__input-wrap" ref={ inputRef }>
                         <input
                             type="text"
