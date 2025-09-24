@@ -13,7 +13,7 @@ import { store as preferencesStore } from '@wordpress/preferences';
 import { BlockBreadcrumb, BlockToolbar } from '@wordpress/block-editor';
 import { useViewportMatch } from '@wordpress/compose';
 import { useState, useCallback, useEffect } from '@wordpress/element';
-import { Button, Icon } from '@wordpress/components';
+import { Button, Icon, __unstableMotion as motion } from '@wordpress/components';
 import { wordpress } from '@wordpress/icons';
 
 /**
@@ -122,6 +122,9 @@ export default function EditorInterface( {
 
     const chatEnabled =
         typeof window !== 'undefined' && window.__experimentalChatSidebar;
+    const phase = ! chatEnabled || ! isChatOpen ? 'closed' : isChatExpanded ? 'expanded' : 'open';
+    const dur = 0.28;
+    const ease = [ 0.6, 0, 0.4, 1 ];
 
     // Persist chat open/expanded states in localStorage
     useEffect( () => {
@@ -142,8 +145,19 @@ export default function EditorInterface( {
 			} ) }
 			style={ { height: '100%' } }
 		>
-			<div className="editor-chat-wrap">
-				<div className="editor-chat-inner">
+			<motion.div
+				className="editor-chat-wrap"
+				initial={ false }
+				animate={{ padding: phase === 'closed' ? 0 : 16 }}
+				transition={{ duration: dur, ease }}
+				style={{ columnGap: 16 }}
+			>
+				<motion.div
+					className="editor-chat-inner"
+					initial={ false }
+					animate={{ opacity: phase === 'expanded' ? 0 : 1 }}
+					transition={{ duration: dur, ease }}
+				>
 					<InterfaceSkeleton
 			isDistractionFree={ isDistractionFree }
 			className={ clsx( 'editor-editor-interface', className, {
@@ -249,7 +263,7 @@ export default function EditorInterface( {
 					: undefined
 			}
 					/>
-				</div>
+				</motion.div>
 				{/* Render chat experiment only when enabled via experiments page */}
 				{ chatEnabled ? (
 					<ChatSidebar
@@ -263,7 +277,7 @@ export default function EditorInterface( {
 						} }
 					/>
 				) : null }
-			</div>
+			</motion.div>
 
 			{/* Floating toggle button */}
 			{ chatEnabled ? (

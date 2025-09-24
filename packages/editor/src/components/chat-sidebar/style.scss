@@ -71,7 +71,13 @@
     flex-direction: column;
     // Align conversational content and image to the bottom with the input
     justify-content: flex-end;
+    // Fade content in/out to avoid squeeze during width transitions
+    opacity: 0;
+    transition: opacity var(--chat-dur, 0.25s) cubic-bezier(0.6, 0, 0.4, 1);
   }
+
+  // When sidebar is open (panel or studio), fade content in, after width animation
+  .editor-chat-container.is-chat-open &__content { opacity: 1; transition-delay: var(--chat-dur, 0.25s); }
 
   // No top/bottom padding on the sidebar container; only lateral spacing
   &__scroll { padding: 0; }
@@ -125,9 +131,9 @@
     height: 100%;
     overflow: hidden;
     // Bubble-like rounding in sidebar (AI response): non-rounded lower-left corner
-    border-top-left-radius: 24px;
+    border-top-left-radius: 8px;
     border-top-right-radius: 24px;
-    border-bottom-left-radius: 0;
+    border-bottom-left-radius: 8px;
     border-bottom-right-radius: 24px;
     transition: border-radius var(--chat-dur, 0.25s) cubic-bezier(0.6, 0, 0.4, 1) var(--sidebar-width-delay, 0s);
   }

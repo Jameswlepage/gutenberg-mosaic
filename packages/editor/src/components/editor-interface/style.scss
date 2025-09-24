@@ -92,8 +92,8 @@ body:has(.editor-chat-container.is-chat-open) {
     --editor-fade-delay: 0s;       // start fading immediately
     --sidebar-width-delay: 0.2s;   // sidebar begins growing first
     --editor-width-delay: 0.25s;   // editor begins shrinking just after
-    // Delay studio icon fade until slide completes
-    --studio-icons-delay: calc(var(--sidebar-width-delay) + var(--chat-dur));
+    // Delay studio header icons until slide + FLIP complete (~350ms)
+    --studio-icons-delay: calc(var(--sidebar-width-delay) + var(--chat-dur) + 0.35s);
 
     .editor-chat-inner {
         opacity: 0;

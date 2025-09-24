@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Button, Icon, Tooltip } from '@wordpress/components';
+import { Button, Icon, Tooltip, __unstableMotion as motion, __unstableAnimatePresence as AnimatePresence } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { image, backup, funnel, help, rotateLeft, moreVertical, closeSmall } from '@wordpress/icons';
 
@@ -18,6 +18,9 @@ export default function ChatSidebar( {
     const [ isStudio, setIsStudio ] = useState( false );
     const imgRef = useRef();
     const inputRef = useRef();
+    const phase = ! isOpen ? 'closed' : isExpanded ? 'expanded' : 'open';
+    const dur = 0.28;
+    const ease = [ 0.6, 0, 0.4, 1 ];
 
     function playFLIP( expand ) {
         const img = imgRef.current;
@@ -88,19 +91,38 @@ export default function ChatSidebar( {
             {/* Header with dynamic title; tools appear in studio */}
             <div className="editor-chat-sidebar__header">
                 { isExpanded && isStudio && (
-                    <div className="editor-chat-sidebar__leading">
+                    <motion.div
+                        className="editor-chat-sidebar__leading"
+                        initial={ false }
+                        animate={{ opacity: phase === 'expanded' ? 1 : 0 }}
+                        transition={{ duration: dur, ease, delay: phase === 'expanded' ? dur + 0.35 : 0 }}
+                    >
                         <Button
                             className="editor-chat-sidebar__icon-button"
                             label={ __( 'Exit Image Studio' ) }
                             icon={ <Icon icon={ closeSmall } /> }
                             onClick={ () => { setIsStudio( false ); playFLIP( false ); } }
                         />
-                    </div>
+                    </motion.div>
                 ) }
-                <div className="editor-chat-sidebar__title">
-                    { isExpanded && isStudio ? __( 'Image Studio' ) : __( 'Generate' ) }
-                </div>
-                <div className="editor-chat-sidebar__actions">
+                <AnimatePresence initial={ false }>
+                    <motion.div
+                        key={ isExpanded && isStudio ? 'studio' : 'generate' }
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: dur, ease }}
+                        className="editor-chat-sidebar__title"
+                    >
+                        { isExpanded && isStudio ? __( 'Image Studio' ) : __( 'Generate' ) }
+                    </motion.div>
+                </AnimatePresence>
+                <motion.div
+                    className="editor-chat-sidebar__actions"
+                    initial={ false }
+                    animate={{ opacity: isExpanded && isStudio ? 1 : 0 }}
+                    transition={{ duration: dur, ease, delay: isExpanded && isStudio ? dur + 0.35 : 0 }}
+                >
                     { isExpanded && isStudio && (
                         <div className="editor-chat-sidebar__studio-tools">
                             <Button
@@ -142,11 +164,16 @@ export default function ChatSidebar( {
                             </Button>
                         </div>
                     ) }
-                </div>
+                </motion.div>
             </div>
 
             {/* Content */}
-            <div className="editor-chat-sidebar__content">
+            <motion.div
+                className="editor-chat-sidebar__content"
+                initial={ false }
+                animate={{ opacity: isOpen ? 1 : 0 }}
+                transition={{ duration: dur, ease, delay: phase !== 'closed' ? dur : 0 }}
+            >
                 <div className="editor-chat-sidebar__scroll">
                     <div className="editor-chat-sidebar__message editor-chat-sidebar__message--ai">
                         { __( 'Howdy! What image do you want to create today?' ) }
@@ -207,7 +234,7 @@ export default function ChatSidebar( {
                         </button>
                     </div>
                 </div>
-            </div>
+            </motion.div>
         </aside>
     );
 }
