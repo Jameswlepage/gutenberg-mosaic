@@ -13,13 +13,9 @@
   transition: width 0.25s cubic-bezier(0.6, 0, 0.4, 1);
   flex: 0 0 auto;
 
-  &.is-open {
-    width: 420px;
-  }
+  &.is-open { width: 420px; }
 
-  &.is-expanded {
-    width: 100%;
-  }
+  &.is-expanded { width: 100%; }
 
   display: flex;
   flex-direction: column;
@@ -29,6 +25,29 @@
     overflow: auto;
     padding: 0; // blank placeholder for now
   }
+
+  &__controls {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 0; // collapse height; buttons are absolutely positioned
+    pointer-events: none; // allow buttons to set their own pointer events
+  }
+
+  &__control {
+    position: absolute;
+    pointer-events: auto;
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px;
+    line-height: 0;
+
+    &:hover { background: rgba(255,255,255,0.15); }
+  }
+
+  &__control--expand { top: 8px; right: 8px; }
+  &__control--close { top: 8px; left: 8px; }
 }
 
 // Bottom-left floating toggle button

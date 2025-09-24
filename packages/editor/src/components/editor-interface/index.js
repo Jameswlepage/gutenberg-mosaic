@@ -148,7 +148,9 @@ export default function EditorInterface( {
 			} ) }
 			style={ { height: '100%' } }
 		>
-			<InterfaceSkeleton
+			<div className="editor-chat-wrap">
+				<div className="editor-chat-inner">
+					<InterfaceSkeleton
 			isDistractionFree={ isDistractionFree }
 			className={ clsx( 'editor-editor-interface', className, {
 				'is-entity-save-view-open': !! entitiesSavedStatesCallback,
@@ -252,29 +254,33 @@ export default function EditorInterface( {
 					  )
 					: undefined
 			}
-			/>
-
-			{/* Render chat experiment only when enabled via experiments page */}
-			{ chatEnabled ? (
-				<>
-					<Button
-						className={
-							'editor-chat-toggle' + ( isChatOpen ? ' is-active' : '' )
-						}
-						label={ isChatOpen ? __( 'Close chat' ) : __( 'Open chat' ) }
-                    onClick={ () =>
-                        setIsChatOpen( ( v ) => {
-                            const next = ! v;
-                            if ( ! next ) {
-                                setIsChatExpanded( false );
-                            }
-                            return next;
-                        } )
-                    }
-						icon={ <Icon icon={ wordpress } /> }
 					/>
-					<ChatSidebar isOpen={ isChatOpen } isExpanded={ isChatExpanded } />
-				</>
+				</div>
+				{/* Render chat experiment only when enabled via experiments page */}
+				{ chatEnabled ? (
+					<ChatSidebar
+						isOpen={ isChatOpen }
+						isExpanded={ isChatExpanded }
+						onToggleExpand={ () => setIsChatExpanded( (v) => ! v ) }
+						onClose={ () => setIsChatExpanded( false ) }
+					/>
+				) : null }
+			</div>
+
+			{/* Floating toggle button */}
+			{ chatEnabled ? (
+				<Button
+					className={ 'editor-chat-toggle' + ( isChatOpen ? ' is-active' : '' ) }
+					label={ isChatOpen ? __( 'Close chat' ) : __( 'Open chat' ) }
+					onClick={ () => {
+						setIsChatOpen( ( v ) => {
+							const next = ! v;
+							if ( ! next ) setIsChatExpanded( false );
+							return next;
+						} );
+					} }
+					icon={ <Icon icon={ wordpress } /> }
+				/>
 			) : null }
 		</div>
 	);

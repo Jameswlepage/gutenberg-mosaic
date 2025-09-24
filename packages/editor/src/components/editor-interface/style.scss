@@ -20,45 +20,87 @@
     align-items: stretch;
 }
 
-// When chat is open, wrap the editor (InterfaceSkeleton) with a thick border and rounded corners
+// Editor area wrappers
+.editor-chat-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+}
+
+.editor-chat-inner {
+    flex: 1 1 auto;
+}
+
+// When chat is open, wrap the editor with a thick border and rounded inner corners
 .editor-chat-container.is-chat-open {
-    .editor-editor-interface {
+    // Base timing and reverse sequence delays (when exiting fullscreen)
+    --chat-dur: 0.25s;
+    --editor-fade-delay: 0.5s; // fade in starts last on collapse
+    --editor-width-delay: 0.25s; // editor width grows after sidebar shrinks
+    --sidebar-width-delay: 0s; // sidebar shrinks first
+
+    .editor-chat-wrap {
         @media not (prefers-reduced-motion) {
+            // Snap background instantly; only animate padding and shadow
             transition: padding 0.25s cubic-bezier(0.6, 0, 0.4, 1),
-                        background-color 0.25s cubic-bezier(0.6, 0, 0.4, 1),
                         box-shadow 0.25s cubic-bezier(0.6, 0, 0.4, 1);
         }
-        // Use padding + background on the wrapper as the thick border.
         padding: 16px;
         background: var(--wp-components-color-foreground, #1e1e1e);
         box-shadow: $elevation-x-small;
         box-sizing: border-box;
+        // Visual gap between the editor and the sidebar content
+        column-gap: $grid-unit-15;
+    }
 
-        // Actual editor canvas background.
-        .interface-interface-skeleton {
-            background: $white;
+    .editor-chat-inner .interface-interface-skeleton {
+        background: $white;
+        border-radius: $radius-large;
+        overflow: hidden;
+    }
+
+    // Editor fades/expands with variable-sequenced transitions
+    .editor-chat-inner {
+        @media not (prefers-reduced-motion) {
+            transition: opacity var(--chat-dur) cubic-bezier(0.6, 0, 0.4, 1) var(--editor-fade-delay),
+                        width var(--chat-dur) cubic-bezier(0.6, 0, 0.4, 1) var(--editor-width-delay),
+                        flex-basis var(--chat-dur) cubic-bezier(0.6, 0, 0.4, 1) var(--editor-width-delay);
         }
+        opacity: 1;
+        width: auto;
+        flex: 1 1 auto;
+    }
 
-        // Round only the inner header/top corners.
-        .interface-interface-skeleton__editor {
-            border-top-left-radius: $radius-large;
-            border-top-right-radius: $radius-large;
-            overflow: hidden;
-            background: $white;
-        }
-
-        // Round only the inner footer/bottom corners.
-        .interface-interface-skeleton__footer {
-            border-bottom-left-radius: $radius-large;
-            border-bottom-right-radius: $radius-large;
-            overflow: hidden;
-            background: $white;
+    // Sidebar width animation with variable delay
+    .editor-chat-sidebar {
+        @media not (prefers-reduced-motion) {
+            transition: width var(--chat-dur) cubic-bezier(0.6, 0, 0.4, 1) var(--sidebar-width-delay);
         }
     }
 }
 
-// Ensure the editor area fills available space regardless of chat state
-.editor-chat-container > .editor-editor-interface {
-    flex: 1 1 auto;
-    min-width: 0; // allow flex child to grow/shrink properly
+// Snap the page background to gray while chat is open to avoid white flash
+html:has(.editor-chat-container.is-chat-open),
+body:has(.editor-chat-container.is-chat-open) {
+    background: var(--wp-components-color-foreground, #1e1e1e);
 }
+
+// Expanded: fade the editor first, then expand the chat sidebar to full width
+.editor-chat-container.is-chat-open.is-chat-expanded {
+    // Forward sequence timing (entering fullscreen)
+    --editor-fade-delay: 0s;
+    --editor-width-delay: 0.25s;
+    --sidebar-width-delay: 0.25s;
+
+    .editor-chat-inner {
+        opacity: 0;
+        pointer-events: none;
+        width: 0;
+        flex: 0 0 0;
+    }
+    .editor-chat-wrap { column-gap: 0; } // remove gap in fullscreen
+    .editor-chat-sidebar { width: 100%; max-width: 100%; }
+}
+
+// Ensure the editor area fills available space regardless of chat state
+.editor-chat-container > .editor-editor-interface { /* legacy selector; no-op now */ }
