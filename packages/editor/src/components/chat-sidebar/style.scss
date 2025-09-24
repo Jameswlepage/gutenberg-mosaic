@@ -209,6 +209,29 @@
 	}
 	&.is-studio &__image-frame {
 		border-radius: 24px;
+		position: relative; // allow overlays (crop/annotate)
+	}
+
+	// Annotate canvas overlay
+	&__annotate {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		pointer-events: auto;
+		// Ensure on top of image
+		z-index: 2;
+	}
+
+	// Crop box overlay
+	&__crop-box {
+		position: absolute;
+		border: 1px dashed rgba(255, 255, 255, 0.95);
+		border-radius: 8px;
+		z-index: 3;
+		cursor: move;
+		box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35) inset;
 	}
 
 	&__image-action.components-button {

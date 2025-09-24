@@ -3,7 +3,7 @@
  */
 import { Button, Icon, Tooltip, __unstableMotion as motion, __unstableAnimatePresence as AnimatePresence } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { image, backup, funnel, help, rotateLeft, moreVertical, closeSmall } from '@wordpress/icons';
+import { image, rotateLeft, closeSmall } from '@wordpress/icons';
 
 import { useState, useRef } from '@wordpress/element';
 
@@ -17,8 +17,14 @@ export default function ChatSidebar( {
     children,
 } ) {
     const [ isStudio, setIsStudio ] = useState( false );
+    const [ tool, setTool ] = useState( 'none' ); // 'none' | 'crop' | 'annotate'
+    const [ rotation, setRotation ] = useState( 0 );
+    const [ isDirty, setIsDirty ] = useState( false );
     const imgRef = useRef();
+    const frameRef = useRef();
     const inputRef = useRef();
+    const annotateRef = useRef();
+    const [ cropRect, setCropRect ] = useState( null ); // { x,y,w,h } in frame coords
     const phase = ! isOpen ? 'closed' : isExpanded ? 'expanded' : 'open';
     const dur = 0.28;
     const ease = [ 0.6, 0, 0.4, 1 ];
@@ -78,6 +84,99 @@ export default function ChatSidebar( {
         } );
     }
 
+    // Image Studio actions
+    function handleRotate() {
+        setRotation( ( r ) => ( ( r + 90 ) % 360 ) );
+        setIsDirty( true );
+    }
+
+    function handleToggleCrop() {
+        if ( tool === 'crop' ) {
+            setTool( 'none' );
+            return;
+        }
+        // Initialize crop rect to centered 80% of frame
+        const frame = frameRef.current;
+        if ( frame ) {
+            const { width, height } = frame.getBoundingClientRect();
+            const w = Math.round( width * 0.8 );
+            const h = Math.round( height * 0.8 );
+            const x = Math.round( ( width - w ) / 2 );
+            const y = Math.round( ( height - h ) / 2 );
+            setCropRect( { x, y, w, h } );
+        }
+        setTool( 'crop' );
+    }
+
+    function handleToggleAnnotate() {
+        setTool( ( t ) => ( t === 'annotate' ? 'none' : 'annotate' ) );
+    }
+
+    // Simple in-place annotate drawing
+    function onAnnotatePointerDown( e ) {
+        if ( tool !== 'annotate' ) return;
+        const canvas = annotateRef.current;
+        const ctx = canvas?.getContext?.( '2d' );
+        if ( ! ctx ) return;
+        const rect = canvas.getBoundingClientRect();
+        let x = e.clientX - rect.left;
+        let y = e.clientY - rect.top;
+        let drawing = true;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo( x, y );
+        setIsDirty( true );
+
+        function move( ev ) {
+            if ( ! drawing ) return;
+            x = ev.clientX - rect.left;
+            y = ev.clientY - rect.top;
+            ctx.lineTo( x, y );
+            ctx.stroke();
+        }
+        function up() {
+            drawing = false;
+            window.removeEventListener( 'pointermove', move );
+            window.removeEventListener( 'pointerup', up );
+        }
+        window.addEventListener( 'pointermove', move );
+        window.addEventListener( 'pointerup', up );
+    }
+
+    // Simple draggable crop box (move only)
+    function onCropPointerDown( e ) {
+        if ( tool !== 'crop' || ! cropRect ) return;
+        const frame = frameRef.current;
+        if ( ! frame ) return;
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const start = { ...cropRect };
+        function move( ev ) {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            const { width, height } = frame.getBoundingClientRect();
+            let x = Math.max( 0, Math.min( width - start.w, start.x + dx ) );
+            let y = Math.max( 0, Math.min( height - start.h, start.y + dy ) );
+            setCropRect( { ...start, x, y } );
+            setIsDirty( true );
+        }
+        function up() {
+            window.removeEventListener( 'pointermove', move );
+            window.removeEventListener( 'pointerup', up );
+        }
+        window.addEventListener( 'pointermove', move );
+        window.addEventListener( 'pointerup', up );
+    }
+
+    function handleSave() {
+        // Placeholder save: mark clean. Exporting image composition can be added here.
+        setIsDirty( false );
+        setTool( 'none' );
+    }
+
     return (
         <motion.aside
             className={
@@ -126,43 +225,41 @@ export default function ChatSidebar( {
                     <div className="editor-chat-sidebar__actions">
                         { isExpanded && isStudio && (
                             <div className="editor-chat-sidebar__studio-tools">
-                            <Button
-                                className="editor-chat-sidebar__icon-button"
-                                label={ __( 'Regenerate' ) }
-                                icon={ <Icon icon={ backup } /> }
-                                onClick={ () => {} }
-                            />
-                            <Button
-                                className="editor-chat-sidebar__icon-button"
-                                label={ __( 'Apply filters' ) }
-                                icon={ <Icon icon={ funnel } /> }
-                                onClick={ () => {} }
-                            />
-                            <Button
-                                className="editor-chat-sidebar__icon-button"
-                                label={ __( 'Crop' ) }
-                                icon={ <Icon icon={ rotateLeft } /> }
-                                onClick={ () => {} }
-                            />
-                            <Button
-                                className="editor-chat-sidebar__icon-button"
-                                label={ __( 'Alt text' ) }
-                                icon={ <Icon icon={ help } /> }
-                                onClick={ () => {} }
-                            />
-                            <Button
-                                className="editor-chat-sidebar__icon-button"
-                                label={ __( 'More' ) }
-                                icon={ <Icon icon={ moreVertical } /> }
-                                onClick={ () => {} }
-                            />
-                            <Button
-                                className="editor-chat-sidebar__save"
-                                variant="primary"
-                                onClick={ () => {} }
-                            >
-                                { __( 'Save' ) }
-                            </Button>
+                                {/* Crop */}
+                                <Button
+                                    className="editor-chat-sidebar__icon-button"
+                                    label={ __( 'Crop' ) }
+                                    onClick={ handleToggleCrop }
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                                        <path d="M7 3v12a2 2 0 0 0 2 2h12v-2H9V3H7zm-4 4h2v10a2 2 0 0 0 2 2h10v2H7a4 4 0 0 1-4-4V7zM17 3h-2v6h6V7h-4V3z" fill="currentColor"/>
+                                    </svg>
+                                </Button>
+                                {/* Rotate */}
+                                <Button
+                                    className="editor-chat-sidebar__icon-button"
+                                    label={ __( 'Rotate' ) }
+                                    icon={ <Icon icon={ rotateLeft } /> }
+                                    onClick={ handleRotate }
+                                />
+                                {/* Annotate */}
+                                <Button
+                                    className="editor-chat-sidebar__icon-button"
+                                    label={ __( 'Annotate' ) }
+                                    onClick={ handleToggleAnnotate }
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.33H5v-.92l9.06-9.06.92.92L5.92 19.58zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
+                                    </svg>
+                                </Button>
+                                <Button
+                                    className="editor-chat-sidebar__save"
+                                    variant="primary"
+                                    disabled={ ! isDirty }
+                                    onClick={ handleSave }
+                                >
+                                    { __( 'Save' ) }
+                                </Button>
                             </div>
                         ) }
                     </div>
@@ -180,13 +277,30 @@ export default function ChatSidebar( {
                         ) }
                     </div>
                     <div className="editor-chat-sidebar__image">
-                        <div className="editor-chat-sidebar__image-frame">
+                        <div className="editor-chat-sidebar__image-frame" ref={ frameRef }>
                             <img
                                 ref={ imgRef }
                                 className="editor-chat-sidebar__image-tag"
                                 src="https://images.unsplash.com/photo-1502085671122-2d218cd434e6?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                                 alt={ __( 'Placeholder image' ) }
+                                style={{ transform: `rotate(${ rotation }deg)`, transformOrigin: 'center center' }}
                             />
+                            { isExpanded && isStudio && tool === 'annotate' && (
+                                <canvas
+                                    ref={ annotateRef }
+                                    className="editor-chat-sidebar__annotate"
+                                    onPointerDown={ onAnnotatePointerDown }
+                                    width={ frameRef.current?.clientWidth || 0 }
+                                    height={ frameRef.current?.clientHeight || 0 }
+                                />
+                            ) }
+                            { isExpanded && isStudio && tool === 'crop' && cropRect && (
+                                <div
+                                    className="editor-chat-sidebar__crop-box"
+                                    style={{ left: cropRect.x, top: cropRect.y, width: cropRect.w, height: cropRect.h }}
+                                    onPointerDown={ onCropPointerDown }
+                                />
+                            ) }
                         </div>
                         <Tooltip text={ __( 'Open in Image Studio' ) }>
                             <Button
