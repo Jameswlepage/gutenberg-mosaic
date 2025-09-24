@@ -29,6 +29,7 @@
 
 .editor-chat-inner {
     flex: 1 1 auto;
+    min-width: 0; // allow shrinking to 0 when sidebar expands
 }
 
 // When chat is open, wrap the editor with a thick border and rounded inner corners
@@ -50,7 +51,9 @@
         box-shadow: $elevation-x-small;
         box-sizing: border-box;
         // Visual gap between the editor and the sidebar content
-        column-gap: $grid-unit-15;
+        column-gap: 16px;
+        // Default panel width for sidebar
+        --chat-basis: 300px;
     }
 
     .editor-chat-inner .interface-interface-skeleton {
@@ -59,12 +62,10 @@
         overflow: hidden;
     }
 
-    // Editor fades/expands with variable-sequenced transitions
+    // Editor fades only; sidebar growth pushes it naturally
     .editor-chat-inner {
         @media not (prefers-reduced-motion) {
-            transition: opacity var(--chat-dur) cubic-bezier(0.6, 0, 0.4, 1) var(--editor-fade-delay),
-                        width var(--chat-dur) cubic-bezier(0.6, 0, 0.4, 1) var(--editor-width-delay),
-                        flex-basis var(--chat-dur) cubic-bezier(0.6, 0, 0.4, 1) var(--editor-width-delay);
+            transition: opacity var(--chat-dur) cubic-bezier(0.6, 0, 0.4, 1) var(--editor-fade-delay);
         }
         opacity: 1;
         width: auto;
@@ -74,7 +75,7 @@
     // Sidebar width animation with variable delay
     .editor-chat-sidebar {
         @media not (prefers-reduced-motion) {
-            transition: width var(--chat-dur) cubic-bezier(0.6, 0, 0.4, 1) var(--sidebar-width-delay);
+            transition: flex-basis var(--chat-dur) cubic-bezier(0.6, 0, 0.4, 1) var(--sidebar-width-delay);
         }
     }
 }
@@ -88,18 +89,21 @@ body:has(.editor-chat-container.is-chat-open) {
 // Expanded: fade the editor first, then expand the chat sidebar to full width
 .editor-chat-container.is-chat-open.is-chat-expanded {
     // Forward sequence timing (entering fullscreen)
-    --editor-fade-delay: 0s;
-    --editor-width-delay: 0.25s;
-    --sidebar-width-delay: 0.25s;
+    --editor-fade-delay: 0s;       // start fading immediately
+    --sidebar-width-delay: 0.2s;   // sidebar begins growing first
+    --editor-width-delay: 0.25s;   // editor begins shrinking just after
+    // Delay studio icon fade until slide completes
+    --studio-icons-delay: calc(var(--sidebar-width-delay) + var(--chat-dur));
 
     .editor-chat-inner {
         opacity: 0;
         pointer-events: none;
-        width: 0;
-        flex: 0 0 0;
     }
-    .editor-chat-wrap { column-gap: 0; } // remove gap in fullscreen
-    .editor-chat-sidebar { width: 100%; max-width: 100%; }
+    // Remove gap to let sidebar truly fill the container; set basis to 100%
+    .editor-chat-wrap {
+        column-gap: 0;
+        --chat-basis: 100%;
+    }
 }
 
 // Ensure the editor area fills available space regardless of chat state

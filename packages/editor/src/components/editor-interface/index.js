@@ -108,14 +108,8 @@ export default function EditorInterface( {
         }
         return false;
     } );
-    const [ isChatExpanded, setIsChatExpanded ] = useState( () => {
-        if ( typeof window !== 'undefined' && window.__experimentalChatSidebar ) {
-            try {
-                return localStorage.getItem( 'gutenbergChatSidebarExpanded' ) === '1';
-            } catch (e) {}
-        }
-        return false;
-    } );
+    // Never reload into full screen: default expanded to false regardless of storage
+    const [ isChatExpanded, setIsChatExpanded ] = useState( false );
 	const closeEntitiesSavedStates = useCallback(
 		( arg ) => {
 			if ( typeof entitiesSavedStatesCallback === 'function' ) {
@@ -263,6 +257,10 @@ export default function EditorInterface( {
 						isExpanded={ isChatExpanded }
 						onToggleExpand={ () => setIsChatExpanded( (v) => ! v ) }
 						onClose={ () => setIsChatExpanded( false ) }
+						onCloseChat={ () => {
+							setIsChatExpanded( false );
+							setIsChatOpen( false );
+						} }
 					/>
 				) : null }
 			</div>
