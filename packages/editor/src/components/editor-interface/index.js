@@ -12,7 +12,9 @@ import { __, _x } from '@wordpress/i18n';
 import { store as preferencesStore } from '@wordpress/preferences';
 import { BlockBreadcrumb, BlockToolbar } from '@wordpress/block-editor';
 import { useViewportMatch } from '@wordpress/compose';
-import { useState, useCallback } from '@wordpress/element';
+import { useState, useCallback, useEffect } from '@wordpress/element';
+import { Button, Icon } from '@wordpress/components';
+import { wordpress } from '@wordpress/icons';
 
 /**
  * Internal dependencies
@@ -26,6 +28,7 @@ import SavePublishPanels from '../save-publish-panels';
 import TextEditor from '../text-editor';
 import VisualEditor from '../visual-editor';
 import EditorContentSlotFill from './content-slot-fill';
+import ChatSidebar from '../chat-sidebar';
 
 const interfaceLabels = {
 	/* translators: accessibility text for the editor top bar landmark region. */
@@ -97,6 +100,22 @@ export default function EditorInterface( {
 	// Note 'truthy' callback implies an open panel.
 	const [ entitiesSavedStatesCallback, setEntitiesSavedStatesCallback ] =
 		useState( false );
+    const [ isChatOpen, setIsChatOpen ] = useState( () => {
+        if ( typeof window !== 'undefined' && window.__experimentalChatSidebar ) {
+            try {
+                return localStorage.getItem( 'gutenbergChatSidebarOpen' ) === '1';
+            } catch (e) {}
+        }
+        return false;
+    } );
+    const [ isChatExpanded, setIsChatExpanded ] = useState( () => {
+        if ( typeof window !== 'undefined' && window.__experimentalChatSidebar ) {
+            try {
+                return localStorage.getItem( 'gutenbergChatSidebarExpanded' ) === '1';
+            } catch (e) {}
+        }
+        return false;
+    } );
 	const closeEntitiesSavedStates = useCallback(
 		( arg ) => {
 			if ( typeof entitiesSavedStatesCallback === 'function' ) {
@@ -107,8 +126,29 @@ export default function EditorInterface( {
 		[ entitiesSavedStatesCallback ]
 	);
 
+    const chatEnabled =
+        typeof window !== 'undefined' && window.__experimentalChatSidebar;
+
+    // Persist chat open/expanded states in localStorage
+    useEffect( () => {
+        if ( ! chatEnabled ) return;
+        try {
+            localStorage.setItem( 'gutenbergChatSidebarOpen', isChatOpen ? '1' : '0' );
+            // Auto-clear expanded when closed to avoid stale fullscreen state
+            const expanded = isChatOpen && isChatExpanded ? '1' : '0';
+            localStorage.setItem( 'gutenbergChatSidebarExpanded', expanded );
+        } catch (e) {}
+    }, [ chatEnabled, isChatOpen, isChatExpanded ] );
+
 	return (
-		<InterfaceSkeleton
+		<div
+			className={ clsx( 'editor-chat-container', {
+				'is-chat-open': chatEnabled && isChatOpen,
+				'is-chat-expanded': chatEnabled && isChatOpen && isChatExpanded,
+			} ) }
+			style={ { height: '100%' } }
+		>
+			<InterfaceSkeleton
 			isDistractionFree={ isDistractionFree }
 			className={ clsx( 'editor-editor-interface', className, {
 				'is-entity-save-view-open': !! entitiesSavedStatesCallback,
@@ -212,6 +252,30 @@ export default function EditorInterface( {
 					  )
 					: undefined
 			}
-		/>
+			/>
+
+			{/* Render chat experiment only when enabled via experiments page */}
+			{ chatEnabled ? (
+				<>
+					<Button
+						className={
+							'editor-chat-toggle' + ( isChatOpen ? ' is-active' : '' )
+						}
+						label={ isChatOpen ? __( 'Close chat' ) : __( 'Open chat' ) }
+                    onClick={ () =>
+                        setIsChatOpen( ( v ) => {
+                            const next = ! v;
+                            if ( ! next ) {
+                                setIsChatExpanded( false );
+                            }
+                            return next;
+                        } )
+                    }
+						icon={ <Icon icon={ wordpress } /> }
+					/>
+					<ChatSidebar isOpen={ isChatOpen } isExpanded={ isChatExpanded } />
+				</>
+			) : null }
+		</div>
 	);
 }

@@ -1,0 +1,63 @@
+// Chat sidebar panel sliding from the right
+.editor-chat-sidebar {
+  // Flex child within the chat container; starts collapsed
+  position: relative;
+  height: 100%;
+  width: 0;
+  max-width: 100vw;
+  overflow: hidden;
+  background: var(--wp-components-color-foreground, #1e1e1e);
+  color: #fff;
+  box-shadow: -$border-width 0 0 0 rgba($color: #000, $alpha: 0.133);
+  // Smooth cubic-bezier to mirror interface transitions
+  transition: width 0.25s cubic-bezier(0.6, 0, 0.4, 1);
+  flex: 0 0 auto;
+
+  &.is-open {
+    width: 420px;
+  }
+
+  &.is-expanded {
+    width: 100%;
+  }
+
+  display: flex;
+  flex-direction: column;
+
+  &__content {
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 0; // blank placeholder for now
+  }
+}
+
+// Bottom-left floating toggle button
+.editor-chat-toggle.components-button {
+  position: fixed;
+  left: $grid-unit-20;
+  bottom: $grid-unit-20;
+  z-index: z-index(".interface-interface-skeleton__actions");
+  border-radius: 9999px;
+  width: $button-size;
+  height: $button-size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: #1e1e1e;
+  color: #fff;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &.is-active {
+    background: var(--wp-admin-theme-color);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+}

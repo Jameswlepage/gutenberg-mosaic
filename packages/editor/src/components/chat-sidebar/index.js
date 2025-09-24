@@ -1,14 +1,21 @@
-export default function ChatSidebar() {
-	if ( ! globalThis.__experimentalChatSidebar ) {
-		return null;
-	}
+/**
+ * WordPress dependencies
+ */
+import { __ } from '@wordpress/i18n';
 
-	return (
-		<div role="region" aria-label="Chat Sidebar" style={ { padding: 12 } }>
-			<strong>Chat sidebar</strong>
-			<div style={ { marginTop: 8, opacity: 0.7 } }>
-				Coming soon: in-editor chat and assistance.
-			</div>
-		</div>
-	);
+export default function ChatSidebar( { isOpen, isExpanded = false, children } ) {
+
+    return (
+        <aside
+            className={
+                'editor-chat-sidebar' +
+                ( isOpen ? ' is-open' : '' ) +
+                ( isExpanded ? ' is-expanded' : '' )
+            }
+            aria-label={ __( 'Chat sidebar' ) }
+            aria-hidden={ ! isOpen }
+        >
+            <div className="editor-chat-sidebar__content">{ children }</div>
+        </aside>
+    );
 }
