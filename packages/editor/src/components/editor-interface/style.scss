@@ -41,19 +41,11 @@
     --sidebar-width-delay: 0s; // sidebar shrinks first
 
     .editor-chat-wrap {
-        @media not (prefers-reduced-motion) {
-            // Snap background instantly; only animate padding and shadow
-            transition: padding 0.25s cubic-bezier(0.6, 0, 0.4, 1),
-                        box-shadow 0.25s cubic-bezier(0.6, 0, 0.4, 1);
-        }
-        padding: 16px;
         background: var(--wp-components-color-foreground, #1e1e1e);
         box-shadow: $elevation-x-small;
         box-sizing: border-box;
         // Visual gap between the editor and the sidebar content
         column-gap: 16px;
-        // Default panel width for sidebar
-        --chat-basis: 300px;
     }
 
     .editor-chat-inner .interface-interface-skeleton {

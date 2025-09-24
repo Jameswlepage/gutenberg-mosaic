@@ -122,7 +122,9 @@ export default function EditorInterface( {
 
     const chatEnabled =
         typeof window !== 'undefined' && window.__experimentalChatSidebar;
-    const phase = ! chatEnabled || ! isChatOpen ? 'closed' : isChatExpanded ? 'expanded' : 'open';
+    const [ isClosing, setIsClosing ] = useState( false );
+    const effectiveOpen = ( chatEnabled && isChatOpen ) || isClosing;
+    const phase = ! chatEnabled || ! effectiveOpen ? 'closed' : isChatExpanded ? 'expanded' : 'open';
     const dur = 0.28;
     const ease = [ 0.6, 0, 0.4, 1 ];
 
@@ -145,13 +147,13 @@ export default function EditorInterface( {
 			} ) }
 			style={ { height: '100%' } }
 		>
-			<motion.div
-				className="editor-chat-wrap"
-				initial={ false }
-				animate={{ padding: phase === 'closed' ? 0 : 16 }}
-				transition={{ duration: dur, ease }}
-				style={{ columnGap: 16 }}
-			>
+            <motion.div
+                className="editor-chat-wrap"
+                initial={ false }
+                animate={{ padding: phase === 'closed' ? 0 : 16 }}
+                transition={{ duration: dur, ease, delay: isClosing ? dur : 0 }}
+                style={{ columnGap: 16 }}
+            >
 				<motion.div
 					className="editor-chat-inner"
 					initial={ false }
@@ -265,35 +267,46 @@ export default function EditorInterface( {
 					/>
 				</motion.div>
 				{/* Render chat experiment only when enabled via experiments page */}
-				{ chatEnabled ? (
-					<ChatSidebar
-						isOpen={ isChatOpen }
-						isExpanded={ isChatExpanded }
-						onToggleExpand={ () => setIsChatExpanded( (v) => ! v ) }
-						onClose={ () => setIsChatExpanded( false ) }
-						onCloseChat={ () => {
-							setIsChatExpanded( false );
-							setIsChatOpen( false );
-						} }
-					/>
-				) : null }
-			</motion.div>
+                { chatEnabled ? (
+                    <ChatSidebar
+                        isOpen={ effectiveOpen }
+                        isExpanded={ isChatExpanded }
+                        isClosing={ isClosing }
+                        onToggleExpand={ () => setIsChatExpanded( (v) => ! v ) }
+                        onClose={ () => setIsChatExpanded( false ) }
+                        onCloseChat={ () => {
+                            setIsChatExpanded( false );
+                            setIsClosing( true );
+                            setTimeout( () => {
+                                setIsClosing( false );
+                                setIsChatOpen( false );
+                            }, dur * 1000 );
+                        } }
+                    />
+                ) : null }
+            </motion.div>
 
 			{/* Floating toggle button */}
-			{ chatEnabled ? (
-				<Button
-					className={ 'editor-chat-toggle' + ( isChatOpen ? ' is-active' : '' ) }
-					label={ isChatOpen ? __( 'Close chat' ) : __( 'Open chat' ) }
-					onClick={ () => {
-						setIsChatOpen( ( v ) => {
-							const next = ! v;
-							if ( ! next ) setIsChatExpanded( false );
-							return next;
-						} );
-					} }
-					icon={ <Icon icon={ wordpress } /> }
-				/>
-			) : null }
+            { chatEnabled ? (
+                <Button
+                    className={ 'editor-chat-toggle' + ( isChatOpen ? ' is-active' : '' ) }
+                    label={ isChatOpen ? __( 'Close chat' ) : __( 'Open chat' ) }
+                    onClick={ () => {
+                        if ( isChatOpen ) {
+                            // Start closing sequence: fade out content, then slide & remove background
+                            setIsChatExpanded( false );
+                            setIsClosing( true );
+                            setTimeout( () => {
+                                setIsClosing( false );
+                                setIsChatOpen( false );
+                            }, dur * 1000 );
+                        } else {
+                            setIsChatOpen( true );
+                        }
+                    } }
+                    icon={ <Icon icon={ wordpress } /> }
+                />
+            ) : null }
 		</div>
 	);
 }

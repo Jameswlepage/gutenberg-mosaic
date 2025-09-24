@@ -10,6 +10,7 @@ import { useState, useRef } from '@wordpress/element';
 export default function ChatSidebar( {
     isOpen,
     isExpanded = false,
+    isClosing = false,
     onToggleExpand,
     onClose,
     onCloseChat,
@@ -78,7 +79,7 @@ export default function ChatSidebar( {
     }
 
     return (
-        <aside
+        <motion.aside
             className={
                 'editor-chat-sidebar' +
                 ( isOpen ? ' is-open' : '' ) +
@@ -87,44 +88,44 @@ export default function ChatSidebar( {
             }
             aria-label={ __( 'Chat sidebar' ) }
             aria-hidden={ ! isOpen }
+            initial={ false }
+            style={{ flex: '0 0 auto' }}
+            animate={{ width: phase === 'closed' ? 0 : phase === 'open' ? 300 : '100%' }}
+            transition={{ duration: dur, ease, delay: isClosing ? dur : 0 }}
         >
-            {/* Header with dynamic title; tools appear in studio */}
-            <div className="editor-chat-sidebar__header">
-                { isExpanded && isStudio && (
-                    <motion.div
-                        className="editor-chat-sidebar__leading"
-                        initial={ false }
-                        animate={{ opacity: phase === 'expanded' ? 1 : 0 }}
-                        transition={{ duration: dur, ease, delay: phase === 'expanded' ? dur + 0.35 : 0 }}
-                    >
-                        <Button
-                            className="editor-chat-sidebar__icon-button"
-                            label={ __( 'Exit Image Studio' ) }
-                            icon={ <Icon icon={ closeSmall } /> }
-                            onClick={ () => { setIsStudio( false ); playFLIP( false ); } }
-                        />
-                    </motion.div>
-                ) }
-                <AnimatePresence initial={ false }>
-                    <motion.div
-                        key={ isExpanded && isStudio ? 'studio' : 'generate' }
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: dur, ease }}
-                        className="editor-chat-sidebar__title"
-                    >
-                        { isExpanded && isStudio ? __( 'Image Studio' ) : __( 'Generate' ) }
-                    </motion.div>
-                </AnimatePresence>
-                <motion.div
-                    className="editor-chat-sidebar__actions"
-                    initial={ false }
-                    animate={{ opacity: isExpanded && isStudio ? 1 : 0 }}
-                    transition={{ duration: dur, ease, delay: isExpanded && isStudio ? dur + 0.35 : 0 }}
-                >
+            {/* Shell: everything inside the sidebar fades after slide-in, fades before slide-out */}
+            <motion.div
+                className="editor-chat-sidebar__shell"
+                initial={ false }
+                animate={{ opacity: phase === 'closed' ? 0 : 1 }}
+                transition={{ duration: dur, ease, delay: isClosing ? 0 : dur }}
+            >
+                <div className="editor-chat-sidebar__header">
                     { isExpanded && isStudio && (
-                        <div className="editor-chat-sidebar__studio-tools">
+                        <div className="editor-chat-sidebar__leading">
+                            <Button
+                                className="editor-chat-sidebar__icon-button"
+                                label={ __( 'Exit Image Studio' ) }
+                                icon={ <Icon icon={ closeSmall } /> }
+                                onClick={ () => { setIsStudio( false ); playFLIP( false ); } }
+                            />
+                        </div>
+                    ) }
+                    <AnimatePresence initial={ false }>
+                        <motion.div
+                            key={ isExpanded && isStudio ? 'studio' : 'generate' }
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: dur, ease }}
+                            className="editor-chat-sidebar__title"
+                        >
+                            { isExpanded && isStudio ? __( 'Image Studio' ) : __( 'Generate' ) }
+                        </motion.div>
+                    </AnimatePresence>
+                    <div className="editor-chat-sidebar__actions">
+                        { isExpanded && isStudio && (
+                            <div className="editor-chat-sidebar__studio-tools">
                             <Button
                                 className="editor-chat-sidebar__icon-button"
                                 label={ __( 'Regenerate' ) }
@@ -162,18 +163,13 @@ export default function ChatSidebar( {
                             >
                                 { __( 'Save' ) }
                             </Button>
-                        </div>
-                    ) }
-                </motion.div>
-            </div>
+                            </div>
+                        ) }
+                    </div>
+                </div>
 
-            {/* Content */}
-            <motion.div
-                className="editor-chat-sidebar__content"
-                initial={ false }
-                animate={{ opacity: isOpen ? 1 : 0 }}
-                transition={{ duration: dur, ease, delay: phase !== 'closed' ? dur : 0 }}
-            >
+                {/* Content */}
+                <div className="editor-chat-sidebar__content">
                 <div className="editor-chat-sidebar__scroll">
                     <div className="editor-chat-sidebar__message editor-chat-sidebar__message--ai">
                         { __( 'Howdy! What image do you want to create today?' ) }
@@ -235,6 +231,6 @@ export default function ChatSidebar( {
                     </div>
                 </div>
             </motion.div>
-        </aside>
+        </motion.aside>
     );
 }
