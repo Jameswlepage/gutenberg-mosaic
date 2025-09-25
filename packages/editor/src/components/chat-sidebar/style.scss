@@ -42,6 +42,15 @@
 		font-weight: 500;
 		font-size: 16px;
 	}
+	&__title-row {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+	}
+	&__jetpack {
+		display: inline-block;
+		vertical-align: middle;
+	}
 	&__actions {
 		display: flex;
 		gap: $grid-unit-10;
@@ -84,10 +93,18 @@
 		display: inline-flex;
 		gap: $grid-unit-10;
 		margin-right: $grid-unit-10;
+		align-items: center;
 	}
 	&__save {
 		height: 32px;
 	}
+
+// Keep save button primary color in disabled state; use opacity only
+.editor-chat-sidebar__save.components-button.is-primary[disabled] {
+	opacity: .5;
+	background: var( --wp-admin-theme-color );
+	color: #fff;
+}
 	// Fade studio tools in after the slide completes; no delay on fade-out
 	&__studio-tools {
 		opacity: 0;
@@ -176,6 +193,7 @@
 		// Uniform rounding across panel and studio
 		border-radius: 24px;
 		transition: none;
+		position: relative; // allow overlay buttons to anchor to frame
 	}
 
 	// Rotator wrapper to keep image centered and visible when rotated
@@ -190,10 +208,10 @@
 
 	&__image-tag {
 		display: block;
-		max-width: 100%;
-		max-height: 100%;
-		width: auto;
-		height: auto;
+		width: 100%;
+		height: 100%;
+		object-fit: cover; // fill frame while keeping aspect
+		object-position: center;
 		border-radius: inherit;
 		transition: none; // ensure image doesn't animate separately
 	}
@@ -202,12 +220,17 @@
 	&.is-studio &__content {
 		display: flex;
 		flex-direction: column;
+		// Reset bottom alignment in studio; center layout is handled by scroll area
+		justify-content: center;
 	}
 	&.is-studio &__scroll {
 		flex: 1 1 auto;
 		display: grid;
 		place-items: center;
 		padding: $grid-unit-20;
+		// Ensure any flex alignment from sidebar state is neutralized
+		justify-content: initial;
+		align-content: center;
 	}
 	&.is-studio &__greeting {
 		opacity: 0;
@@ -243,6 +266,22 @@
 		z-index: 2;
 	}
 
+	// React Easy Crop overlay container
+	&__cropper {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 3;
+	}
+
+	// Match WP crop area rounding to our frame
+	&__wp-crop {
+		border-radius: 24px;
+		overflow: hidden;
+	}
+
 	// Crop box overlay
 	&__crop-box {
 		position: absolute;
@@ -275,6 +314,7 @@
 		color: #fff;
 		opacity: 0;
 		transform: translateY( -4px );
+		z-index: 4; // above image/crop overlays
 		transition:
 			opacity 0.15s ease,
 			transform 0.15s ease;
@@ -289,6 +329,7 @@
 		transform: translateY( 0 );
 	}
 
+
 	// Replace on Canvas button (only visible on hover)
 	&__replace-action.components-button {
 		position: absolute;
@@ -300,6 +341,7 @@
 		color: #fff;
 		opacity: 0;
 		transform: translateY( -4px );
+		z-index: 4; // above image/crop overlays
 		transition:
 			opacity 0.15s ease,
 			transform 0.15s ease;
@@ -309,17 +351,24 @@
 		}
 	}
 
-	&__image:hover .editor-chat-sidebar__replace-action {
-		opacity: 1;
-		transform: translateY( 0 );
-	}
+
+// When a canvas image is selected, always show plus; fade via transition
+.editor-chat-sidebar__image--has-selection .editor-chat-sidebar__replace-action {
+	opacity: 1;
+	transform: none;
+	display: inline-flex;
+}
 	// Always show the icon in panel (open) state; hide in studio
 	&.is-open .editor-chat-sidebar__image-action {
 		opacity: 1;
 		transform: none;
 		display: inline-flex;
 	}
+// Open in Image Studio should always display, even when a canvas image is selected
 	&.is-studio .editor-chat-sidebar__image-action {
+		display: none;
+	}
+	&.is-studio .editor-chat-sidebar__replace-action {
 		display: none;
 	}
 
@@ -364,6 +413,17 @@
 		bottom: 0;
 		padding: $grid-unit-15 0 0; // no left/right or bottom padding
 		background: transparent; // no gradients on containers
+	}
+	&__notice {
+		max-width: 720px; // align with input width
+		margin: 0 auto $grid-unit-10; // center container, align left edge with input
+		padding: 6px 0;
+		text-align: center; // center text over the input
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: #fff;
+		opacity: 0.9;
 	}
 
 	// Selected block indicator above the prompt input
@@ -453,6 +513,31 @@
 		-webkit-appearance: none;
 		box-shadow: none;
 	}
+
+	// In studio, we show an extra attach button. Bump right padding.
+	&.is-studio &__text[type='text'] {
+		padding-right: 88px; // space for attach + submit
+	}
+
+	&__attach {
+		position: absolute;
+		right: 42px; // sit just left of submit (which is right:8px and width 30)
+		top: 50%;
+		transform: translateY( -50% );
+		width: 30px;
+		height: 30px;
+		padding: 0;
+		border-radius: 50%;
+		background: transparent;
+		color: rgba( 255, 255, 255, 0.9 );
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		cursor: pointer;
+		svg { width: 18px; height: 18px; }
+		&:hover { color: #fff; }
+	}
 	&__submit {
 		position: absolute;
 		right: 8px;
@@ -469,11 +554,30 @@
 		justify-content: center;
 		border: 0;
 		cursor: pointer;
-		svg {
-			width: 18px;
-			height: 18px;
+		.components-spinner {
+			width: 16px;
+			height: 16px;
+			margin: 0;
+			// force white spinner
+			border-top-color: #fff;
+			border-right-color: #fff;
+			border-left-color: rgba(255,255,255,0.35);
+			border-bottom-color: rgba(255,255,255,0.35);
 		}
+		svg { width: 18px; height: 18px; fill: #fff; stroke: #fff; }
+		svg * { fill: #fff !important; stroke: #fff !important; }
 	}
+
+// Image generating pulse effect
+@keyframes editor-chat-sidebar-image-blur-pulse {
+	0% { filter: blur(6px); opacity: 0.9; }
+	100% { filter: blur(10px); opacity: 0.8; }
+}
+
+.editor-chat-sidebar__image-tag.is-generating {
+	filter: blur(8px);
+	animation: editor-chat-sidebar-image-blur-pulse 0.9s ease-in-out infinite alternate;
+}
 }
 
 // Bottom-left floating toggle button

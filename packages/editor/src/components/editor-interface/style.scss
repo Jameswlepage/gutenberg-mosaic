@@ -34,9 +34,10 @@
 
 // When chat is open, wrap the editor with a thick border and rounded inner corners
 .editor-chat-container.is-chat-open {
-    // Base timing and reverse sequence delays (when exiting fullscreen)
+    // Base timing
     --chat-dur: 0.25s;
-    --editor-fade-delay: 0.5s; // fade in starts last on collapse
+    // Do not delay the editor fade-in on collapse; avoid flicker
+    --editor-fade-delay: 0s;
     --editor-width-delay: 0.25s; // editor width grows after sidebar shrinks
     --sidebar-width-delay: 0s; // sidebar shrinks first
 

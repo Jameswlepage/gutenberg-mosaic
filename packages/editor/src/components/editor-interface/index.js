@@ -156,12 +156,7 @@ export default function EditorInterface( {
                 style={{ columnGap: phase === 'expanded' ? 0 : 16 }}
                 transition={{ duration: dur, ease, delay: isClosing ? dur : 0 }}
             >
-				<motion.div
-					className="editor-chat-inner"
-					initial={ false }
-					animate={{ opacity: phase === 'expanded' ? 0 : 1 }}
-					transition={{ duration: dur, ease }}
-				>
+				<motion.div className="editor-chat-inner" initial={ false }>
 					<InterfaceSkeleton
 			isDistractionFree={ isDistractionFree }
 			className={ clsx( 'editor-editor-interface', className, {

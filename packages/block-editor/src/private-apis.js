@@ -54,6 +54,10 @@ import CommentIconSlotFill from './components/collab/block-comment-icon-slot';
 import CommentIconToolbarSlotFill from './components/collab/block-comment-icon-toolbar-slot';
 import HTMLElementControl from './components/html-element-control';
 import { useBlockElement } from './components/block-list/use-block-props/use-block-refs';
+import ImageEditingProvider, {
+    useImageEditingContext,
+} from './components/image-editor/context';
+import Cropper from './components/image-editor/cropper';
 /**
  * Private @wordpress/block-editor APIs.
  */
@@ -105,4 +109,8 @@ lock( privateApis, {
 	mediaEditKey,
 	essentialFormatKey,
 	useBlockElement,
+	// Image editing primitives (experimental/private)
+	ImageEditingProvider,
+	useImageEditingContext,
+	Cropper,
 } );
