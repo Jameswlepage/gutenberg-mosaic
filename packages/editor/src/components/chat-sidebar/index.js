@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { __unstableMotion as motion } from '@wordpress/components';
+import { __unstableMotion as motion, Button, Icon, Tooltip } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import Header from './Header';
 import ImagePanel from './ImagePanel';
@@ -11,6 +11,7 @@ import { useState, useRef } from '@wordpress/element';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as blocksStore } from '@wordpress/blocks';
+import { image, plus, thumbsUp, thumbsDown } from '@wordpress/icons';
 
 export default function ChatSidebar( {
 	isOpen,
@@ -47,6 +48,13 @@ export default function ChatSidebar( {
 	// Chat messages state
 	const [ messages, setMessages ] = useState( [
 		{ id: 'm1', role: 'ai', text: __( 'Howdy! What image do you want to create today?' ) },
+		{
+			id: 'm2',
+			role: 'user',
+			text: __(
+				'Create an image of a serene mountain landscape at sunrise, with vibrant colors reflecting off a calm lake in the foreground. Include a few fluffy clouds in the sky and a small cabin nestled among the trees.'
+			),
+		},
 	] );
 	const [ inputValue, setInputValue ] = useState( '' );
 	const [ isSubmitting, setIsSubmitting ] = useState( false );
@@ -100,8 +108,8 @@ export default function ChatSidebar( {
 				setIsGeneratingImage( false );
 				setIsSubmitting( false );
 			};
-			// Mock 2s generation
-			setTimeout( done, 2000 );
+			// Mock ~3s generation (longer)
+			setTimeout( done, 3000 );
 			setInputValue( '' );
 			return;
 		}
@@ -111,8 +119,9 @@ export default function ChatSidebar( {
 		setMessages( (prev) => [ ...prev, { id, role: 'user', text: inputValue } ] );
 		setInputValue( '' );
 		setIsSubmitting( true );
-		setTimeout( () => {
-			setMessages( (prev) => [
+			// Mock ~1.5s response (longer)
+			setTimeout( () => {
+				setMessages( (prev) => [
 				...prev,
 				{
 					id: 'm' + ( Date.now() + 1 ),
@@ -376,7 +385,8 @@ export default function ChatSidebar( {
 								{ m.text }
 							</div>
 						) ) }
-						<ImagePanel
+						<div className="editor-chat-sidebar__image-block">
+							<ImagePanel
 							isExpanded={ isExpanded }
 							isStudio={ isStudio }
 							tool={ tool }
@@ -401,6 +411,36 @@ export default function ChatSidebar( {
 							onAnnotatePointerDown={ onAnnotatePointerDown }
 							isGenerating={ isGeneratingImage }
 						/>
+							{ /* Message actions: below image, left+right groups */ }
+						<div className="editor-chat-sidebar__message-actions">
+								<div className="editor-chat-sidebar__actions-right">
+									{ isImageSelected && (
+										<Tooltip text={ __( 'Replace on Canvas' ) }>
+											<Button
+												className="editor-chat-sidebar__action-button"
+												icon={ <Icon icon={ plus } /> }
+												label={ __( 'Replace on Canvas' ) }
+												onClick={ handleReplaceOnCanvas }
+											/>
+										</Tooltip>
+									) }
+									<Tooltip text={ __( 'Open in Image Studio' ) }>
+										<Button
+											className="editor-chat-sidebar__action-button"
+											icon={ <Icon icon={ image } /> }
+											label={ __( 'Open in Image Studio' ) }
+											onClick={ () => { setIsStudio( true ); playFLIP( true ); } }
+										/>
+									</Tooltip>
+									<Tooltip text={ __( 'Thumbs up' ) }>
+										<Button className="editor-chat-sidebar__action-button" icon={ <Icon icon={ thumbsUp } /> } label={ __( 'Thumbs up' ) } onClick={ () => {} } />
+									</Tooltip>
+									<Tooltip text={ __( 'Thumbs down' ) }>
+										<Button className="editor-chat-sidebar__action-button" icon={ <Icon icon={ thumbsDown } /> } label={ __( 'Thumbs down' ) } onClick={ () => {} } />
+									</Tooltip>
+								</div>
+						</div>
+						</div>
 					{ /* No inline CTA; use image overlay action only */ }
 					{ children }
 					<div className="editor-chat-sidebar__message editor-chat-sidebar__message--me">

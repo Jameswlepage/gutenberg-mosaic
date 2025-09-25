@@ -56,8 +56,22 @@
 		gap: $grid-unit-10;
 		align-items: center;
 	}
+
+	// Ensure dropdown menu toggle icon renders white in header tools
+	&__actions .components-dropdown-menu__toggle.has-icon {
+		color: #fff !important;
+		background: transparent;
+		padding: 0;
+		line-height: 0;
+		svg { width: 18px; height: 18px; fill: currentColor; stroke: currentColor; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+	}
+	&__actions .components-dropdown-menu__toggle.has-icon.is-opened {
+		color: #fff !important; // keep white when open
+	}
 	&__icon-button {
 		color: #fff;
+		// Normalize icon weight
+		svg { stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 	}
 	&__icon-button[aria-pressed='true'] {
 		color: var(--wp-admin-theme-color);
@@ -171,10 +185,50 @@
 		font-size: 14px;
 		margin-left: 0; // full width messages, no left gap
 	}
+
+// Image + actions wrapper and actions layout
+&__image-block {
+    margin-bottom: $grid-unit-15;
+    max-width: 720px; // constrain image and its actions to viewport-safe width
+    margin-inline: auto; // center within container
+}
+&__message-actions {
+	margin-top: $grid-unit-20;
+	display: flex;
+	justify-content: flex-end; // all actions aligned to the right
+	align-items: center;
+	gap: 0; // no spacing between action icons
+}
+&__actions-left,
+&__actions-right {
+	display: inline-flex;
+	gap: 0; // no spacing between action icons
+	align-items: center;
+}
+&__action-button.components-button {
+	color: rgba( 255, 255, 255, 0.7 );
+	background: transparent;
+	padding: 0 2px; // minimal horizontal padding to reduce visual gap
+	margin: 0; // remove any default margins from component button
+	min-width: auto;
+	line-height: 0;
+	height: 28px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+		svg {
+			width: 20px;
+			height: 20px;
+			stroke-width: 1.5;
+			vector-effect: non-scaling-stroke;
+		}
+		&:hover { color: #fff; }
+	}
 	&__image {
 		// Maintain consistent aspect ratio in panel and studio
 		aspect-ratio: 4 / 3;
 		width: 100%;
+		max-height: 75vh; // universal cap: never exceed 75% viewport height
 		background: transparent; // ensure no translucent background
 		border: none;
 		margin-bottom: $grid-unit-20;
@@ -192,8 +246,19 @@
 		justify-content: center;
 		// Uniform rounding across panel and studio
 		border-radius: 24px;
-		transition: none;
+		transition: border-radius 120ms ease;
 		position: relative; // allow overlay buttons to anchor to frame
+	}
+
+	&__image.is-cropping,
+	&__image-frame.is-cropping,
+	&__wp-crop.is-cropping {
+		border-radius: 0 !important;
+	}
+
+	// When cropping, allow the crop overlay to reach the edges without clipping
+	&__image.is-cropping {
+		overflow: visible;
 	}
 
 	// Rotator wrapper to keep image centered and visible when rotated
@@ -223,15 +288,16 @@
 		// Reset bottom alignment in studio; center layout is handled by scroll area
 		justify-content: center;
 	}
-	&.is-studio &__scroll {
-		flex: 1 1 auto;
-		display: grid;
-		place-items: center;
-		padding: $grid-unit-20;
-		// Ensure any flex alignment from sidebar state is neutralized
-		justify-content: initial;
-		align-content: center;
-	}
+&.is-studio &__scroll {
+	flex: 1 1 auto;
+	display: grid;
+	align-items: center;
+	justify-items: stretch; // allow children to fill full width
+	padding: $grid-unit-10; // reduce padding to allow a wider image
+	// Ensure any flex alignment from sidebar state is neutralized
+	justify-content: initial;
+	align-content: center;
+}
 	&.is-studio &__greeting {
 		opacity: 0;
 		visibility: hidden;
@@ -242,17 +308,43 @@
 		visibility: hidden;
 		pointer-events: none;
 	}
-	&.is-studio &__image {
-		width: 80%;
-		max-width: 920px;
-		max-height: 66vh;
-		margin-bottom: 0; // remove bottom spacing so it centers perfectly
-		margin-inline: auto; // ensure horizontal centering in any layout
-	}
+	&.is-studio &__image-block { width: 100%; }
+&.is-studio &__image {
+    // Let height cap drive width via aspect ratio in studio
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9; // wider, shorter aspect in studio
+    max-height: 75vh; // cap to 75% viewport height
+    margin-bottom: 0; // remove bottom spacing so it centers perfectly
+    margin-inline: auto; // center when width < container
+}
+&.is-studio &__image-block {
+    // Constrain studio image + actions to container, not viewport
+    // Cap to design token width to avoid overly wide images
+    max-width: min(100%, $wide-content-width);
+}
 	&.is-studio &__image-frame {
 		border-radius: 24px;
 		position: relative; // allow overlays (crop/annotate)
 	}
+
+	// In Studio, attach actions to the lower-right of the image on hover
+&.is-studio &__message-actions--overlay {
+    position: absolute;
+    right: 0; // align to image right edge
+    bottom: 0; // align to image bottom edge
+    margin: 0;
+    justify-content: flex-end;
+    gap: 0; // no spacing between action icons
+    opacity: 0;
+    transform: translateY( 4px );
+    transition: opacity .15s ease, transform .15s ease;
+}
+&.is-studio &__image:hover &__message-actions--overlay {
+	opacity: 1;
+	transform: none;
+}
 
 	// Annotate canvas overlay
 	&__annotate {
@@ -321,6 +413,8 @@
 		svg {
 			width: 18px;
 			height: 18px;
+			stroke-width: 1.5;
+			vector-effect: non-scaling-stroke;
 		}
 	}
 
@@ -348,6 +442,8 @@
 		svg {
 			width: 18px;
 			height: 18px;
+			stroke-width: 1.5;
+			vector-effect: non-scaling-stroke;
 		}
 	}
 
@@ -450,6 +546,8 @@
 			height: 12px;
 			fill: currentColor;
 			stroke: currentColor;
+			stroke-width: 1.5;
+			vector-effect: non-scaling-stroke;
 		}
 		svg * {
 			fill: currentColor !important;
@@ -480,6 +578,8 @@
 			height: 12px;
 			fill: currentColor;
 			stroke: currentColor;
+			stroke-width: 1.5;
+			vector-effect: non-scaling-stroke;
 		}
 		svg * {
 			fill: currentColor !important;
@@ -516,7 +616,7 @@
 
 	// In studio, we show an extra attach button. Bump right padding.
 	&.is-studio &__text[type='text'] {
-		padding-right: 88px; // space for attach + submit
+		padding-right: 124px; // space for tools + attach + submit
 	}
 
 	&__attach {
@@ -529,14 +629,41 @@
 		padding: 0;
 		border-radius: 50%;
 		background: transparent;
-		color: rgba( 255, 255, 255, 0.9 );
+		color: rgba( 255, 255, 255, 0.7 ); // align with message actions default
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		border: 0;
 		cursor: pointer;
-		svg { width: 18px; height: 18px; }
+		svg { width: 18px; height: 18px; fill: currentColor; stroke: currentColor; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+		svg * { fill: currentColor !important; stroke: currentColor !important; }
 		&:hover { color: #fff; }
+	}
+
+	&__tools {
+		position: absolute;
+		right: 76px; // to the left of image attach
+		top: 50%;
+		transform: translateY( -50% );
+		width: 30px;
+		height: 30px;
+		padding: 0;
+		border-radius: 50%;
+		background: transparent;
+		color: rgba( 255, 255, 255, 0.7 );
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		cursor: pointer;
+		svg { width: 18px; height: 18px; fill: currentColor; stroke: currentColor; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+		svg * { fill: currentColor !important; stroke: currentColor !important; }
+		&:hover { color: #fff; }
+	}
+
+	// Ensure WP button styles don't override attach icon color
+	&__attach.components-button {
+		color: rgba( 255, 255, 255, 0.7 ) !important;
 	}
 	&__submit {
 		position: absolute;
@@ -558,13 +685,15 @@
 			width: 16px;
 			height: 16px;
 			margin: 0;
+			display: inline-block;
+			border-width: 2px;
 			// force white spinner
 			border-top-color: #fff;
 			border-right-color: #fff;
 			border-left-color: rgba(255,255,255,0.35);
 			border-bottom-color: rgba(255,255,255,0.35);
 		}
-		svg { width: 18px; height: 18px; fill: #fff; stroke: #fff; }
+		svg { width: 18px; height: 18px; fill: #fff; stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 		svg * { fill: #fff !important; stroke: #fff !important; }
 	}
 

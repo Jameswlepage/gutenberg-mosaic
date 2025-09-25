@@ -36,9 +36,10 @@ export default function ImagePanel({
   onAnnotatePointerDown,
   isGenerating,
 }) {
+  const isCropping = tool === 'crop';
   return (
-    <div className={`editor-chat-sidebar__image${ isImageSelected ? ' editor-chat-sidebar__image--has-selection' : '' }`}>
-      <div className="editor-chat-sidebar__image-frame" ref={ frameRef }>
+    <div className={`editor-chat-sidebar__image${ isImageSelected ? ' editor-chat-sidebar__image--has-selection' : '' }${ isCropping ? ' is-cropping' : '' }`}>
+      <div className={`editor-chat-sidebar__image-frame${ isCropping ? ' is-cropping' : '' }`} ref={ frameRef }>
           <img
             ref={ imgRef }
             onLoad={ onBaseImageLoad }
@@ -84,28 +85,7 @@ export default function ImagePanel({
             </div>
           ) }
 
-          {/* Overlay actions positioned inside the image frame */}
-          <Tooltip text={ __( 'Open in Image Studio' ) }>
-            <Button
-              className="editor-chat-sidebar__image-action"
-              icon={ <Icon icon={ image } /> }
-              label={ __( 'Open in Image Studio' ) }
-              onClick={ () => { setIsStudio( true ); playFLIP( true ); } }
-              tooltipPosition="top"
-            />
-          </Tooltip>
-
-          { isImageSelected && (
-            <Tooltip text={ __( 'Replace on Canvas' ) }>
-              <Button
-                className="editor-chat-sidebar__replace-action"
-                icon={ <Icon icon={ plus } /> }
-                label={ __( 'Replace on Canvas' ) }
-                onClick={ handleReplaceOnCanvas }
-                tooltipPosition="top"
-              />
-            </Tooltip>
-          ) }
+          { /* Overlay actions removed; actions now rendered below image */ }
 
           { isExpanded && isStudio && tool === 'annotate' && (
             <canvas
@@ -115,6 +95,22 @@ export default function ImagePanel({
               width={ frameRef.current?.clientWidth || 0 }
               height={ frameRef.current?.clientHeight || 0 }
             />
+          ) }
+          { isStudio && (
+            <div className="editor-chat-sidebar__message-actions editor-chat-sidebar__message-actions--overlay">
+              <div className="editor-chat-sidebar__actions-right">
+                { isImageSelected && (
+                  <Tooltip text={ __( 'Replace on Canvas' ) }>
+                    <Button
+                      className="editor-chat-sidebar__action-button"
+                      icon={ <Icon icon={ plus } /> }
+                      label={ __( 'Replace on Canvas' ) }
+                      onClick={ handleReplaceOnCanvas }
+                    />
+                  </Tooltip>
+                ) }
+              </div>
+            </div>
           ) }
       </div>
     </div>

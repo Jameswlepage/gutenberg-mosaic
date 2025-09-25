@@ -3,7 +3,7 @@
  */
 import { Icon, Tooltip, Spinner } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { closeSmall, arrowUp, image } from '@wordpress/icons';
+import { closeSmall, arrowUp, image, tool } from '@wordpress/icons';
 import { BlockIcon } from '@wordpress/block-editor';
 import { BlockTitle } from '@wordpress/block-editor';
 
@@ -75,6 +75,18 @@ export default function InputArea({
               onClick={ () => {} }
             >
               <Icon icon={ image } />
+            </button>
+          </Tooltip>
+        ) }
+        { isExpanded && isStudio && (
+          <Tooltip text={ __( 'Image manipulation tools' ) }>
+            <button
+              type="button"
+              className="editor-chat-sidebar__tools"
+              aria-label={ __( 'Image manipulation tools' ) }
+              onClick={ () => {} }
+            >
+              <Icon icon={ tool } />
             </button>
           </Tooltip>
         ) }
