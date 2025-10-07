@@ -367,6 +367,7 @@ export default function ChatSidebar( {
 					handleToggleAnnotate={ handleToggleAnnotate }
 					isDirty={ isDirty }
 					handleSave={ handleSave }
+						onCloseChat={ onCloseChat }
 				/>
 
 				{ /* Content */ }

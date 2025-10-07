@@ -10,7 +10,7 @@ import {
   __unstableAnimatePresence as AnimatePresence,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
-import { closeSmall, crop, rotateLeft, moreVertical } from '@wordpress/icons';
+import { close, crop, rotateLeft, moreVertical, chevronRight } from '@wordpress/icons';
 
 export default function Header({
   isExpanded,
@@ -29,6 +29,7 @@ export default function Header({
   handleToggleAnnotate,
   isDirty,
   handleSave,
+  onCloseChat,
 }) {
   const dur = 0.28;
   const ease = [0.6, 0, 0.4, 1];
@@ -40,7 +41,7 @@ export default function Header({
           <Button
             className="editor-chat-sidebar__icon-button"
             label={ __( 'Exit Image Studio' ) }
-            icon={ <Icon icon={ closeSmall } /> }
+            icon={ <Icon icon={ chevronRight } /> }
             onClick={ () => {
               setIsStudio( false );
               playFLIP( false );
@@ -180,6 +181,12 @@ export default function Header({
             </DropdownMenu>
           </div>
         ) }
+        <Button
+          className="editor-chat-sidebar__icon-button"
+          label={ __( 'Close chat' ) }
+          icon={ <Icon icon={ close } /> }
+          onClick={ onCloseChat }
+        />
       </div>
     </div>
   );
