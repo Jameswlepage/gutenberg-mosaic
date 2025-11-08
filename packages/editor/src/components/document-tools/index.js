@@ -110,19 +110,37 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 		>
 			<div className="editor-document-tools__left">
 				{ ! isDistractionFree && (
-					<ToolbarButton
-						ref={ inserterSidebarToggleRef }
-						className="editor-document-tools__inserter-toggle"
-						variant="primary"
-						isPressed={ isInserterOpened }
-						onMouseDown={ preventDefault }
-						onClick={ toggleInserter }
-						disabled={ disableBlockTools }
-						icon={ plus }
-						label={ showIconLabels ? shortLabel : longLabel }
-						showTooltip={ ! showIconLabels }
-						aria-expanded={ isInserterOpened }
-					/>
+					<>
+						<ToolbarButton
+							className="editor-document-tools__document-overview-toggle"
+							icon={ listView }
+							disabled={ disableBlockTools }
+							isPressed={ isListViewOpen }
+							/* translators: button label text should, if possible, be under 16 characters. */
+							label={ __( 'Document Overview' ) }
+							onClick={ toggleListView }
+							shortcut={ listViewShortcut }
+							showTooltip={ ! showIconLabels }
+							variant={
+								showIconLabels ? 'tertiary' : undefined
+							}
+							aria-expanded={ isListViewOpen }
+							ref={ listViewToggleRef }
+						/>
+						<ToolbarButton
+							ref={ inserterSidebarToggleRef }
+							className="editor-document-tools__inserter-toggle"
+							variant="primary"
+							isPressed={ isInserterOpened }
+							onMouseDown={ preventDefault }
+							onClick={ toggleInserter }
+							disabled={ disableBlockTools }
+							icon={ plus }
+							label={ showIconLabels ? shortLabel : longLabel }
+							showTooltip={ ! showIconLabels }
+							aria-expanded={ isInserterOpened }
+						/>
+					</>
 				) }
 				{ ( isWideViewport || ! showIconLabels ) && (
 					<>
@@ -138,24 +156,6 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 							variant={ showIconLabels ? 'tertiary' : undefined }
 							size="compact"
 						/>
-						{ ! isDistractionFree && (
-							<ToolbarButton
-								className="editor-document-tools__document-overview-toggle"
-								icon={ listView }
-								disabled={ disableBlockTools }
-								isPressed={ isListViewOpen }
-								/* translators: button label text should, if possible, be under 16 characters. */
-								label={ __( 'Document Overview' ) }
-								onClick={ toggleListView }
-								shortcut={ listViewShortcut }
-								showTooltip={ ! showIconLabels }
-								variant={
-									showIconLabels ? 'tertiary' : undefined
-								}
-								aria-expanded={ isListViewOpen }
-								ref={ listViewToggleRef }
-							/>
-						) }
 					</>
 				) }
 			</div>

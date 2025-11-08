@@ -67,6 +67,7 @@ const ListViewBlockContents = forwardRef(
 							onDragStart={ onDragStart }
 							onDragEnd={ onDragEnd }
 							isExpanded={ isExpanded }
+							isSelectedInList={ isSelected }
 							{ ...props }
 						/>
 					) }

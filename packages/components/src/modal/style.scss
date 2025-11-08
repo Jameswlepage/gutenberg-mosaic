@@ -34,7 +34,7 @@
 	width: 100%;
 	background: $white;
 	box-shadow: $elevation-large;
-	border-radius: $radius-large $radius-large 0 0;
+	border-radius: 4px 4px 0 0;
 	overflow: hidden;
 	// Have the content element fill the vertical space yet not overflow.
 	display: flex;
@@ -62,7 +62,7 @@
 
 	// Show a centered modal on bigger screens.
 	@include break-small() {
-		border-radius: $radius-large;
+		border-radius: 4px;
 		margin: auto;
 		width: auto;
 		min-width: $modal-min-width;

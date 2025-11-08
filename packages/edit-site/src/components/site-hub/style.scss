@@ -8,6 +8,43 @@
 	gap: $grid-unit-10;
 	margin-right: $grid-unit-15;
 	height: $header-height;
+
+	// Collapsed sidebar rail: hide site title and actions in collapsed mode
+	.edit-site-layout.is-sidebar-collapsed & {
+		justify-content: center;
+		margin-right: 0;
+
+		.edit-site-site-hub__title,
+		.edit-site-site-hub__actions {
+			opacity: 0;
+			width: 0;
+			overflow: hidden;
+			pointer-events: none;
+
+			@media not (prefers-reduced-motion) {
+				transition: opacity 0.1s ease-out;
+			}
+		}
+	}
+
+	// Collapsed sidebar rail: show site title and actions in preview/expanded modes
+	.edit-site-layout.is-sidebar-preview &,
+	.edit-site-layout.is-sidebar-expanded & {
+		justify-content: space-between;
+		margin-right: $grid-unit-15;
+
+		.edit-site-site-hub__title,
+		.edit-site-site-hub__actions {
+			opacity: 1;
+			width: auto;
+			overflow: visible;
+			pointer-events: auto;
+
+			@media not (prefers-reduced-motion) {
+				transition: opacity 0.15s ease-out 0.1s; // Delayed fade-in
+			}
+		}
+	}
 }
 
 .edit-site-site-hub__actions {

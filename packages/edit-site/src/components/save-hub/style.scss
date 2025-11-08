@@ -7,6 +7,35 @@
 	flex-shrink: 0;
 	margin: 0;
 	padding: $grid-unit-20 $canvas-padding;
+
+	// Collapsed sidebar rail: hide save hub in collapsed mode
+	.edit-site-layout.is-sidebar-collapsed & {
+		opacity: 0;
+		height: 0;
+		padding: 0;
+		border: none;
+		overflow: hidden;
+		pointer-events: none;
+
+		@media not (prefers-reduced-motion) {
+			transition: opacity 0.1s ease-out;
+		}
+	}
+
+	// Collapsed sidebar rail: show save hub in preview/expanded modes
+	.edit-site-layout.is-sidebar-preview &,
+	.edit-site-layout.is-sidebar-expanded & {
+		opacity: 1;
+		height: auto;
+		padding: $grid-unit-20 $canvas-padding;
+		border-top: 1px solid $gray-800;
+		overflow: visible;
+		pointer-events: auto;
+
+		@media not (prefers-reduced-motion) {
+			transition: opacity 0.15s ease-out 0.1s; // Delayed fade-in
+		}
+	}
 }
 
 .edit-site-save-hub__button {

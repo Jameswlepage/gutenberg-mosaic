@@ -11,10 +11,10 @@ import {
 	__experimentalTruncate as Truncate,
 	privateApis as componentsPrivateApis,
 } from '@wordpress/components';
-import { forwardRef } from '@wordpress/element';
+import { forwardRef, useState, useRef, useEffect } from '@wordpress/element';
 import { Icon, lockSmall as lock, pinSmall, unseen } from '@wordpress/icons';
 import { SPACE, ENTER } from '@wordpress/keycodes';
-import { useSelect } from '@wordpress/data';
+import { useSelect, useDispatch } from '@wordpress/data';
 import { hasBlockSupport } from '@wordpress/blocks';
 
 /**
@@ -46,19 +46,25 @@ function ListViewBlockSelectButton(
 		draggable,
 		isExpanded,
 		ariaDescribedBy,
+		isSelectedInList,
 	},
 	ref
 ) {
+	const [ isEditing, setIsEditing ] = useState( false );
+	const [ editedTitle, setEditedTitle ] = useState( '' );
+	const inputRef = useRef( null );
+
 	const blockInformation = useBlockDisplayInformation( clientId );
 	const blockTitle = useBlockDisplayTitle( {
 		clientId,
 		context: 'list-view',
 	} );
 	const { isLocked } = useBlockLock( clientId );
-	const { canToggleBlockVisibility, isBlockHidden, isContentOnly } =
+	const { updateBlockAttributes } = useDispatch( blockEditorStore );
+	const { canToggleBlockVisibility, isBlockHidden, blockName, blockAttributes, isContentOnly } =
 		useSelect(
 			( select ) => {
-				const { getBlockName } = select( blockEditorStore );
+				const { getBlockName, getBlockAttributes, getBlockEditingMode } = select( blockEditorStore );
 				const { isBlockHidden: _isBlockHidden } = unlock(
 					select( blockEditorStore )
 				);
@@ -69,10 +75,9 @@ function ListViewBlockSelectButton(
 						true
 					),
 					isBlockHidden: _isBlockHidden( clientId ),
-					isContentOnly:
-						select( blockEditorStore ).getBlockEditingMode(
-							clientId
-						) === 'contentOnly',
+					blockName: getBlockName( clientId ),
+					blockAttributes: getBlockAttributes( clientId ),
+					isContentOnly: getBlockEditingMode( clientId ) === 'contentOnly',
 				};
 			},
 			[ clientId ]
@@ -82,6 +87,14 @@ function ListViewBlockSelectButton(
 		canToggleBlockVisibility && isBlockHidden;
 	const isSticky = blockInformation?.positionType === 'sticky';
 	const images = useListViewImages( { clientId, isExpanded } );
+
+	// Focus input when editing starts
+	useEffect( () => {
+		if ( isEditing && inputRef.current ) {
+			inputRef.current.focus();
+			inputRef.current.select();
+		}
+	}, [ isEditing ] );
 
 	// The `href` attribute triggers the browser's native HTML drag operations.
 	// When the link is dragged, the element's outerHTML is set in DataTransfer object as text/html.
@@ -96,9 +109,45 @@ function ListViewBlockSelectButton(
 	 * @param {KeyboardEvent} event
 	 */
 	function onKeyDown( event ) {
+		if ( isEditing ) {
+			return; // Let the input handle its own keyboard events
+		}
 		if ( event.keyCode === ENTER || event.keyCode === SPACE ) {
 			onClick( event );
 		}
+	}
+
+	function handleDoubleClick( event ) {
+		event.preventDefault();
+		event.stopPropagation();
+		setEditedTitle( blockAttributes?.metadata?.name || blockTitle );
+		setIsEditing( true );
+	}
+
+	function handleInputKeyDown( event ) {
+		if ( event.key === 'Enter' ) {
+			event.preventDefault();
+			saveTitle();
+		} else if ( event.key === 'Escape' ) {
+			event.preventDefault();
+			setIsEditing( false );
+		}
+	}
+
+	function handleInputBlur() {
+		saveTitle();
+	}
+
+	function saveTitle() {
+		if ( editedTitle && editedTitle !== blockTitle ) {
+			updateBlockAttributes( clientId, {
+				metadata: {
+					...blockAttributes?.metadata,
+					name: editedTitle,
+				},
+			} );
+		}
+		setIsEditing( false );
 	}
 
 	return (
@@ -132,9 +181,37 @@ function ListViewBlockSelectButton(
 				className="block-editor-list-view-block-select-button__label-wrapper"
 				justify="flex-start"
 				spacing={ 1 }
+				onDoubleClick={ handleDoubleClick }
 			>
 				<span className="block-editor-list-view-block-select-button__title">
-					<Truncate ellipsizeMode="auto">{ blockTitle }</Truncate>
+					{ isEditing ? (
+						<input
+							ref={ inputRef }
+							type="text"
+							value={ editedTitle }
+							onChange={ ( e ) => setEditedTitle( e.target.value ) }
+							onKeyDown={ ( e ) => {
+								e.stopPropagation();
+								handleInputKeyDown( e );
+							} }
+							onBlur={ handleInputBlur }
+							onClick={ ( e ) => e.stopPropagation() }
+							onMouseDown={ ( e ) => e.stopPropagation() }
+							className="block-editor-list-view-block-select-button__title-input"
+							style={ {
+								width: '100%',
+								border: 'none',
+								background: 'transparent',
+								font: 'inherit',
+								padding: 0,
+								margin: 0,
+								outline: 'none',
+								color: isSelectedInList ? '#fff' : 'inherit',
+							} }
+						/>
+					) : (
+						<Truncate ellipsizeMode="auto">{ blockTitle }</Truncate>
+					) }
 				</span>
 				{ blockInformation?.anchor && (
 					<span className="block-editor-list-view-block-select-button__anchor-wrapper">

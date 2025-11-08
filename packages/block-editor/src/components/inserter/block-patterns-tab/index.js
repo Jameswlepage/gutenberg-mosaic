@@ -10,9 +10,9 @@ import { __ } from '@wordpress/i18n';
  * Internal dependencies
  */
 import PatternsExplorerModal from '../block-patterns-explorer';
-import MobileTabNavigation from '../mobile-tab-navigation';
 import { PatternCategoryPreviews } from './pattern-category-previews';
 import { usePatternCategories } from './use-pattern-categories';
+import PatternCategoryAccordion from './pattern-category-accordion';
 import CategoryTabs from '../category-tabs';
 import InserterNoResults from '../no-results';
 
@@ -27,7 +27,8 @@ function BlockPatternsTab( {
 
 	const categories = usePatternCategories( rootClientId );
 
-	const isMobile = useViewportMatch( 'medium', '<' );
+	// Use dual-panel layout for very large screens (>=1920px)
+	const isVeryLargeViewport = useViewportMatch( 'xhuge', '>=' );
 
 	if ( ! categories.length ) {
 		return <InserterNoResults />;
@@ -35,7 +36,7 @@ function BlockPatternsTab( {
 
 	return (
 		<>
-			{ ! isMobile && (
+			{ isVeryLargeViewport ? (
 				<div className="block-editor-inserter__block-patterns-tabs-container">
 					<CategoryTabs
 						categories={ categories }
@@ -53,20 +54,16 @@ function BlockPatternsTab( {
 						{ __( 'Explore all patterns' ) }
 					</Button>
 				</div>
-			) }
-			{ isMobile && (
-				<MobileTabNavigation categories={ categories }>
-					{ ( category ) => (
-						<div className="block-editor-inserter__category-panel">
-							<PatternCategoryPreviews
-								key={ category.name }
-								onInsert={ onInsert }
-								rootClientId={ rootClientId }
-								category={ category }
-							/>
-						</div>
-					) }
-				</MobileTabNavigation>
+			) : (
+				<PatternCategoryAccordion
+					categories={ categories }
+					selectedCategory={ selectedCategory }
+					onSelectCategory={ onSelectCategory }
+					rootClientId={ rootClientId }
+					onInsert={ onInsert }
+					onShowPatternsExplorer={ () => setShowPatternsExplorer( true ) }
+					suggestedCount={ 5 }
+				/>
 			) }
 			{ showPatternsExplorer && (
 				<PatternsExplorerModal

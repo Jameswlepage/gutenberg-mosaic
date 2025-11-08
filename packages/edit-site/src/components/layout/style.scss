@@ -29,6 +29,19 @@
 
 	@include break-medium {
 		width: $nav-sidebar-width;
+
+		// Collapsed sidebar rail experiment
+		.edit-site-layout.is-sidebar-collapsed & {
+			width: $nav-sidebar-width-collapsed;
+		}
+
+		.edit-site-layout.is-sidebar-preview & {
+			width: $nav-sidebar-width;
+		}
+
+		.edit-site-layout.is-sidebar-expanded & {
+			width: $nav-sidebar-width;
+		}
 	}
 
 	// This is only necessary for the exit animation
@@ -43,6 +56,10 @@
 		display: flex;
 		flex-direction: column;
 		height: 100%;
+
+		@media not (prefers-reduced-motion) {
+			transition: width 0.2s ease-out;
+		}
 	}
 
 	.resizable-editor__drag-handle {

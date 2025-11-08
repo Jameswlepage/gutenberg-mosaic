@@ -187,6 +187,18 @@ function gutenberg_initialize_experiments_settings() {
 		)
 	);
 
+	add_settings_field(
+		'gutenberg-collapsed-sidebar-rail',
+		__( 'Site Editor: Collapsed sidebar navigation rail', 'gutenberg' ),
+		'gutenberg_display_experiment_field',
+		'gutenberg-experiments',
+		'gutenberg_experiments_section',
+		array(
+			'label' => __( 'Enables a persistent, collapsed navigation rail in the Site Editor that expands into the full sidebar. The rail is anchored beneath the WordPress "W" button and provides icon-only access to primary navigation.', 'gutenberg' ),
+			'id'    => 'gutenberg-collapsed-sidebar-rail',
+		)
+	);
+
 	register_setting(
 		'gutenberg-experiments',
 		'gutenberg-experiments'

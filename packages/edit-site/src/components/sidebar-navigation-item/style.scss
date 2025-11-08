@@ -36,6 +36,54 @@
 	&.with-suffix {
 		padding-right: $grid-unit-20;
 	}
+
+	// Collapsed sidebar rail: icon-only mode
+	.edit-site-layout.is-sidebar-collapsed & {
+		justify-content: center;
+		padding: $grid-unit-10;
+
+		// Hide text labels and chevrons in collapsed mode
+		.components-flex-block,
+		.edit-site-sidebar-navigation-item__drilldown-indicator,
+		.components-item__suffix {
+			opacity: 0;
+			width: 0;
+			overflow: hidden;
+
+			@media not (prefers-reduced-motion) {
+				transition: opacity 0.1s ease-out;
+			}
+		}
+
+		// Center the icon
+		.components-h-stack {
+			justify-content: center;
+			gap: 0;
+		}
+	}
+
+	// Collapsed sidebar rail: preview mode (hover)
+	.edit-site-layout.is-sidebar-preview & {
+		justify-content: flex-start;
+		padding: $grid-unit-10 6px $grid-unit-10 $grid-unit-20;
+
+		// Show text labels and chevrons in preview mode
+		.components-flex-block,
+		.edit-site-sidebar-navigation-item__drilldown-indicator,
+		.components-item__suffix {
+			opacity: 1;
+			width: auto;
+			overflow: visible;
+
+			@media not (prefers-reduced-motion) {
+				transition: opacity 0.15s ease-out 0.1s; // Delayed fade-in
+			}
+		}
+
+		.components-h-stack {
+			justify-content: flex-start;
+		}
+	}
 }
 
 .edit-site-sidebar-navigation-screen__content .block-editor-list-view-block-select-button {

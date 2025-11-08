@@ -4,10 +4,26 @@
 
 .editor-list-view-sidebar {
 	height: 100%;
+	display: flex;
+	flex-direction: column;
 
 	@include break-medium {
 		width: $secondary-sidebar-width;
 	}
+}
+
+.editor-list-view-sidebar__content {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.editor-list-view-sidebar__footer {
+	flex-shrink: 0;
+	padding: $grid-unit-20;
+	border-top: $border-width solid $gray-300;
 }
 
 .editor-list-view-sidebar__list-view-panel-content,
@@ -28,13 +44,43 @@
 }
 
 .editor-list-view-sidebar__list-view-container {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+// Compact DataViews padding when rendered in the sidebar Pages tab
+.editor-pages-list {
+    // Reduce header/search and filters padding
+    .dataviews__view-actions,
+    .dataviews-filters__container {
+        padding: $grid-unit-10 $grid-unit-20;
+    }
+
+    // Reduce empty/loading padding
+    .dataviews-no-results,
+    .dataviews-loading {
+        padding-left: $grid-unit-20;
+        padding-right: $grid-unit-20;
+    }
+
+    // Tighten list row paddings
+    .dataviews-view-list__item-wrapper {
+        padding: $grid-unit-10 $grid-unit-20;
+    }
+
+    .dataviews-view-list__group-header {
+        padding: 0 $grid-unit-20;
+    }
 }
 
 .editor-list-view-sidebar__tab-panel {
-	height: 100%;
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
 }
 
 .editor-list-view-sidebar__outline {
@@ -55,4 +101,47 @@
 		line-height: $default-line-height;
 		color: $gray-700;
 	}
+}
+
+// Styles tab (Global Styles) adjustments when rendered in the left sidebar
+// Styles tab scoped adjustments
+.editor-styles-tab {
+    // Remove padding to allow GS to span full width
+    .editor-styles-panel-content {
+        padding: 0;
+    }
+
+    // Force the fill wrapper and area to occupy full available width
+    .interface-complementary-area__fill {
+        width: 100% !important;
+    }
+
+    .interface-complementary-area.edit-site-global-styles-sidebar {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    // Header tweaks: remove bottom border, hide duplicate title and close button
+    .components-panel__header {
+        border-bottom: 0;
+    }
+
+    .edit-site-global-styles-sidebar__header-title {
+        display: none;
+    }
+
+    .interface-complementary-area-header > .components-button {
+        display: none;
+    }
+
+    .edit-site-global-styles-sidebar__drilldown-title {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0;
+    }
+}
+
+// Remove double border on the Overview accordion in Layers
+.editor-overview-panel.components-panel__body {
+    border-top: 0;
 }

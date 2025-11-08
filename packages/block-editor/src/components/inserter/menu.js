@@ -75,6 +75,7 @@ function InserterMenu(
 	const [ selectedMediaCategory, setSelectedMediaCategory ] =
 		useState( null );
 	const isLargeViewport = useViewportMatch( 'large' );
+	const isVeryLargeViewport = useViewportMatch( 'xhuge', '>=' );
 
 	function getInitialTab() {
 		if ( __experimentalInitialTab ) {
@@ -85,7 +86,7 @@ function InserterMenu(
 			return 'patterns';
 		}
 
-		return 'blocks';
+		return 'patterns';
 	}
 	const [ selectedTab, setSelectedTab ] = useState( getInitialTab() );
 
@@ -158,6 +159,7 @@ function InserterMenu(
 	);
 
 	const showPatternPanel =
+		isVeryLargeViewport &&
 		selectedTab === 'patterns' &&
 		! delayedFilterValue &&
 		!! selectedPatternCategory;
@@ -271,9 +273,9 @@ function InserterMenu(
 		destinationRootClientId,
 		onInsertPattern,
 		onClickPatternCategory,
-		patternFilter,
 		selectedPatternCategory,
 		showPatternPanel,
+		patternFilter,
 	] );
 
 	const mediaTab = useMemo( () => {
@@ -338,18 +340,6 @@ function InserterMenu(
 					closeButtonLabel={ __( 'Close Block Inserter' ) }
 					tabs={ [
 						{
-							name: 'blocks',
-							title: __( 'Blocks' ),
-							panel: (
-								<>
-									{ inserterSearch }
-									{ selectedTab === 'blocks' &&
-										! delayedFilterValue &&
-										blocksTab }
-								</>
-							),
-						},
-						{
 							name: 'patterns',
 							title: __( 'Patterns' ),
 							panel: (
@@ -358,6 +348,18 @@ function InserterMenu(
 									{ selectedTab === 'patterns' &&
 										! delayedFilterValue &&
 										patternsTab }
+								</>
+							),
+						},
+						{
+							name: 'blocks',
+							title: __( 'Blocks' ),
+							panel: (
+								<>
+									{ inserterSearch }
+									{ selectedTab === 'blocks' &&
+										! delayedFilterValue &&
+										blocksTab }
 								</>
 							),
 						},

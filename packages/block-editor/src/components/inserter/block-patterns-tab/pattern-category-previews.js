@@ -42,20 +42,29 @@ export function PatternCategoryPreviews( {
 	onHover = noop,
 	category,
 	showTitlesAsTooltip,
+	hideHeader = false,
+	patternSyncFilter: patternSyncFilterProp,
+	patternSourceFilter: patternSourceFilterProp,
+	scrollContainerRef: scrollContainerRefProp,
 } ) {
 	const [ allPatterns, , onClickPattern ] = usePatternsState(
 		onInsert,
 		rootClientId,
 		category?.name
 	);
-	const [ patternSyncFilter, setPatternSyncFilter ] = useState( 'all' );
-	const [ patternSourceFilter, setPatternSourceFilter ] = useState( 'all' );
+	const [ internalPatternSyncFilter, setPatternSyncFilter ] = useState( 'all' );
+	const [ internalPatternSourceFilter, setPatternSourceFilter ] = useState( 'all' );
+	const internalScrollContainerRef = useRef();
+
+	// Use prop values if provided, otherwise use internal state
+	const patternSyncFilter = patternSyncFilterProp ?? internalPatternSyncFilter;
+	const patternSourceFilter = patternSourceFilterProp ?? internalPatternSourceFilter;
+	const scrollContainerRef = scrollContainerRefProp ?? internalScrollContainerRef;
 
 	const availableCategories = usePatternCategories(
 		rootClientId,
 		patternSourceFilter
 	);
-	const scrollContainerRef = useRef();
 	const currentCategoryPatterns = useMemo(
 		() =>
 			allPatterns.filter( ( pattern ) => {
@@ -137,62 +146,63 @@ export function PatternCategoryPreviews( {
 
 	return (
 		<>
-			<VStack
-				spacing={ 2 }
-				className="block-editor-inserter__patterns-category-panel-header"
-			>
-				<HStack>
-					<FlexBlock>
-						<Heading
-							className="block-editor-inserter__patterns-category-panel-title"
-							size={ 13 }
-							level={ 4 }
-							as="div"
+			{ ! hideHeader && (
+				<VStack
+					spacing={ 2 }
+					className="block-editor-inserter__patterns-category-panel-header"
+				>
+					<HStack>
+						<FlexBlock>
+							<Heading
+								className="block-editor-inserter__patterns-category-panel-title"
+								size={ 13 }
+								level={ 4 }
+								as="div"
+							>
+								{ category.label }
+							</Heading>
+						</FlexBlock>
+						<PatternsFilter
+							patternSyncFilter={ patternSyncFilter }
+							patternSourceFilter={ patternSourceFilter }
+							setPatternSyncFilter={ onSetPatternSyncFilter }
+							setPatternSourceFilter={ onSetPatternSourceFilter }
+							scrollContainerRef={ scrollContainerRef }
+							category={ category }
+						/>
+					</HStack>
+					{ ! currentCategoryPatterns.length && (
+						<Text
+							variant="muted"
+							className="block-editor-inserter__patterns-category-no-results"
 						>
-							{ category.label }
-						</Heading>
-					</FlexBlock>
-					<PatternsFilter
-						patternSyncFilter={ patternSyncFilter }
-						patternSourceFilter={ patternSourceFilter }
-						setPatternSyncFilter={ onSetPatternSyncFilter }
-						setPatternSourceFilter={ onSetPatternSourceFilter }
-						scrollContainerRef={ scrollContainerRef }
-						category={ category }
-					/>
-				</HStack>
-				{ ! currentCategoryPatterns.length && (
-					<Text
-						variant="muted"
-						className="block-editor-inserter__patterns-category-no-results"
-					>
-						{ __( 'No results found' ) }
-					</Text>
-				) }
-			</VStack>
+							{ __( 'No results found' ) }
+						</Text>
+					) }
+				</VStack>
+			) }
 			{ currentCategoryPatterns.length > 0 && (
-				<>
-					<Text
-						size="12"
-						as="p"
-						className="block-editor-inserter__help-text"
-					>
-						{ __( 'Drag and drop patterns into the canvas.' ) }
-					</Text>
-					<BlockPatternsList
-						ref={ scrollContainerRef }
-						blockPatterns={ pagingProps.categoryPatterns }
-						onClickPattern={ onClickPattern }
-						onHover={ onHover }
-						label={ category.label }
-						orientation="vertical"
-						category={ category.name }
-						isDraggable
-						showTitlesAsTooltip={ showTitlesAsTooltip }
-						patternFilter={ patternSourceFilter }
-						pagingProps={ pagingProps }
-					/>
-				</>
+				<BlockPatternsList
+					ref={ scrollContainerRef }
+					blockPatterns={ pagingProps.categoryPatterns }
+					onClickPattern={ onClickPattern }
+					onHover={ onHover }
+					label={ category.label }
+					orientation="vertical"
+					category={ category.name }
+					isDraggable
+					showTitlesAsTooltip={ showTitlesAsTooltip }
+					patternFilter={ patternSourceFilter }
+					pagingProps={ pagingProps }
+				/>
+			) }
+			{ hideHeader && ! currentCategoryPatterns.length && (
+				<Text
+					variant="muted"
+					className="block-editor-inserter__patterns-category-no-results"
+				>
+					{ __( 'No results found' ) }
+				</Text>
 			) }
 		</>
 	);

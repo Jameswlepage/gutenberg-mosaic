@@ -66,6 +66,14 @@ function Layout() {
 		triggerAnimationOnChange: routeKey + '-' + canvas,
 	} );
 
+	// Collapsed sidebar rail experiment
+	const isCollapsedRailEnabled =
+		window.__experimentalCollapsedSidebarRail && ! isMobileViewport;
+	const [ sidebarMode, setSidebarMode ] = useState(
+		isCollapsedRailEnabled ? 'collapsed' : 'expanded'
+	);
+	const hoverTimeoutRef = useRef( null );
+
 	const { showIconLabels } = useSelect( ( select ) => {
 		return {
 			showIconLabels: select( preferencesStore ).get(
@@ -74,6 +82,82 @@ function Layout() {
 			),
 		};
 	} );
+
+	// Reset sidebar mode when viewport changes or experiment is disabled
+	useEffect( () => {
+		if ( ! isCollapsedRailEnabled && sidebarMode !== 'expanded' ) {
+			setSidebarMode( 'expanded' );
+		}
+	}, [ isCollapsedRailEnabled, sidebarMode ] );
+
+	// Hover preview handlers
+	const handleSidebarMouseEnter = () => {
+		if ( ! isCollapsedRailEnabled || sidebarMode === 'expanded' ) {
+			return;
+		}
+
+		// Clear any existing timeout
+		if ( hoverTimeoutRef.current ) {
+			clearTimeout( hoverTimeoutRef.current );
+		}
+
+		// Add delay to avoid accidental flicker
+		hoverTimeoutRef.current = setTimeout( () => {
+			setSidebarMode( 'preview' );
+		}, 150 );
+	};
+
+	const handleSidebarMouseLeave = () => {
+		if ( ! isCollapsedRailEnabled || sidebarMode === 'expanded' ) {
+			return;
+		}
+
+		// Clear any pending hover timeout
+		if ( hoverTimeoutRef.current ) {
+			clearTimeout( hoverTimeoutRef.current );
+			hoverTimeoutRef.current = null;
+		}
+
+		// Collapse if in preview mode
+		if ( sidebarMode === 'preview' ) {
+			setSidebarMode( 'collapsed' );
+		}
+	};
+
+	// Pin sidebar when navigating
+	const handleNavigationClick = () => {
+		if ( isCollapsedRailEnabled && sidebarMode !== 'expanded' ) {
+			setSidebarMode( 'expanded' );
+		}
+	};
+
+	// Cleanup timeout on unmount
+	useEffect( () => {
+		return () => {
+			if ( hoverTimeoutRef.current ) {
+				clearTimeout( hoverTimeoutRef.current );
+			}
+		};
+	}, [] );
+
+	// Keyboard support: Escape to collapse sidebar
+	useEffect( () => {
+		if ( ! isCollapsedRailEnabled ) {
+			return;
+		}
+
+		const handleKeyDown = ( event ) => {
+			if ( event.key === 'Escape' && sidebarMode === 'expanded' ) {
+				setSidebarMode( 'collapsed' );
+				event.preventDefault();
+			}
+		};
+
+		document.addEventListener( 'keydown', handleKeyDown );
+		return () => {
+			document.removeEventListener( 'keydown', handleKeyDown );
+		};
+	}, [ isCollapsedRailEnabled, sidebarMode ] );
 
 	const backgroundColor = useStyle( 'color.background' );
 	const gradientValue = useStyle( 'color.gradient' );
@@ -98,6 +182,13 @@ function Layout() {
 					{
 						'is-full-canvas': canvas === 'edit',
 						'show-icon-labels': showIconLabels,
+						'is-sidebar-collapsed':
+							isCollapsedRailEnabled &&
+							sidebarMode === 'collapsed',
+						'is-sidebar-preview':
+							isCollapsedRailEnabled && sidebarMode === 'preview',
+						'is-sidebar-expanded':
+							isCollapsedRailEnabled && sidebarMode === 'expanded',
 					}
 				) }
 			>
@@ -108,7 +199,11 @@ function Layout() {
 					*/ }
 					{ ( ! isMobileViewport || ! areas.mobile ) && (
 						<NavigableRegion
-							ariaLabel={ __( 'Navigation' ) }
+							ariaLabel={
+								isCollapsedRailEnabled && sidebarMode === 'collapsed'
+									? __( 'Navigation (collapsed)' )
+									: __( 'Navigation' )
+							}
 							className="edit-site-layout__sidebar-region"
 						>
 							<AnimatePresence>
@@ -128,6 +223,9 @@ function Layout() {
 											ease: 'easeOut',
 										} }
 										className="edit-site-layout__sidebar"
+										onMouseEnter={ handleSidebarMouseEnter }
+										onMouseLeave={ handleSidebarMouseLeave }
+										onClick={ handleNavigationClick }
 									>
 										<SiteHub
 											ref={ toggleRef }

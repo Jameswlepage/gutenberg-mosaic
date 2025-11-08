@@ -71,6 +71,7 @@ function MediaTab( {
 } ) {
 	const mediaCategories = useMediaCategories( rootClientId );
 	const isMobile = useViewportMatch( 'medium', '<' );
+	const isVeryLargeViewport = useViewportMatch( 'xhuge', '>=' );
 	const baseCssClass = 'block-editor-inserter__media-tabs';
 	const onSelectMedia = useCallback(
 		( media ) => {
@@ -97,7 +98,7 @@ function MediaTab( {
 
 	return (
 		<>
-			{ ! isMobile && (
+			{ ! isMobile && isVeryLargeViewport && (
 				<div className={ `${ baseCssClass }-container` }>
 					<CategoryTabs
 						categories={ categories }
@@ -135,7 +136,7 @@ function MediaTab( {
 					</MediaUploadCheck>
 				</div>
 			) }
-			{ isMobile && (
+			{ ( isMobile || ! isVeryLargeViewport ) && (
 				<MobileTabNavigation categories={ categories }>
 					{ ( category ) => (
 						<MediaCategoryPanel
