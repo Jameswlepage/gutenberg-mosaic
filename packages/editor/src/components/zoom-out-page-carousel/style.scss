@@ -26,6 +26,18 @@
         }
     }
 
+	// Exit state: previews slide back out and fade when zooming in
+	&.is-exiting {
+		.editor-zoom-out-page-carousel__preview--previous {
+			transform: translateX(-100%);
+			opacity: 0;
+		}
+		.editor-zoom-out-page-carousel__preview--next {
+			transform: translateX(100%);
+			opacity: 0;
+		}
+	}
+
 	&.is-obscured {
 		opacity: 0;
 		pointer-events: none;
@@ -52,12 +64,16 @@
 	z-index: 1;
     // Slightly visible at rest.
     opacity: 0.6;
-    // Animate slide and fade for entrance.
-    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in-out;
+    // Animate slide and fade for entrance - smooth easing curve matching zoom animation
+    // Apply transition to all states to ensure it works when class is added or removed
+    transition: transform 0.6s cubic-bezier(0.46, 0.03, 0.52, 0.96),
+                opacity 0.6s cubic-bezier(0.46, 0.03, 0.52, 0.96);
+
+    // Use will-change to hint the browser to optimize for transform/opacity changes
+    will-change: transform, opacity;
 
     &:hover:not(:disabled) {
         opacity: 0.9;
-        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease-in-out;
     }
 
 	&:disabled {

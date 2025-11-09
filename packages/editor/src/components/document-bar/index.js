@@ -20,9 +20,9 @@ import { BlockIcon } from '@wordpress/block-editor';
 import { chevronLeftSmall, chevronRightSmall, layout } from '@wordpress/icons';
 // Using Dropdown (not DropdownMenu) to fully control content width
 import { displayShortcut } from '@wordpress/keycodes';
-import { store as coreStore } from '@wordpress/core-data';
+import { store as coreStore, useEntityRecords } from '@wordpress/core-data';
 import { store as commandsStore } from '@wordpress/commands';
-import { useRef, useEffect, useLayoutEffect, useState } from '@wordpress/element';
+import { useRef, useEffect, useState, useMemo } from '@wordpress/element';
 import { useReducedMotion } from '@wordpress/compose';
 import { decodeEntities } from '@wordpress/html-entities';
 import { __unstableStripHTML as stripHTML } from '@wordpress/dom';
@@ -41,6 +41,7 @@ import { store as blockEditorStore } from '@wordpress/block-editor';
 /** @typedef {import("@wordpress/components").IconType} IconType */
 
 const MotionButton = motion.create( Button );
+const EMPTY_ARRAY = [];
 
 /**
  * This component renders a navigation bar at the top of the editor. It displays the title of the current document,
@@ -72,8 +73,6 @@ export default function DocumentBar( props ) {
 		stylesCanvasTitle,
 		isZoomedOut,
 		pageTypeLabelSingular,
-		pages,
-		isPagesResolving,
 	} = useSelect( ( select ) => {
 		const {
 			getCurrentPostType,
@@ -118,17 +117,6 @@ export default function DocumentBar( props ) {
 
 		const { isZoomOut: _isZoomOut } = unlock( select( blockEditorStore ) );
 
-		// Prepare pages list for header page picker when in zoom-out mode (or anytime to keep hooks stable).
-        const query = {
-            per_page: 100,
-            orderby: 'menu_order',
-            order: 'asc',
-            status: 'publish,draft,pending,private,future',
-            _embed: true,
-        };
-		const pagesList = select( coreStore ).getEntityRecords( 'postType', 'page', query ) || [];
-		const pagesResolving = select( coreStore ).isResolving( 'getEntityRecords', [ 'postType', 'page', query ] );
-
 		// Label for page post type (singular)
 		const _pageTypeLabel = getPostType( 'page' )?.labels?.singular_name;
 
@@ -152,32 +140,65 @@ export default function DocumentBar( props ) {
 			stylesCanvasTitle: _stylesCanvasTitle,
 			isZoomedOut: _isZoomOut(),
 			pageTypeLabelSingular: _pageTypeLabel,
-			pages: pagesList,
-			isPagesResolving: pagesResolving,
 		};
 	}, [] );
+
+	const pagesQuery = useMemo( () => ( {
+		per_page: 100,
+		orderby: 'menu_order',
+		order: 'asc',
+		status: 'publish,draft,pending,private,future',
+		_embed: 'wp:featuredmedia',
+		context: 'edit',
+	} ), [] );
+
+	const {
+		records: pagesRecords,
+		isResolving: isPagesResolving,
+	} = useEntityRecords( 'postType', 'page', pagesQuery );
+	const pages = pagesRecords ?? EMPTY_ARRAY;
 
     const { open: openCommandCenter } = useDispatch( commandsStore );
     // Measure dropdown toggle to match popover width
     const toggleRef = useRef();
     const [ toggleWidth, setToggleWidth ] = useState( 0 );
     const [ showAllPages, setShowAllPages ] = useState( false );
-    useLayoutEffect( () => {
-        const el = toggleRef.current;
-        if ( ! el ) return;
-        const measure = () => setToggleWidth( el.getBoundingClientRect().width );
-        measure();
-        let ro;
-        if ( 'ResizeObserver' in window ) {
-            ro = new ResizeObserver( measure );
-            ro.observe( el );
-        }
-        window.addEventListener( 'resize', measure );
-        return () => {
-            window.removeEventListener( 'resize', measure );
-            if ( ro ) ro.disconnect();
-        };
-    }, [] );
+	useEffect( () => {
+		const el = toggleRef.current;
+		if ( ! el ) {
+			return;
+		}
+
+		let frame = requestAnimationFrame( () => {
+			setToggleWidth( el.getBoundingClientRect().width );
+		} );
+
+		const measure = () => {
+			setToggleWidth( el.getBoundingClientRect().width );
+		};
+		const scheduleMeasure = () => {
+			cancelAnimationFrame( frame );
+			frame = requestAnimationFrame( measure );
+		};
+
+		let ro;
+		if ( 'ResizeObserver' in window ) {
+			ro = new ResizeObserver( () => {
+				scheduleMeasure();
+			} );
+			ro.observe( el );
+		}
+
+		window.addEventListener( 'resize', scheduleMeasure );
+
+		return () => {
+			cancelAnimationFrame( frame );
+			window.removeEventListener( 'resize', scheduleMeasure );
+			if ( ro ) {
+				ro.disconnect();
+			}
+		};
+	}, [] );
 	const isReducedMotion = useReducedMotion();
 
 	const isTemplate = TEMPLATE_POST_TYPES.includes( postType );
@@ -277,13 +298,45 @@ export default function DocumentBar( props ) {
 						>
 							<span className="editor-document-bar__zoom-title">
 								<span className="editor-document-bar__post-title">{ currentTitle }</span>
-								{ pageTypeLabelSingular && (
-									<span className="editor-document-bar__post-type-label">{ `· ${ decodeEntities( pageTypeLabelSingular ) }` }</span>
-								) }
+									{ pageTypeLabelSingular && (
+										<span className="editor-document-bar__post-type-label">{ decodeEntities( pageTypeLabelSingular ) }</span>
+									) }
 							</span>
 						</Button>
 					) }
                     renderContent={ ( { onClose } ) => {
+                        const handleKeyDown = ( event ) => {
+                            const { key } = event;
+                            if ( ! [ 'ArrowDown', 'ArrowUp', 'Home', 'End' ].includes( key ) ) {
+                                return;
+                            }
+
+                            event.preventDefault();
+                            const menu = event.currentTarget;
+                            const buttons = Array.from( menu.querySelectorAll( 'button.editor-document-bar__menu-row' ) );
+                            const currentIndex = buttons.indexOf( document.activeElement );
+
+                            let nextIndex;
+                            switch ( key ) {
+                                case 'ArrowDown':
+                                    nextIndex = currentIndex < buttons.length - 1 ? currentIndex + 1 : 0;
+                                    break;
+                                case 'ArrowUp':
+                                    nextIndex = currentIndex > 0 ? currentIndex - 1 : buttons.length - 1;
+                                    break;
+                                case 'Home':
+                                    nextIndex = 0;
+                                    break;
+                                case 'End':
+                                    nextIndex = buttons.length - 1;
+                                    break;
+                            }
+
+                            if ( nextIndex !== undefined && buttons[ nextIndex ] ) {
+                                buttons[ nextIndex ].focus();
+                            }
+                        };
+
                         const renderItem = ( page ) => {
                             const title = decodeEntities( page?.title?.rendered || '' ) || `Untitled (${ page.id })`;
                             const typeText = pageTypeLabelSingular ? decodeEntities( pageTypeLabelSingular ) : '';
@@ -296,8 +349,8 @@ export default function DocumentBar( props ) {
                                     key={ page.id }
                                     type="button"
                                     className={ `editor-document-bar__menu-row${ isCurrent ? ' is-current' : '' }` }
+                                    aria-current={ isCurrent ? 'page' : undefined }
                                     onClick={ () => { if ( ! isCurrent ) { navigateTo( page.id ); onClose(); setShowAllPages( false ); } } }
-                                    disabled={ isCurrent }
                                 >
                                     <span className="editor-document-bar__menu-left">
                                         { thumbSrc && (
@@ -311,7 +364,7 @@ export default function DocumentBar( props ) {
                         };
 
                         return (
-                            <div className="editor-document-bar__menu" style={ toggleWidth ? { width: `${ toggleWidth }px` } : undefined }>
+                            <div className="editor-document-bar__menu" style={ toggleWidth ? { width: `${ toggleWidth }px` } : undefined } onKeyDown={ handleKeyDown }>
                                 { showAllPages ? (
                                     <div className="editor-document-bar__menu-scroll">
                                         <div className="editor-document-bar__menu-inner">
@@ -425,16 +478,14 @@ export default function DocumentBar( props ) {
 							</span>
 							{ pageTypeBadge && (
 								<span className="editor-document-bar__post-type-label">
-									{ `· ${ pageTypeBadge }` }
+									{ pageTypeBadge }
 								</span>
 							) }
 							{ postTypeLabel &&
 								! props.title &&
 								! pageTypeBadge && (
 									<span className="editor-document-bar__post-type-label">
-										{ `· ${ decodeEntities(
-											postTypeLabel
-										) }` }
+										{ decodeEntities( postTypeLabel ) }
 									</span>
 								) }
 						</Text>

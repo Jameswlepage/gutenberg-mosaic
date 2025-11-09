@@ -5,7 +5,7 @@ import {
 	__experimentalVStack as VStack,
 	useNavigator,
 } from '@wordpress/components';
-import { useEffect, useCallback } from '@wordpress/element';
+import { useEffect, useCallback, useRef } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -31,17 +31,30 @@ export function ScreenHeader( {
 	const currentPath = navigator.location.path;
 	const isNotRoot = currentPath !== '/';
 
-	const defaultBackCallback = useCallback( () => {
-		if ( isNotRoot ) {
-			navigator.goBack();
-		}
-	}, [ isNotRoot, navigator ] );
+	// Store navigator in ref to avoid recreating callback
+	const navigatorRef = useRef( navigator );
+	navigatorRef.current = navigator;
 
-	const backCallback = onBack || ( isNotRoot ? defaultBackCallback : undefined );
+	// Store onBack in ref to keep it fresh without causing re-renders
+	const onBackRef = useRef( onBack );
+	onBackRef.current = onBack;
+
+	// Create a single stable callback that handles both cases
+	const stableBackCallback = useCallback( () => {
+		if ( onBackRef.current ) {
+			onBackRef.current();
+		} else if ( navigatorRef.current.location.path !== '/' ) {
+			navigatorRef.current.goBack();
+		}
+	}, [] );
+
+	// Determine if we should show back button based on current state
+	// The callback itself is stable, we just pass null or the callback
+	const shouldShowBack = !! onBack || isNotRoot;
 
 	useEffect( () => {
-		setHeader( title, backCallback );
-	}, [ title, backCallback, setHeader ] );
+		setHeader( title, shouldShowBack ? stableBackCallback : null );
+	}, [ title, shouldShowBack, stableBackCallback, setHeader ] );
 
 	return (
 		<VStack spacing={ 0 }>

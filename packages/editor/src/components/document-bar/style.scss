@@ -54,11 +54,12 @@
     position: relative;
     display: flex;
     align-items: center;
-    gap: 6px; // tight gap so controls feel merged
+    gap: $grid-unit-10;
     justify-content: center;
     width: 100%;
-    background: transparent; // chevrons sit outside the grey background container
+    background: transparent;
     border-radius: 0;
+    padding: 0 $grid-unit-10;
 
     .editor-document-bar__zoom-chevron {
         opacity: 0;
@@ -71,17 +72,16 @@
     .editor-document-bar__zoom-toggle {
         flex: 1 1 auto;
         min-width: 0;
-        width: 100%;
+        max-width: 600px;
         height: $button-size-compact;
-        // Extra side padding so chevrons (absolutely positioned) don't overlap text
-        padding-inline: $grid-unit-30;
+        padding-inline: $grid-unit-20;
         justify-content: center;
-        color: #000 !important; // black text
-        background: transparent !important; // default: no bg / white
+        color: $gray-900 !important;
+        background: transparent !important;
         border-radius: $grid-unit-05 !important;
-        // Make the center piece a bit wider on larger viewports
+
         @include break-medium() {
-            min-width: 560px;
+            min-width: 400px;
         }
     }
 
@@ -96,6 +96,7 @@
         align-items: baseline;
         gap: 6px;
     }
+}
 
 // Popover width matches toggle width via inline style; avoid hardcoded min-width
 .editor-document-bar__zoom-popover .components-popover__content {
@@ -104,9 +105,19 @@
 }
 
 // Popover content layout (top-level to apply to portaled popover)
-.editor-document-bar__menu { width: 100%; }
-.editor-document-bar__menu-scroll { max-height: 50vh; overflow-y: auto; }
-.editor-document-bar__menu-inner { padding-inline: $grid-unit-15; }
+.editor-document-bar__menu {
+    width: 100%;
+    padding: $grid-unit-10 0 0;
+}
+
+.editor-document-bar__menu-scroll {
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.editor-document-bar__menu-inner {
+    padding: 0 $grid-unit-10;
+}
 
 .editor-document-bar__menu-row {
     width: 100%;
@@ -114,103 +125,79 @@
     align-items: center;
     justify-content: space-between;
     gap: $grid-unit-10;
-    padding: 4px 0; // inner container handles horizontal padding
-    min-height: 24px;
+    padding: $grid-unit-10 $grid-unit-15;
+    min-height: 40px;
     background: transparent;
     border: 0;
     text-align: left;
     cursor: pointer;
     color: $gray-900;
+    border-radius: $grid-unit-05;
+    font-size: 13px;
+    transition: background 0.1s ease-out;
 
-    &:hover {
+    &:hover,
+    &:focus,
+    &:focus-visible,
+    &.is-current {
         background: $gray-100;
     }
+
     &:focus,
     &:focus-visible {
-        background: $gray-100;
         outline: 2px solid var(--wp-admin-theme-color);
-        outline-offset: 2px;
+        outline-offset: -2px;
     }
-    &:disabled,
+
     &.is-current {
         cursor: default;
-        opacity: 0.6;
-        background: transparent;
     }
+
 }
 
 .editor-document-bar__menu-more {
-    border-top: 1px solid $gray-300; // bt-1 above the More row
+    border-top: 1px solid $gray-300;
     margin-top: $grid-unit-05;
-    padding: 8px $grid-unit-15; // edge-to-edge border, padded content
+    padding: $grid-unit-10 $grid-unit-15;
+    font-size: 13px;
+    font-weight: 500;
 }
 
 // Ensure row inner layout is available at top-level (popover is portaled)
-.editor-document-bar__menu-left { display: inline-flex; align-items: center; gap: $grid-unit-10; min-width: 0; }
-.editor-document-bar__menu-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.editor-document-bar__menu-thumb { width: 24px !important; height: 24px !important; min-width: 24px; min-height: 24px; max-width: 24px; max-height: 24px; border-radius: 3px; object-fit: cover; display: block; background: $gray-200; flex: 0 0 24px; }
-.editor-document-bar__menu-meta { color: $gray-700; white-space: nowrap; margin-inline-start: $grid-unit-10; }
-
-    // Menu layout inside the popover: title left, status right
-    .editor-document-bar__menu-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: $grid-unit-10;
-        width: 100%;
-    }
-    .editor-document-bar__menu-left {
-        display: inline-flex;
-        align-items: center;
-        gap: $grid-unit-10;
-        min-width: 0; // allow title to ellipsize
-    }
-    .editor-document-bar__menu-title {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .editor-document-bar__menu-thumb {
-        width: 24px !important;
-        height: 24px !important;
-        min-width: 24px;
-        min-height: 24px;
-        max-width: 24px;
-        max-height: 24px;
-        border-radius: 3px;
-        object-fit: cover;
-        display: block;
-        background: $gray-200;
-        flex: 0 0 24px;
-    }
-
-    // Ensure menu items align content centrally and don't let images alter row height
-    .editor-document-bar__zoom-popover .components-menu-item__button {
-        display: flex;
-        align-items: center;
-    }
-    .editor-document-bar__menu-meta {
-        color: $gray-700;
-        white-space: nowrap;
-        margin-inline-start: $grid-unit-10;
-    }
-
-    .editor-document-bar__menu-divider {
-        border-top: 1px solid $gray-300;
-        margin: $grid-unit-05 0;
-    }
+.editor-document-bar__menu-left {
+    display: inline-flex;
+    align-items: center;
+    gap: $grid-unit-10;
+    min-width: 0;
+    flex: 1;
 }
 
-// Compress MenuItem vertical padding to achieve ~24px row height
-.editor-document-bar__zoom-popover .components-menu-item__button {
-    min-height: 24px;
-    padding-top: 2px;
-    padding-bottom: 2px;
+.editor-document-bar__menu-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 400;
 }
 
-.editor-document-bar__menu-item-button {
-    // Ensure inner content is vertically centered to 24px row height
+.editor-document-bar__menu-thumb {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px;
+    min-height: 32px;
+    max-width: 32px;
+    max-height: 32px;
+    border-radius: $grid-unit-05;
+    object-fit: cover;
     display: block;
+    background: $gray-200;
+    flex: 0 0 32px;
+}
+
+.editor-document-bar__menu-meta {
+    color: $gray-700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 12px;
 }
 
 // Remove background on chevrons (including hover)
@@ -220,24 +207,21 @@
     box-shadow: none !important;
     border: none !important;
     height: $button-size-compact;
+    width: $button-size-compact;
+    min-width: $button-size-compact;
     display: inline-flex;
     align-items: center;
-    line-height: 0; // avoid baseline misalignment for inline SVG
-    // Decent hit area
-    padding-inline: $grid-unit-10;
+    justify-content: center;
+    line-height: 0;
+    padding: 0;
     border-radius: $grid-unit-05;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
+    position: static;
+    flex-shrink: 0;
 }
 
 .editor-document-bar--zoom-nav .editor-document-bar__zoom-chevron svg {
-    display: block; // ensure icon centers within button
+    display: block;
 }
-
-.editor-document-bar--zoom-nav .editor-document-bar__zoom-chevron--prev { left: $grid-unit-05; }
-.editor-document-bar--zoom-nav .editor-document-bar__zoom-chevron--next { right: $grid-unit-05; }
 
 .editor-document-bar--zoom-nav .editor-document-bar__zoom-chevron:focus,
 .editor-document-bar--zoom-nav .editor-document-bar__zoom-chevron:active,
@@ -283,7 +267,13 @@
 .editor-document-bar__post-type-label {
 	flex: 0;
 	color: $gray-800;
-	padding-left: $grid-unit-05;
+	display: inline-flex;
+	align-items: center;
+
+	&::before {
+		content: '·';
+		margin-inline: $grid-unit-05;
+	}
 
 	@media screen and (max-width: #{ ($break-small) }) {
 		display: none;

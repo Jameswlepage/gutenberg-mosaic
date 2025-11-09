@@ -21,12 +21,18 @@ export function GlobalStylesHeaderProvider( { children } ) {
     const [ header, setHeaderState ] = useState( { title: '', onBack: null } );
 
     const setHeader = useCallback( ( newTitle, newOnBack ) => {
-        setHeaderState( { title: newTitle, onBack: newOnBack } );
+        setHeaderState( ( prev ) => {
+            // Only update if values actually changed to prevent infinite loops
+            if ( prev.title === newTitle && prev.onBack === newOnBack ) {
+                return prev;
+            }
+            return { title: newTitle, onBack: newOnBack };
+        } );
     }, [] );
 
     const value = useMemo(
         () => ( { title: header.title, onBack: header.onBack, setHeader } ),
-        [ header, setHeader ]
+        [ header.title, header.onBack, setHeader ]
     );
 
     return (
