@@ -1,0 +1,43 @@
+.editor-zoom-out-page-carousel {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+	z-index: 100000;
+}
+
+.editor-zoom-out-page-carousel__button {
+	pointer-events: auto;
+	position: fixed;
+	top: 50%;
+	transform: translateY(-50%);
+	background: rgba(255, 255, 255, 0.95);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	border-radius: 4px;
+	transition: all 0.2s ease;
+	z-index: 100001;
+
+	&:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 1);
+		transform: translateY(-50%) scale(1.05);
+	}
+
+	&:disabled {
+		opacity: 0.3;
+		cursor: not-allowed;
+	}
+
+	svg {
+		fill: currentColor;
+	}
+}
+
+.editor-zoom-out-page-carousel__button-previous {
+	left: 16px; // grid-unit-20 equivalent
+}
+
+.editor-zoom-out-page-carousel__button-next {
+	right: 16px; // grid-unit-20 equivalent
+}

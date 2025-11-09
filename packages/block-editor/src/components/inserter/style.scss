@@ -263,7 +263,10 @@ $block-inserter-tabs-height: 44px;
 		background: $gray-100;
 		border-top: $border-width solid $gray-200;
 
-		.block-editor-inserter__media-list,
+		.block-editor-inserter__media-list {
+			padding: 0 $grid-unit-15 $grid-unit-20;
+		}
+
 		.block-editor-block-patterns-list {
 			padding: 0 $grid-unit-30 $grid-unit-20;
 		}
@@ -285,13 +288,15 @@ $block-inserter-tabs-height: 44px;
 .block-editor-inserter__pattern-accordion-wrapper {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
 	flex: 1;
+	min-height: 0; // Prevent flex child from growing beyond parent
+	overflow: hidden; // Ensure content doesn't overflow the wrapper
 }
 
 .block-editor-inserter__pattern-accordion {
 	flex: 1;
 	overflow-y: auto;
+	min-height: 0; // Needed for Firefox flex scrolling
 	// No horizontal padding - let borders extend full width
 }
 
@@ -352,6 +357,8 @@ $block-inserter-tabs-height: 44px;
 
 .block-editor-inserter__category-accordion-content {
 	background: $gray-100;
+	max-height: 500px;
+	overflow-y: auto;
 
 	.block-editor-inserter__patterns-category-panel-header {
 		padding: $grid-unit-10 $grid-unit-20;
@@ -621,7 +628,7 @@ $block-inserter-tabs-height: 44px;
 
 .block-editor-inserter__media-panel {
 	min-height: 100%;
-	padding: 0 $grid-unit-20;
+	padding: 0 $grid-unit-10;
 	display: flex;
 	flex-direction: column;
 
@@ -643,7 +650,7 @@ $block-inserter-tabs-height: 44px;
 		// Only apply dual-panel search styles on very large screens
 		@include break-xhuge() {
 			margin-bottom: 0;
-			padding: $grid-unit-20 $grid-unit-30 $grid-unit-20;
+			padding: $grid-unit-20 $grid-unit-15 $grid-unit-20;
 		}
 	}
 }
@@ -743,7 +750,7 @@ $block-inserter-tabs-height: 44px;
 
 
 .block-editor-inserter__mobile-tab-navigation {
-	padding: $grid-unit-20;
+	padding: $grid-unit-10;
 	height: 100%;
 
 	> * {

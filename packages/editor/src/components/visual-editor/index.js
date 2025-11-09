@@ -40,6 +40,7 @@ import {
 import { useZoomOutModeExit } from './use-zoom-out-mode-exit';
 import { usePaddingAppender } from './use-padding-appender';
 import { useEditContentOnlySectionExit } from './use-edit-content-only-section-exit';
+import ZoomOutPageCarousel from '../zoom-out-page-carousel';
 
 const {
 	LayoutStyle,
@@ -414,6 +415,7 @@ function VisualEditor( {
 				}
 			) }
 		>
+			{ isZoomedOut && <ZoomOutPageCarousel /> }
 			<ResizableEditor enableResizing={ enableResizing } height="100%">
 				<BlockCanvas
 					shouldIframe={ ! disableIframe }
