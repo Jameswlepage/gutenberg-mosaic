@@ -40,6 +40,7 @@ const ZoomOutToggle = ( { disabled } ) => {
 	const { registerShortcut, unregisterShortcut } = useDispatch(
 		keyboardShortcutsStore
 	);
+	const { set: setPreference } = useDispatch( preferencesStore );
 
 	useEffect( () => {
 		registerShortcut( {
@@ -63,8 +64,10 @@ const ZoomOutToggle = ( { disabled } ) => {
 		() => {
 			if ( isZoomOut ) {
 				resetZoomLevel();
+				window.localStorage.setItem( 'wp-zoom-out-enabled', 'false' );
 			} else {
 				setZoomLevel( 'auto-scaled' );
+				window.localStorage.setItem( 'wp-zoom-out-enabled', 'true' );
 			}
 		},
 		{
@@ -75,8 +78,10 @@ const ZoomOutToggle = ( { disabled } ) => {
 	const handleZoomOut = () => {
 		if ( isZoomOut ) {
 			resetZoomLevel();
+			window.localStorage.setItem( 'wp-zoom-out-enabled', 'false' );
 		} else {
 			setZoomLevel( 'auto-scaled' );
+			window.localStorage.setItem( 'wp-zoom-out-enabled', 'true' );
 		}
 	};
 

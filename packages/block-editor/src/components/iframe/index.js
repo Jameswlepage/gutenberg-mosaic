@@ -237,6 +237,7 @@ function Iframe( {
 		scale,
 		frameSize: parseInt( frameSize ),
 		iframeDocument,
+		maxContainerWidth: 950, // Increased from default 750 for wider page in zoom out
 	} );
 
 	const disabledRef = useDisabled( { isDisabled: ! readonly } );
@@ -251,8 +252,9 @@ function Iframe( {
 	// Correct doctype is required to enable rendering in standards
 	// mode. Also preload the styles to avoid a flash of unstyled
 	// content.
-	const html = `<!doctype html>
-<html>
+    const isZoomOutInitial = scale !== 1;
+    const html = `<!doctype html>
+<html class="${ isZoomOutInitial ? 'is-zoomed-out wp-zoom-init-hidden' : '' }">
 	<head>
 		<meta charset="utf-8">
 		<base href="${ window.location.origin }">
@@ -262,6 +264,8 @@ function Iframe( {
 				height: auto !important;
 				min-height: 100%;
 			}
+			/* Hide until zoom variables are applied to avoid full-width flash */
+			html.wp-zoom-init-hidden { visibility: hidden; }
 			/* Lowest specificity to not override global styles */
 			:where(body) {
 				margin: 0;

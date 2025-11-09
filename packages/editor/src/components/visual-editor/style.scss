@@ -3,6 +3,7 @@
 .editor-visual-editor {
 	position: relative;
 	display: flex;
+	z-index: 1; // Base layer; carousel overlay sits above
 
 	// This duplicates the iframe background but it's necessary in some situations
 	// when the iframe doesn't cover the whole canvas

@@ -10,7 +10,7 @@
 }
 
 .block-editor-iframe__html {
-	transform-origin: top center;
+    transform-origin: top center;
 
 	@media not ( prefers-reduced-motion ) {
 		// Prevents a flash of background color change when entering/exiting zoom out
@@ -40,6 +40,8 @@
 		$scale-container-width: var(--wp-block-editor-iframe-zoom-out-scale-container-width);
 		$container-width: var(--wp-block-editor-iframe-zoom-out-container-width, 100vw);
 		// Apply an X translation to center the scaled content within the available space.
+		// Use the independent CSS transform properties so the WA-driven animation
+		// can animate scale/translate without conflicting with transform.
 		transform: translateX(calc((#{$scale-container-width} - #{$container-width}) / 2 / #{$scale}));
 		scale: $scale;
 		background-color: var(--wp-editor-canvas-background);

@@ -1,43 +1,117 @@
 .editor-zoom-out-page-carousel {
-	position: absolute;
+	// Render on top of the editor canvas so it isn't affected
+	// by background/opacity transitions during zoom-out.
+	position: fixed;
 	top: 0;
 	left: 0;
 	right: 0;
 	bottom: 0;
 	pointer-events: none;
-	z-index: 100000;
+	// Ensure the carousel previews remain visible during the zoom animation.
+	// Visual editor root uses z-index: 1; place the carousel above it.
+	z-index: 2;
+	// Smoothly fade when sidebars open, but do not animate on initial mount.
+    opacity: 1;
+    transition: opacity 0.15s ease-in-out;
+
+    // Entrance state: previews start hidden and fully off-screen, then slide/fade in.
+    &.is-entering {
+        .editor-zoom-out-page-carousel__preview--previous {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        .editor-zoom-out-page-carousel__preview--next {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+
+	&.is-obscured {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	&.is-navigating {
+		.editor-zoom-out-page-carousel__preview {
+			pointer-events: none;
+		}
+	}
 }
 
-.editor-zoom-out-page-carousel__button {
+
+.editor-zoom-out-page-carousel__preview {
 	pointer-events: auto;
 	position: fixed;
-	top: 50%;
-	transform: translateY(-50%);
-	background: rgba(255, 255, 255, 0.95);
-	border: 1px solid rgba(0, 0, 0, 0.1);
-	border-radius: 4px;
-	transition: all 0.2s ease;
-	z-index: 100001;
+	bottom: 0;
+	height: 75vh;
+	width: calc(75vh * 0.75); // Maintain aspect ratio (roughly 4:3 for typical page)
+	background: transparent;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	z-index: 1;
+    // Slightly visible at rest.
+    opacity: 0.6;
+    // Animate slide and fade for entrance.
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in-out;
 
-	&:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 1);
-		transform: translateY(-50%) scale(1.05);
-	}
+    &:hover:not(:disabled) {
+        opacity: 0.9;
+        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease-in-out;
+    }
 
 	&:disabled {
 		opacity: 0.3;
 		cursor: not-allowed;
 	}
 
-	svg {
-		fill: currentColor;
+	&--previous {
+		left: 0;
+		transform: translateX(-50%); // Hide 50%, show 50%
+	}
+
+	&--next {
+		right: 0;
+		transform: translateX(50%); // Hide 50%, show 50%
 	}
 }
 
-.editor-zoom-out-page-carousel__button-previous {
-	left: 16px; // grid-unit-20 equivalent
+.editor-zoom-out-page-carousel__preview-content {
+	width: 100%;
+	height: 100%;
+	background: #f0f0f0;
+	overflow: hidden;
+	position: relative;
+	border-right: 1px solid rgba(0, 0, 0, 0.1);
+
+	.editor-zoom-out-page-carousel__preview--next & {
+		border-right: none;
+		border-left: 1px solid rgba(0, 0, 0, 0.1);
+	}
 }
 
-.editor-zoom-out-page-carousel__button-next {
-	right: 16px; // grid-unit-20 equivalent
+.editor-zoom-out-page-carousel__preview-loading {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: #f0f0f0;
+	z-index: 1;
+}
+
+.editor-zoom-out-page-carousel__preview-iframe {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	border: none;
+	pointer-events: none;
+	transform: scale(0.3);
+	transform-origin: top left;
+	background: #fff;
+	// Scale up to compensate for the 0.3 scale
+	width: calc(100% / 0.3);
+	height: calc(100% / 0.3);
 }

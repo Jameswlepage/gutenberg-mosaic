@@ -3,6 +3,14 @@
  */
 import { createContext, useContext, useState, useMemo, useCallback, useRef } from '@wordpress/element';
 
+/**
+ * @typedef {Object} GlobalStylesHeaderContextValue
+ * @property {string} title - The header title
+ * @property {(() => void) | null} onBack - The back button callback
+ * @property {(title: string, onBack?: (() => void) | null) => void} setHeader - Function to update header
+ */
+
+/** @type {import('react').Context<GlobalStylesHeaderContextValue>} */
 const GlobalStylesHeaderContext = createContext( {
     title: '',
     onBack: null,

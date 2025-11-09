@@ -16,6 +16,7 @@ import {
 	store as preferencesStore,
 } from '@wordpress/preferences';
 import { store as interfaceStore, ActionItem } from '@wordpress/interface';
+import { store as commandsStore } from '@wordpress/commands';
 
 /**
  * Internal dependencies
@@ -30,6 +31,7 @@ export default function MoreMenu() {
 	const { openModal } = useDispatch( interfaceStore );
 	const { set: setPreference } = useDispatch( preferencesStore );
 	const { toggleDistractionFree } = useDispatch( editorStore );
+	const { open: openCommandPalette } = useDispatch( commandsStore );
 	const showIconLabels = useSelect(
 		( select ) =>
 			select( preferencesStore ).get( 'core', 'showIconLabels' ),
@@ -116,6 +118,15 @@ export default function MoreMenu() {
 							fillProps={ { onClick: onClose } }
 						/>
 						<MenuGroup label={ __( 'Tools' ) }>
+							<MenuItem
+								onClick={ () => {
+									openCommandPalette();
+									onClose();
+								} }
+								shortcut={ displayShortcut.primary( 'k' ) }
+							>
+								{ __( 'Command palette' ) }
+							</MenuItem>
 							<MenuItem
 								onClick={ () =>
 									openModal( 'editor/keyboard-shortcut-help' )

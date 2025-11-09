@@ -99,6 +99,12 @@
 	}
 }
 
+// When the page navigation bar is present, avoid clipping focus rings/box-shadows
+.editor-header__center:has(.editor-document-bar--zoom-nav) {
+	clip-path: none;
+	overflow: visible;
+}
+
 /**
  * Buttons on the right side
  */

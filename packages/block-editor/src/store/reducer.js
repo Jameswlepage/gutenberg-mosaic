@@ -2087,7 +2087,18 @@ export function lastFocus( state = false, action ) {
  *
  * @return {number} Updated state.
  */
-export function zoomLevel( state = 100, action ) {
+// Get initial zoom level from localStorage
+function getInitialZoomLevel() {
+	if ( typeof window !== 'undefined' && window.localStorage ) {
+		const savedZoomState = window.localStorage.getItem( 'wp-zoom-out-enabled' );
+		if ( savedZoomState === 'true' ) {
+			return 'auto-scaled';
+		}
+	}
+	return 100;
+}
+
+export function zoomLevel( state = getInitialZoomLevel(), action ) {
 	switch ( action.type ) {
 		case 'SET_ZOOM_LEVEL':
 			return action.zoom;
