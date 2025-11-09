@@ -25,10 +25,10 @@ const { useGlobalStyles } = unlock( editorPrivateApis );
 
 const getGlobalStylesToggleWelcomeGuideCommands = () =>
 	function useGlobalStylesToggleWelcomeGuideCommands() {
-		const { openGeneralSidebar } = unlock( useDispatch( editSiteStore ) );
 		const { params } = useLocation();
 		const { canvas = 'view' } = params;
 		const { set } = useDispatch( preferencesStore );
+		const { setIsListViewOpened, setDocumentOverviewTab } = useDispatch( editorStore );
 
 		const history = useHistory();
 		const isBlockBasedTheme = useSelect( ( select ) => {
@@ -51,7 +51,8 @@ const getGlobalStylesToggleWelcomeGuideCommands = () =>
 								transition: 'canvas-mode-edit-transition',
 							} );
 						}
-						openGeneralSidebar( 'edit-site/global-styles' );
+						setIsListViewOpened( true );
+						setDocumentOverviewTab( 'styles' );
 						set( 'core/edit-site', 'welcomeGuideStyles', true );
 						// sometimes there's a focus loss that happens after some time
 						// that closes the modal, we need to force reopening it.
@@ -62,7 +63,7 @@ const getGlobalStylesToggleWelcomeGuideCommands = () =>
 					icon: help,
 				},
 			];
-		}, [ history, openGeneralSidebar, canvas, isBlockBasedTheme, set ] );
+		}, [ history, canvas, isBlockBasedTheme, set, setIsListViewOpened, setDocumentOverviewTab ] );
 
 		return {
 			isLoading: false,
@@ -106,8 +107,8 @@ const getGlobalStylesResetCommands = () =>
 
 const getGlobalStylesOpenRevisionsCommands = () =>
 	function useGlobalStylesOpenRevisionsCommands() {
-		const { openGeneralSidebar } = unlock( useDispatch( editSiteStore ) );
 		const { setStylesPath } = unlock( useDispatch( editorStore ) );
+		const { setIsListViewOpened, setDocumentOverviewTab } = useDispatch( editorStore );
 		const { params } = useLocation();
 		const { canvas = 'view' } = params;
 		const history = useHistory();
@@ -139,17 +140,19 @@ const getGlobalStylesOpenRevisionsCommands = () =>
 								transition: 'canvas-mode-edit-transition',
 							} );
 						}
-						openGeneralSidebar( 'edit-site/global-styles' );
+						setIsListViewOpened( true );
+						setDocumentOverviewTab( 'styles' );
 						setStylesPath( '/revisions' );
 					},
 				},
 			];
 		}, [
 			history,
-			openGeneralSidebar,
 			setStylesPath,
 			hasRevisions,
 			canvas,
+			setIsListViewOpened,
+			setDocumentOverviewTab,
 		] );
 
 		return {

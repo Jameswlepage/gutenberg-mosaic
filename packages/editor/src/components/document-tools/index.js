@@ -8,7 +8,7 @@ import clsx from 'clsx';
  */
 import { useViewportMatch } from '@wordpress/compose';
 import { useSelect, useDispatch } from '@wordpress/data';
-import { __, _x } from '@wordpress/i18n';
+import { __, _x, sprintf } from '@wordpress/i18n';
 import { NavigableToolbar } from '@wordpress/block-editor';
 import { ToolbarButton, ToolbarItem } from '@wordpress/components';
 import { listView, plus } from '@wordpress/icons';
@@ -35,6 +35,7 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 		inserterSidebarToggleRef,
 		listViewToggleRef,
 		showIconLabels,
+		postTypeLabel,
 	} = useSelect( ( select ) => {
 		const { get } = select( preferencesStore );
 		const {
@@ -42,6 +43,7 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 			getEditorMode,
 			getInserterSidebarToggleRef,
 			getListViewToggleRef,
+			getPostTypeLabel,
 		} = unlock( select( editorStore ) );
 		const { getShortcutRepresentation } = select( keyboardShortcutsStore );
 
@@ -56,6 +58,7 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 			showIconLabels: get( 'core', 'showIconLabels' ),
 			isDistractionFree: get( 'core', 'distractionFree' ),
 			isVisualMode: getEditorMode() === 'visual',
+			postTypeLabel: getPostTypeLabel(),
 		};
 	}, [] );
 
@@ -89,10 +92,15 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 
 	/* translators: button label text should, if possible, be under 16 characters. */
 	const longLabel = _x(
-		'Block Inserter',
+		'Inserter',
 		'Generic label for block inserter button'
 	);
 	const shortLabel = ! isInserterOpened ? __( 'Add' ) : __( 'Close' );
+
+	/* translators: %s: post type label (e.g., "Page", "Post") */
+	const overviewLabel = postTypeLabel
+		? sprintf( __( '%s Overview' ), postTypeLabel )
+		: __( 'Document Overview' );
 
 	return (
 		// Some plugins expect and use the `edit-post-header-toolbar` CSS class to
@@ -117,7 +125,7 @@ function DocumentTools( { className, disableBlockTools = false } ) {
 							disabled={ disableBlockTools }
 							isPressed={ isListViewOpen }
 							/* translators: button label text should, if possible, be under 16 characters. */
-							label={ __( 'Document Overview' ) }
+							label={ overviewLabel }
 							onClick={ toggleListView }
 							shortcut={ listViewShortcut }
 							showTooltip={ ! showIconLabels }

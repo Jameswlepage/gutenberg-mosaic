@@ -114,11 +114,6 @@ export const registerPostTypeSchema =
 			return;
 		}
 
-		unlock( registry.dispatch( editorStore ) ).setIsReady(
-			'postType',
-			postType
-		);
-
 		const postTypeConfig = ( await registry
 			.resolveSelect( coreStore )
 			.getPostType( postType ) ) as PostType;
@@ -224,6 +219,10 @@ export const registerPostTypeSchema =
 					field
 				);
 			} );
+			unlock( registry.dispatch( editorStore ) ).setIsReady(
+				'postType',
+				postType
+			);
 		} );
 
 		doAction( 'core.registerPostTypeSchema', postType );

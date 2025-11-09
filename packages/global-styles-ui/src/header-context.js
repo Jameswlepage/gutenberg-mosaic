@@ -1,16 +1,26 @@
 /**
  * WordPress dependencies
  */
-import { createContext, useContext, useState, useMemo } from '@wordpress/element';
+import { createContext, useContext, useState, useMemo, useCallback, useRef } from '@wordpress/element';
 
 const GlobalStylesHeaderContext = createContext( {
-    header: null,
+    title: '',
+    onBack: null,
     setHeader: () => {},
 } );
 
 export function GlobalStylesHeaderProvider( { children } ) {
-    const [ header, setHeader ] = useState( null );
-    const value = useMemo( () => ( { header, setHeader } ), [ header ] );
+    const [ header, setHeaderState ] = useState( { title: '', onBack: null } );
+
+    const setHeader = useCallback( ( newTitle, newOnBack ) => {
+        setHeaderState( { title: newTitle, onBack: newOnBack } );
+    }, [] );
+
+    const value = useMemo(
+        () => ( { title: header.title, onBack: header.onBack, setHeader } ),
+        [ header, setHeader ]
+    );
+
     return (
         <GlobalStylesHeaderContext.Provider value={ value }>
             { children }

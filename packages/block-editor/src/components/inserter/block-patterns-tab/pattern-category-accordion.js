@@ -37,7 +37,7 @@ function PatternCategoryAccordion( {
 	};
 
 	return (
-		<div className="block-editor-inserter__pattern-accordion-wrapper">
+		<>
 			<div className="block-editor-inserter__pattern-accordion">
 				{ suggestedCategories.map( ( category ) => (
 					<CategoryAccordionItem
@@ -74,7 +74,7 @@ function PatternCategoryAccordion( {
 				remainingCategoriesCount={ remainingCategories.length }
 				onShowPatternsExplorer={ onShowPatternsExplorer }
 			/>
-		</div>
+		</>
 	);
 }
 

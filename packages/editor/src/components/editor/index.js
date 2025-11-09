@@ -15,7 +15,6 @@ import EditorInterface from '../editor-interface';
 import { ExperimentalEditorProvider } from '../provider';
 import Sidebar from '../sidebar';
 import NotesSidebar from '../collab-sidebar';
-import GlobalStylesSidebar from '../global-styles-sidebar';
 import { GlobalStylesRenderer } from '../global-styles-renderer';
 
 function Editor( {
@@ -41,7 +40,6 @@ function Editor( {
 		hasLoadedPost,
 		error,
 		isBlockTheme,
-		showGlobalStyles,
 	} = useSelect(
 		( select ) => {
 			const {
@@ -49,24 +47,10 @@ function Editor( {
 				getResolutionError,
 				hasFinishedResolution,
 				getCurrentTheme,
-				__experimentalGetCurrentGlobalStylesId,
-				canUser,
 			} = select( coreStore );
-			const { getRenderingMode, getCurrentPostType } =
-				select( editorStore );
 
 			const postArgs = [ 'postType', postType, postId ];
-			const renderingMode = getRenderingMode();
-			const currentPostType = getCurrentPostType();
 			const _isBlockTheme = getCurrentTheme()?.is_block_theme;
-			const globalStylesId = __experimentalGetCurrentGlobalStylesId();
-			const userCanEditGlobalStyles = globalStylesId
-				? canUser( 'update', {
-						kind: 'root',
-						name: 'globalStyles',
-						id: globalStylesId,
-				  } )
-				: false;
 
 			return {
 				post: getEntityRecord( ...postArgs ),
@@ -84,11 +68,6 @@ function Editor( {
 				error: getResolutionError( 'getEntityRecord', postArgs )
 					?.message,
 				isBlockTheme: _isBlockTheme,
-				showGlobalStyles:
-					_isBlockTheme &&
-					userCanEditGlobalStyles &&
-					( currentPostType === 'wp_template' ||
-						renderingMode === 'template-locked' ),
 			};
 		},
 		[ postType, postId, templateId ]
@@ -126,7 +105,6 @@ function Editor( {
 					/>
 					<NotesSidebar />
 					{ isBlockTheme && <GlobalStylesRenderer /> }
-					{ showGlobalStyles && <GlobalStylesSidebar /> }
 				</ExperimentalEditorProvider>
 			) }
 		</>

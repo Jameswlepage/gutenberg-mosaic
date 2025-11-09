@@ -106,38 +106,51 @@
 // Styles tab (Global Styles) adjustments when rendered in the left sidebar
 // Styles tab scoped adjustments
 .editor-styles-tab {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+    .editor-list-view-sidebar__list-view-container {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        flex: 1;
+    }
+
     // Remove padding to allow GS to span full width
     .editor-styles-panel-content {
         padding: 0;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
     }
 
-    // Force the fill wrapper and area to occupy full available width
-    .interface-complementary-area__fill {
-        width: 100% !important;
+    // Persistent action bar - stays fixed, doesn't animate
+    .editor-styles-persistent-actions {
+        flex-shrink: 0;
+        padding: $grid-unit-10 $grid-unit-20;
+        border-bottom: $border-width solid $gray-300;
+        background: $white;
+        position: relative;
+        z-index: 1;
+
+        .global-styles-ui-header {
+            margin: 0;
+        }
     }
 
-    .interface-complementary-area.edit-site-global-styles-sidebar {
-        width: 100% !important;
-        max-width: 100% !important;
-    }
+    // Content wrapper that scrolls and animates
+    .editor-styles-content-wrapper {
+        flex: 1;
+        overflow: auto;
+        position: relative;
 
-    // Header tweaks: remove bottom border, hide duplicate title and close button
-    .components-panel__header {
-        border-bottom: 0;
-    }
-
-    .edit-site-global-styles-sidebar__header-title {
-        display: none;
-    }
-
-    .interface-complementary-area-header > .components-button {
-        display: none;
-    }
-
-    .edit-site-global-styles-sidebar__drilldown-title {
-        font-size: 13px;
-        font-weight: 600;
-        margin: 0;
+        // Keep description visible but remove top spacing since nav is in persistent bar
+        .global-styles-ui-header__description {
+            margin-top: 0;
+            padding-top: $grid-unit-20;
+        }
     }
 }
 

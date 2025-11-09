@@ -32,7 +32,7 @@ function usePostFields( {
 		[ postType ]
 	);
 
-	return fields;
+	return fields ?? [];
 }
 
 /**

@@ -40,8 +40,7 @@ export default function SidebarNavigationScreenGlobalStyles() {
 		isLoading: isLoadingRevisions,
 		revisionsCount,
 	} = useGlobalStylesRevisions();
-	const { openGeneralSidebar } = useDispatch( editSiteStore );
-	const { setStylesPath } = unlock( useDispatch( editorStore ) );
+	const { setStylesPath, setIsListViewOpened, setDocumentOverviewTab } = unlock( useDispatch( editorStore ) );
 	const { set: setPreference } = useDispatch( preferencesStore );
 
 	const openGlobalStyles = useCallback( async () => {
@@ -50,9 +49,10 @@ export default function SidebarNavigationScreenGlobalStyles() {
 		} );
 		return Promise.all( [
 			setPreference( 'core', 'distractionFree', false ),
-			openGeneralSidebar( 'edit-site/global-styles' ),
+			setIsListViewOpened( true ),
+			setDocumentOverviewTab( 'styles' ),
 		] );
-	}, [ path, history, openGeneralSidebar, setPreference ] );
+	}, [ path, history, setPreference, setIsListViewOpened, setDocumentOverviewTab ] );
 
 	const openRevisions = useCallback( async () => {
 		await openGlobalStyles();

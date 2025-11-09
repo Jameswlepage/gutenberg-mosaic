@@ -2,15 +2,15 @@
  * WordPress dependencies
  */
 import {
-	__experimentalHStack as HStack,
 	__experimentalVStack as VStack,
-	__experimentalSpacer as Spacer,
-	__experimentalHeading as Heading,
-	__experimentalView as View,
-	Navigator,
+	useNavigator,
 } from '@wordpress/components';
-import { isRTL, __ } from '@wordpress/i18n';
-import { chevronRight, chevronLeft } from '@wordpress/icons';
+import { useEffect, useCallback } from '@wordpress/element';
+
+/**
+ * Internal dependencies
+ */
+import { useGlobalStylesHeader } from './header-context';
 
 interface ScreenHeaderProps {
 	title: string;
@@ -23,29 +23,28 @@ export function ScreenHeader( {
 	description,
 	onBack,
 }: ScreenHeaderProps ) {
+	const { setHeader } = useGlobalStylesHeader();
+	const navigator = useNavigator();
+
+	// Use provided onBack or create one from Navigator context
+	// Show back button if not on root path
+	const currentPath = navigator.location.path;
+	const isNotRoot = currentPath !== '/';
+
+	const defaultBackCallback = useCallback( () => {
+		if ( isNotRoot ) {
+			navigator.goBack();
+		}
+	}, [ isNotRoot, navigator ] );
+
+	const backCallback = onBack || ( isNotRoot ? defaultBackCallback : undefined );
+
+	useEffect( () => {
+		setHeader( title, backCallback );
+	}, [ title, backCallback, setHeader ] );
+
 	return (
 		<VStack spacing={ 0 }>
-			<View>
-				<Spacer marginBottom={ 0 } paddingX={ 4 } paddingY={ 3 }>
-					<HStack spacing={ 2 }>
-						<Navigator.BackButton
-							icon={ isRTL() ? chevronRight : chevronLeft }
-							size="small"
-							label={ __( 'Back' ) }
-							onClick={ onBack }
-						/>
-						<Spacer>
-							<Heading
-								className="global-styles-ui-header"
-								level={ 2 }
-								size={ 13 }
-							>
-								{ title }
-							</Heading>
-						</Spacer>
-					</HStack>
-				</Spacer>
-			</View>
 			{ description && (
 				<p className="global-styles-ui-header__description">
 					{ description }

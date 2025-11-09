@@ -8,7 +8,7 @@ import {
 import { ComplementaryArea, store as interfaceStore } from '@wordpress/interface';
 import { DataViews } from '@wordpress/dataviews';
 import { useEntityRecords } from '@wordpress/core-data';
-import { useFocusOnMount, useMergeRefs } from '@wordpress/compose';
+import { useFocusOnMount, useMergeRefs, useViewportMatch, usePrevious } from '@wordpress/compose';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { focus } from '@wordpress/dom';
 import { useCallback, useRef, useState, useMemo, useEffect } from '@wordpress/element';
@@ -19,6 +19,10 @@ import {
     Button,
     __experimentalVStack as VStack,
     __experimentalHStack as HStack,
+    __experimentalHeading as Heading,
+    __experimentalSpacer as Spacer,
+    Flex,
+    FlexItem,
     Modal,
     TextControl,
     CheckboxControl,
@@ -26,11 +30,14 @@ import {
     Tooltip,
     ToolbarButton,
     PanelBody,
+    Navigator,
 } from '@wordpress/components';
-import { category } from '@wordpress/icons';
+import { category, seen, backup, chevronLeft, chevronRight } from '@wordpress/icons';
+import { isRTL } from '@wordpress/i18n';
 import { addQueryArgs } from '@wordpress/url';
 import { store as coreStore } from '@wordpress/core-data';
 import { store as noticesStore } from '@wordpress/notices';
+import { store as preferencesStore } from '@wordpress/preferences';
 import { decodeEntities } from '@wordpress/html-entities';
 import {
 	serialize,
@@ -46,10 +53,43 @@ import { unlock } from '../../lock-unlock';
 import { store as editorStore } from '../../store';
 import usePostFields from '../post-fields';
 import { usePostActions } from '../post-actions/actions';
+import GlobalStylesUI from '../global-styles';
+import { GlobalStylesActionMenu } from '../global-styles/menu';
+import WelcomeGuideStyles from '../global-styles-sidebar/welcome-guide';
+import { useGlobalStylesHeader, GlobalStylesHeaderProvider } from '@wordpress/global-styles-ui';
 
 const { TabbedSidebar } = unlock( blockEditorPrivateApis );
 
-// No-op component removed; Styles content now uses ComplementaryArea.Slot
+// Component to render the global styles navigation header
+function StylesNavigationHeader() {
+	const { title, onBack } = useGlobalStylesHeader();
+
+	// Don't render anything if there's no title or title is empty string
+	if ( ! title || title === '' ) {
+		return null;
+	}
+
+	return (
+		<HStack spacing={ 1 } align="center">
+			{ onBack && (
+				<Button
+					icon={ isRTL() ? chevronRight : chevronLeft }
+					size="small"
+					label={ __( 'Back' ) }
+					onClick={ onBack }
+					showTooltip={ false }
+				/>
+			) }
+			<Heading
+				className="global-styles-ui-header"
+				level={ 2 }
+				size={ 13 }
+			>
+				{ title }
+			</Heading>
+		</HStack>
+	);
+}
 
 export default function ListViewSidebar() {
 	const [ showAddPageModal, setShowAddPageModal ] = useState( false );
@@ -59,12 +99,13 @@ export default function ListViewSidebar() {
 	const [ showInstructions, setShowInstructions ] = useState( false );
 	const [ instructions, setInstructions ] = useState( '' );
 
-	const { setIsListViewOpened } = useDispatch( editorStore );
+	const { setIsListViewOpened, setDocumentOverviewTab } = useDispatch( editorStore );
 	const { saveEntityRecord } = useDispatch( coreStore );
 	const { createErrorNotice, createSuccessNotice } =
 		useDispatch( noticesStore );
 	const { enableComplementaryArea } = useDispatch( interfaceStore );
 	const { getListViewToggleRef } = unlock( useSelect( editorStore ) );
+	const tab = useSelect( ( select ) => select( editorStore ).getDocumentOverviewTab(), [] );
 
 	// This hook handles focus when the sidebar first renders.
 	const focusOnMountRef = useFocusOnMount( 'firstElement' );
@@ -88,8 +129,6 @@ export default function ListViewSidebar() {
 	// Use internal state instead of a ref to make sure that the component
 	// re-renders when the dropZoneElement updates.
 	const [ dropZoneElement, setDropZoneElement ] = useState( null );
-	// Tracks our current tab.
-	const [ tab, setTab ] = useState( 'pages' );
 
 	// This ref refers to the sidebar as a whole.
 	const sidebarRef = useRef();
@@ -104,6 +143,73 @@ export default function ListViewSidebar() {
 		listViewRef,
 		setDropZoneElement,
 	] );
+
+	// Global styles state management
+	const {
+		stylesPath,
+		showStylebook,
+		showListViewByDefault,
+		hasRevisions,
+	} = useSelect( ( select ) => {
+		const { getStylesPath, getShowStylebook } = unlock(
+			select( editorStore )
+		);
+		const _isVisualEditorMode =
+			'visual' === select( editorStore ).getEditorMode();
+		const _showListViewByDefault = select( preferencesStore ).get(
+			'core',
+			'showListViewByDefault'
+		);
+		const { getEntityRecord, __experimentalGetCurrentGlobalStylesId } =
+			select( coreStore );
+
+		const globalStylesId = __experimentalGetCurrentGlobalStylesId();
+		const globalStyles = globalStylesId
+			? getEntityRecord( 'root', 'globalStyles', globalStylesId )
+			: undefined;
+
+		return {
+			stylesPath: getStylesPath(),
+			showStylebook: getShowStylebook(),
+			showListViewByDefault: _showListViewByDefault,
+			hasRevisions:
+				!! globalStyles?._links?.[ 'version-history' ]?.[ 0 ]?.count,
+		};
+	}, [] );
+
+	const { setStylesPath, setShowStylebook, resetStylesNavigation } = unlock(
+		useDispatch( editorStore )
+	);
+	const isMobileViewport = useViewportMatch( 'medium', '<' );
+
+	// Derive state from path and showStylebook
+	const isRevisionsOpened =
+		stylesPath.startsWith( '/revisions' ) && ! showStylebook;
+	const isRevisionsStyleBookOpened =
+		stylesPath.startsWith( '/revisions' ) && showStylebook;
+
+	// Reset navigation when styles tab is selected
+	useEffect( () => {
+		if ( tab === 'styles' ) {
+			resetStylesNavigation();
+		}
+	}, [ tab, resetStylesNavigation ] );
+
+	const toggleRevisions = () => {
+		if ( isRevisionsOpened || isRevisionsStyleBookOpened ) {
+			// Close revisions, go back to root
+			setStylesPath( '/' );
+		} else {
+			// Open revisions
+			setStylesPath( '/revisions' );
+		}
+	};
+
+	const toggleStyleBook = () => {
+		// Just toggle the Style Book without closing the document overview sidebar
+		// since Global Styles is now permanently in the Styles tab
+		setShowStylebook( ! showStylebook );
+	};
 
 	/*
 	 * Callback function to handle list view or outline focus.
@@ -177,9 +283,9 @@ export default function ListViewSidebar() {
 		orderby: pagesView.sort?.field,
 		// Align with Site Editor: include all non-trash statuses by default.
 		status: 'draft,future,pending,private,publish',
-		_embed: 'author',
+		_embed: 'author,wp:featuredmedia',
 	} );
-	const { isLoading: isLoadingFields, fields: pageFields } = usePostFields( {
+	const pageFields = usePostFields( {
 		postType: 'page',
 	} );
 
@@ -369,9 +475,10 @@ export default function ListViewSidebar() {
 	}
 
 	return (
-		// eslint-disable-next-line jsx-a11y/no-static-element-interactions
-		<div
-			className="editor-list-view-sidebar"
+		<>
+			{/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+			<div
+				className="editor-list-view-sidebar"
 			onKeyDown={ closeOnEscape }
 			ref={ sidebarRef }
 		>
@@ -389,7 +496,7 @@ export default function ListViewSidebar() {
 										paginationInfo={ paginationInfo }
 										fields={ clickablePageFields }
 										data={ pageRecords || [] }
-										isLoading={ isLoadingPages || isLoadingFields }
+										isLoading={ isLoadingPages }
 										view={ pagesView }
 										onChangeView={ setPagesView }
 										defaultLayouts={ { list: {}, table: {}, grid: {} } }
@@ -431,7 +538,7 @@ export default function ListViewSidebar() {
                     panelRef: listViewContainerRef,
 					},
                 // Only show Styles tab in Site Editor where Global Styles exist
-                // Render Global Styles (edit-site) in this tab via a dedicated complementary area scope
+                // Render Global Styles directly in this tab
                 ...(
                     typeof window !== 'undefined' &&
                     window.location.pathname.includes( '/site-editor.php' )
@@ -441,9 +548,54 @@ export default function ListViewSidebar() {
                                     title: _x( 'Styles', 'Post overview' ),
                                     panel: (
                                         <div className="editor-list-view-sidebar__list-view-container editor-styles-tab">
-                                            <div className="editor-list-view-sidebar__list-view-panel-content editor-styles-panel-content">
-                                                <ComplementaryArea.Slot scope="edit-site/styles-left" />
-                                            </div>
+                                            <GlobalStylesHeaderProvider>
+                                                <div className="editor-list-view-sidebar__list-view-panel-content editor-styles-panel-content">
+                                                    <Flex
+                                                        className="editor-styles-persistent-actions"
+                                                        gap={ 2 }
+                                                        justify="space-between"
+                                                        align="center"
+                                                    >
+                                                        <FlexItem>
+                                                            <StylesNavigationHeader />
+                                                        </FlexItem>
+                                                        <FlexItem>
+                                                            <HStack spacing={ 0 }>
+                                                                { ! isMobileViewport && (
+                                                                    <Button
+                                                                        icon={ seen }
+                                                                        label={ __( 'Style Book' ) }
+                                                                        isPressed={ showStylebook }
+                                                                        onClick={ toggleStyleBook }
+                                                                        size="compact"
+                                                                    />
+                                                                ) }
+                                                                <Button
+                                                                    label={ __( 'Revisions' ) }
+                                                                    icon={ backup }
+                                                                    onClick={ toggleRevisions }
+                                                                    accessibleWhenDisabled
+                                                                    disabled={ ! hasRevisions }
+                                                                    isPressed={
+                                                                        isRevisionsOpened ||
+                                                                        isRevisionsStyleBookOpened
+                                                                    }
+                                                                    size="compact"
+                                                                />
+                                                                <GlobalStylesActionMenu
+                                                                    onChangePath={ setStylesPath }
+                                                                />
+                                                            </HStack>
+                                                        </FlexItem>
+                                                    </Flex>
+                                                    <div className="editor-styles-content-wrapper">
+                                                        <GlobalStylesUI
+                                                            path={ stylesPath }
+                                                            onPathChange={ setStylesPath }
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </GlobalStylesHeaderProvider>
                                         </div>
                                     ),
                                 },
@@ -453,19 +605,10 @@ export default function ListViewSidebar() {
 				] }
 				onClose={ closeListView }
 				onSelect={ ( tabName ) => {
-					setTab( tabName );
-					if (
-						typeof window !== 'undefined' &&
-						window.location.pathname.includes( '/site-editor.php' ) &&
-						tabName === 'styles'
-					) {
-						enableComplementaryArea(
-							'edit-site/styles-left',
-							'edit-site/global-styles'
-						);
-					}
+					setDocumentOverviewTab( tabName );
 				} }
-				defaultTabId="pages"
+				defaultTabId={ tab }
+				selectedTabId={ tab }
 				ref={ tabsRef }
 				closeButtonLabel={ __( 'Close' ) }
 			/>
@@ -576,6 +719,8 @@ export default function ListViewSidebar() {
 					</form>
 				</Modal>
 			) }
-		</div>
+			</div>
+			<WelcomeGuideStyles />
+		</>
 	);
 }

@@ -898,6 +898,19 @@ export function setIsListViewOpened( isOpen ) {
 }
 
 /**
+ * Returns an action object used to set the active document overview tab.
+ *
+ * @param {string} tab The tab name to activate ('pages', 'list-view', 'styles').
+ * @return {Object} Action object.
+ */
+export function setDocumentOverviewTab( tab ) {
+	return {
+		type: 'SET_DOCUMENT_OVERVIEW_TAB',
+		tab,
+	};
+}
+
+/**
  * Action that toggles Distraction free mode.
  * Distraction free mode expects there are no sidebars, as due to the
  * z-index values set, you can't close sidebars.

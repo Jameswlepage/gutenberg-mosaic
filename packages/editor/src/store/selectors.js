@@ -1369,6 +1369,17 @@ export function isListViewOpened( state ) {
 }
 
 /**
+ * Returns the active document overview tab.
+ *
+ * @param {Object} state Global application state.
+ *
+ * @return {string} The active tab name ('pages', 'list-view', 'styles').
+ */
+export function getDocumentOverviewTab( state ) {
+	return state.documentOverviewTab;
+}
+
+/**
  * Returns true if the inserter is opened.
  *
  * @param {Object} state Global application state.

@@ -362,6 +362,21 @@ export function listViewToggleRef( state = { current: null } ) {
 }
 
 /**
+ * Reducer to set the active document overview tab.
+ *
+ * @param {string} state  Current state.
+ * @param {Object} action Dispatched action.
+ * @return {string} Updated state.
+ */
+export function documentOverviewTab( state = 'pages', action ) {
+	switch ( action.type ) {
+		case 'SET_DOCUMENT_OVERVIEW_TAB':
+			return action.tab;
+	}
+	return state;
+}
+
+/**
  * This reducer does nothing aside initializing a ref to the inserter sidebar toggle.
  * We will have a unique ref per "editor" instance.
  *

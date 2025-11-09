@@ -55,15 +55,17 @@ function BlockPatternsTab( {
 					</Button>
 				</div>
 			) : (
-				<PatternCategoryAccordion
-					categories={ categories }
-					selectedCategory={ selectedCategory }
-					onSelectCategory={ onSelectCategory }
-					rootClientId={ rootClientId }
-					onInsert={ onInsert }
-					onShowPatternsExplorer={ () => setShowPatternsExplorer( true ) }
-					suggestedCount={ 5 }
-				/>
+				<div className="block-editor-inserter__pattern-accordion-wrapper">
+					<PatternCategoryAccordion
+						categories={ categories }
+						selectedCategory={ selectedCategory }
+						onSelectCategory={ onSelectCategory }
+						rootClientId={ rootClientId }
+						onInsert={ onInsert }
+						onShowPatternsExplorer={ () => setShowPatternsExplorer( true ) }
+						suggestedCount={ 5 }
+					/>
+				</div>
 			) }
 			{ showPatternsExplorer && (
 				<PatternsExplorerModal

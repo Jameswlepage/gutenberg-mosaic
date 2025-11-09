@@ -25,6 +25,7 @@ import { IconWithCurrentColor } from './icon-with-current-color';
 import { NavigationButtonAsItem } from './navigation-button';
 import RootMenu from './root-menu';
 import PreviewStyles from './preview-styles';
+import { ScreenHeader } from './screen-header';
 
 function ScreenRoot() {
 	const { hasVariations, canEditCSS } = useSelect( ( select ) => {
@@ -50,13 +51,15 @@ function ScreenRoot() {
 	}, [] );
 
 	return (
-		<Card
-			size="small"
-			isBorderless
-			className="global-styles-ui-screen-root"
-			isRounded={ false }
-		>
-			<CardBody>
+		<>
+			<ScreenHeader title="" />
+			<Card
+				size="small"
+				isBorderless
+				className="global-styles-ui-screen-root"
+				isRounded={ false }
+			>
+				<CardBody>
 				<VStack spacing={ 4 }>
 					<Card className="global-styles-ui-screen-root__active-style-tile">
 						<CardMedia className="global-styles-ui-screen-root__active-style-tile-preview">
@@ -140,6 +143,7 @@ function ScreenRoot() {
 				</>
 			) }
 		</Card>
+		</>
 	);
 }
 
