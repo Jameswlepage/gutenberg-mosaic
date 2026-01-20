@@ -23,6 +23,7 @@ import PostSavedState from '../post-saved-state';
 import PostViewLink from '../post-view-link';
 import PreviewDropdown from '../preview-dropdown';
 import ZoomOutToggle from '../zoom-out-toggle';
+import { RTCVAvatars } from '../rtc-avatars';
 import { store as editorStore } from '../../store';
 import {
 	ATTACHMENT_POST_TYPE,
@@ -159,6 +160,7 @@ function Header( {
 					variants={ toolbarVariations }
 					transition={ { type: 'tween' } }
 				>
+					<RTCVAvatars />
 					<DocumentBar />
 				</motion.div>
 			) }

@@ -28,3 +28,7 @@ export {
 } from './config';
 export { createSyncManager } from './manager';
 export type * from './types';
+export type * from './awareness/awareness-types';
+export type * from './selection-utils';
+export { getPostEditorAwareness } from './awareness/awareness-manager';
+export { setConnectionStatus } from './awareness/awareness-manager';
