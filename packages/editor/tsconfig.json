@@ -33,6 +33,7 @@
 		{ "path": "../plugins" },
 		{ "path": "../preferences" },
 		{ "path": "../private-apis" },
+		{ "path": "../sync" },
 		{ "path": "../rich-text" },
 		{ "path": "../url" },
 		{ "path": "../warning" },

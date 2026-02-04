@@ -174,6 +174,7 @@ describe( 'getEntityRecord', () => {
 				refetchRecord: expect.any( Function ),
 				restoreUndoMeta: expect.any( Function ),
 				saveRecord: expect.any( Function ),
+				getCurrentUser: expect.any( Function ),
 			}
 		);
 	} );
@@ -229,6 +230,7 @@ describe( 'getEntityRecord', () => {
 				refetchRecord: expect.any( Function ),
 				restoreUndoMeta: expect.any( Function ),
 				saveRecord: expect.any( Function ),
+				getCurrentUser: expect.any( Function ),
 			}
 		);
 	} );

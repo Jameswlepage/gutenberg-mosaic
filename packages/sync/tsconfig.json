@@ -6,8 +6,10 @@
 	},
 	"exclude": [ "src/y-utilities/y-multidoc-undomanager.js" ],
 	"references": [
-		{ "path": "../api-fetch" },
+		{ "path": "../block-editor" },
+		{ "path": "../data" },
 		{ "path": "../hooks" },
-		{ "path": "../undo-manager" }
+		{ "path": "../undo-manager" },
+		{ "path": "../url" }
 	]
 }
