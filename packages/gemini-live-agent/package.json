@@ -1,0 +1,71 @@
+{
+	"name": "@wordpress/gemini-live-agent",
+	"version": "0.1.0",
+	"description": "Gemini Live API integration for WordPress collaborative editing.",
+	"author": "The WordPress Contributors",
+	"license": "GPL-2.0-or-later",
+	"keywords": [
+		"wordpress",
+		"gemini",
+		"ai",
+		"collaborative-editing",
+		"live-api",
+		"screen-sharing"
+	],
+	"homepage": "https://github.com/WordPress/gutenberg/tree/HEAD/packages/gemini-live-agent/README.md",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/WordPress/gutenberg.git",
+		"directory": "packages/gemini-live-agent"
+	},
+	"bugs": {
+		"url": "https://github.com/WordPress/gutenberg/issues"
+	},
+	"engines": {
+		"node": ">=18.12.0",
+		"npm": ">=8.19.2"
+	},
+	"files": [
+		"src",
+		"build",
+		"build-module",
+		"build-types",
+		"*.md"
+	],
+	"main": "build/index.cjs",
+	"module": "build-module/index.mjs",
+	"exports": {
+		".": {
+			"types": "./build-types/index.d.ts",
+			"import": "./build-module/index.mjs",
+			"require": "./build/index.cjs"
+		},
+		"./package.json": "./package.json"
+	},
+	"wpScript": true,
+	"wpScriptModuleExports": {
+		".": "./build-module/index.mjs"
+	},
+	"types": "build-types",
+	"dependencies": {
+		"@wordpress/abilities": "file:../abilities",
+		"@wordpress/api-fetch": "file:../api-fetch",
+		"@wordpress/block-editor": "file:../block-editor",
+		"@wordpress/blocks": "file:../blocks",
+		"@wordpress/compose": "file:../compose",
+		"@wordpress/components": "file:../components",
+		"@wordpress/core-abilities": "file:../core-abilities",
+		"@wordpress/core-data": "file:../core-data",
+		"@wordpress/data": "file:../data",
+		"@wordpress/element": "file:../element",
+		"@wordpress/i18n": "file:../i18n",
+		"@wordpress/icons": "file:../icons",
+		"@wordpress/private-apis": "file:../private-apis"
+	},
+	"peerDependencies": {
+		"react": "^18.0.0"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

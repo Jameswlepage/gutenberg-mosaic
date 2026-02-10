@@ -44,6 +44,7 @@ interface RoomState {
 	clientId: number;
 	endCursor: number;
 	localAwarenessState: LocalAwarenessState;
+	isClosing: boolean;
 	processAwarenessUpdate: ( state: AwarenessState ) => void;
 	processDocUpdate: ( update: SyncUpdate ) => SyncUpdate | void;
 	unregister: () => void;
@@ -256,6 +257,12 @@ function poll(): void {
 				}
 
 				const roomState = roomStates.get( room.room )!;
+
+				if ( roomState.isClosing ) {
+					roomStates.delete( room.room );
+					return;
+				}
+
 				roomState.endCursor = room.end_cursor;
 
 				// Process awareness update.
@@ -339,7 +346,6 @@ function registerRoom(
 	function unregister(): void {
 		doc.off( 'update', onDocUpdate );
 		awareness.off( 'change', onAwarenessUpdate );
-		// TODO: poll will null awareness state to trigger removal
 		updateQueue.clear();
 	}
 
@@ -347,6 +353,7 @@ function registerRoom(
 		clientId: doc.clientID,
 		endCursor: 0,
 		localAwarenessState: awareness.getLocalState() ?? {},
+		isClosing: false,
 		processAwarenessUpdate: ( state: AwarenessState ) =>
 			processAwarenessUpdate( state, awareness ),
 		processDocUpdate: ( update: SyncUpdate ) =>
@@ -365,8 +372,18 @@ function registerRoom(
 }
 
 function unregisterRoom( room: string ): void {
-	roomStates.get( room )?.unregister();
-	roomStates.delete( room );
+	const roomState = roomStates.get( room );
+	if ( ! roomState ) {
+		return;
+	}
+
+	roomState.unregister();
+	roomState.localAwarenessState = null;
+	roomState.isClosing = true;
+
+	if ( ! isPolling ) {
+		poll();
+	}
 }
 
 export const pollingManager: PollingManager = {

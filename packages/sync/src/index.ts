@@ -34,7 +34,3 @@ export { createSyncManager } from './manager';
  */
 export type { EnhancedState } from './awareness/awareness-types';
 export type * from './types';
-export type * from './awareness/awareness-types';
-export type * from './selection-utils';
-export { getPostEditorAwareness } from './awareness/awareness-manager';
-export { setConnectionStatus } from './awareness/awareness-manager';

@@ -19,6 +19,7 @@ import {
 	areSelectionsStatesEqual,
 	getSelectionState,
 } from '../utils/crdt-user-selections';
+import { areAiStatesEqual } from './utils';
 
 import type { SelectionCursor, WPBlockSelection } from '../types';
 import type {
@@ -33,6 +34,7 @@ export class PostEditorAwareness extends BaseAwarenessState< PostEditorState > {
 	protected equalityFieldChecks = {
 		...baseEqualityFieldChecks,
 		editorState: this.areEditorStatesEqual,
+		aiState: areAiStatesEqual,
 	};
 
 	public constructor(
@@ -127,6 +129,16 @@ export class PostEditorAwareness extends BaseAwarenessState< PostEditorState > {
 		selectionEnd: WPBlockSelection,
 		initialPosition: number | null
 	): Promise< void > {
+		// Skip selection sync until the entity record exists.
+		const record = select( coreStore ).getEntityRecord(
+			this.kind,
+			this.name,
+			this.postId
+		);
+		if ( ! record ) {
+			return;
+		}
+
 		// Send an entityRecord `selection` update if we have a selection.
 		//
 		// Normally WordPress updates the `selection` property of the post when changes are made to blocks.

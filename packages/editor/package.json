@@ -78,6 +78,7 @@
 		"@wordpress/dom": "file:../dom",
 		"@wordpress/element": "file:../element",
 		"@wordpress/fields": "file:../fields",
+		"@wordpress/gemini-live-agent": "file:../gemini-live-agent",
 		"@wordpress/global-styles-engine": "file:../global-styles-engine",
 		"@wordpress/global-styles-ui": "file:../global-styles-ui",
 		"@wordpress/hooks": "file:../hooks",

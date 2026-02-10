@@ -11,6 +11,7 @@ import { PinnedItems } from '@wordpress/interface';
 /**
  * Internal dependencies
  */
+import CollaboratorsAvatars from '../collaborators-avatars';
 import CollapsibleBlockToolbar from '../collapsible-block-toolbar';
 import DocumentBar from '../document-bar';
 import DocumentTools from '../document-tools';
@@ -22,7 +23,6 @@ import PostSavedState from '../post-saved-state';
 import PostViewLink from '../post-view-link';
 import PreviewDropdown from '../preview-dropdown';
 import ZoomOutToggle from '../zoom-out-toggle';
-import { RTCVAvatars } from '../rtc-avatars';
 import { store as editorStore } from '../../store';
 import {
 	ATTACHMENT_POST_TYPE,
@@ -121,14 +121,7 @@ function Header( {
 					) }
 				</>
 			}
-			center={
-				hasCenter ? (
-					<>
-						<RTCVAvatars />
-						<DocumentBar />
-					</>
-				) : undefined
-			}
+			center={ hasCenter ? <DocumentBar /> : undefined }
 			settings={
 				<>
 					{ ! customSaveButton && ! isPublishSidebarOpened && (
@@ -157,6 +150,8 @@ function Header( {
 					{ isWideViewport && canBeZoomedOut && (
 						<ZoomOutToggle disabled={ isStylesCanvasActive } />
 					) }
+
+					<CollaboratorsAvatars />
 
 					{ ( isWideViewport || ! showIconLabels ) && (
 						<PinnedItems.Slot scope="core" />

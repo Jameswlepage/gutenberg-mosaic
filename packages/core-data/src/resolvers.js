@@ -264,9 +264,6 @@ export const getEntityRecord =
 									}, 0 );
 								}
 							},
-							// Get the current user.
-							getCurrentUser: async () =>
-								await resolveSelect.getCurrentUser(),
 						}
 					);
 				}

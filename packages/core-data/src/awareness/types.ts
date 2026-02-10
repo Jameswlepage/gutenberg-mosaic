@@ -16,6 +16,7 @@ export type UserInfo = Pick<
 	browserType: string;
 	color: string;
 	enteredAt: number;
+	lastSeenAt: number;
 };
 
 /**
@@ -34,12 +35,21 @@ export interface EditorState {
 	selection: SelectionState;
 }
 
+export interface AiState {
+	connected: boolean;
+	status?: 'connecting' | 'connected' | 'error' | 'disconnected';
+	isAudioEnabled?: boolean;
+	isScreenSharing?: boolean;
+	activeBlockClientId?: string | null;
+}
+
 /**
  * The post editor state extends the base state with information used to render
  * presence indicators in the post editor.
  */
 export interface PostEditorState extends BaseState {
 	editorState?: EditorState;
+	aiState?: AiState;
 }
 
 /**

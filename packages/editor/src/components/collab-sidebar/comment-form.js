@@ -1,18 +1,12 @@
 /**
- * External dependencies
- */
-import TextareaAutosize from 'react-autosize-textarea';
-
-/**
  * WordPress dependencies
  */
 import { useState } from '@wordpress/element';
 import {
 	__experimentalVStack as VStack,
 	__experimentalHStack as HStack,
-	__experimentalTruncate as Truncate,
 	Button,
-	VisuallyHidden,
+	TextareaControl,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { useInstanceId, useDebounce } from '@wordpress/compose';
@@ -58,18 +52,16 @@ function CommentForm( {
 				setInputComment( '' );
 			} }
 		>
-			<VisuallyHidden as="label" htmlFor={ inputId }>
-				{ labelText ?? __( 'Note' ) }
-			</VisuallyHidden>
-			<TextareaAutosize
+			<TextareaControl
 				id={ inputId }
+				label={ labelText ?? __( 'Note' ) }
+				hideLabelFromVision
 				value={ inputComment ?? '' }
-				onChange={ ( comment ) => {
-					updateComment( comment.target.value );
+				onChange={ ( value ) => {
+					updateComment( value );
 					debouncedCommentUpdated();
 				} }
 				rows={ 1 }
-				maxRows={ 20 }
 				onKeyDown={ ( event ) => {
 					if (
 						isKeyboardEvent.primary( event, 'Enter' ) &&
@@ -81,7 +73,7 @@ function CommentForm( {
 			/>
 			<HStack spacing="2" justify="flex-end" wrap>
 				<Button size="compact" variant="tertiary" onClick={ onCancel }>
-					<Truncate>{ __( 'Cancel' ) }</Truncate>
+					{ __( 'Cancel' ) }
 				</Button>
 				<Button
 					size="compact"
@@ -90,7 +82,7 @@ function CommentForm( {
 					type="submit"
 					disabled={ isDisabled }
 				>
-					<Truncate>{ submitButtonText }</Truncate>
+					{ submitButtonText }
 				</Button>
 			</HStack>
 		</VStack>

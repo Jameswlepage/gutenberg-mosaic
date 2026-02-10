@@ -1,0 +1,47 @@
+.gemini-live-agent-panel {
+	--gemini-border: #dcdcde;
+	--gemini-muted: #646970;
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+	margin: 0;
+	width: 100%;
+}
+
+.gemini-live-agent-panel__section {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px;
+	border-bottom: 1px solid var( --gemini-border );
+}
+
+.gemini-live-agent-panel__section:last-child {
+	border-bottom: 0;
+}
+
+.gemini-live-agent-panel__status-title {
+	font-weight: 600;
+}
+
+.gemini-live-agent-panel__status-detail {
+	color: var( --gemini-muted );
+}
+
+.gemini-live-agent-panel__actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.gemini-live-agent-panel__section-title {
+	font-weight: 600;
+}
+
+.gemini-live-agent-panel__voice-note {
+	color: var( --gemini-muted );
+}
+
+.gemini-live-agent-panel__voice.is-disabled {
+	color: var( --gemini-muted );
+}

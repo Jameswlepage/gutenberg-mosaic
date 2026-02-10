@@ -12,11 +12,17 @@ import { generateUserInfo, areUserInfosEqual } from './utils';
 
 import type { BaseState } from './types';
 
+const PRESENCE_HEARTBEAT_INTERVAL_MS = 5000;
+
 export abstract class BaseAwarenessState<
 	State extends BaseState,
 > extends AwarenessState< State > {
+	private heartbeatInterval: ReturnType< typeof setInterval > | null = null;
+
 	protected onSetUp(): void {
-		void this.setCurrentUserInfo();
+		void this.setCurrentUserInfo().then( () => {
+			this.startHeartbeat();
+		} );
 	}
 
 	/**
@@ -36,6 +42,24 @@ export abstract class BaseAwarenessState<
 		const currentUser = await resolveSelect( coreStore ).getCurrentUser();
 		const userInfo = generateUserInfo( currentUser, otherUserColors );
 		this.setLocalStateField( 'userInfo', userInfo );
+	}
+
+	private startHeartbeat(): void {
+		if ( this.heartbeatInterval ) {
+			return;
+		}
+
+		this.heartbeatInterval = setInterval( () => {
+			const userInfo = this.getLocalStateField( 'userInfo' );
+			if ( ! userInfo ) {
+				return;
+			}
+
+			this.setLocalStateField( 'userInfo', {
+				...userInfo,
+				lastSeenAt: Date.now(),
+			} );
+		}, PRESENCE_HEARTBEAT_INTERVAL_MS );
 	}
 }
 

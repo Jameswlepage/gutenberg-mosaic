@@ -1,7 +1,6 @@
 /**
  * Internal dependencies
  */
-import type { UserInfo } from './awareness-types';
 import {
 	TypedAwareness,
 	type EnhancedState,
@@ -9,7 +8,6 @@ import {
 } from './awareness-types';
 import { getTypedKeys, areMapsEqual } from '../utils';
 import { REMOVAL_DELAY_IN_MS } from '../config';
-import type { RecordHandlers } from '../types';
 
 type AwarenessClientID = number;
 

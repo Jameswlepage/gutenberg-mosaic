@@ -14,7 +14,6 @@ import type { Awareness } from 'y-protocols/awareness';
  */
 import type { AwarenessState } from './awareness/awareness-state';
 import type { WORDPRESS_META_KEY_FOR_CRDT_DOC_PERSISTENCE } from './config';
-import type { WordPressUserInfo } from './awareness/awareness-types';
 
 export type CRDTDoc = Y.Doc;
 export type AwarenessID = string;
@@ -72,7 +71,6 @@ export interface RecordHandlers {
 	refetchRecord: () => Promise< void >;
 	restoreUndoMeta: ( ydoc: Y.Doc, meta: Map< string, any > ) => void;
 	saveRecord: () => Promise< void >;
-	getCurrentUser: () => Promise< WordPressUserInfo >;
 }
 
 export interface SyncConfig< State extends object = {} > {

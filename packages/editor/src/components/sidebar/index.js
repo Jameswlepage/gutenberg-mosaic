@@ -22,6 +22,7 @@ import { store as interfaceStore } from '@wordpress/interface';
 /**
  * Internal dependencies
  */
+import AIPanel from './ai-panel';
 import PatternOverridesPanel from '../pattern-overrides-panel';
 import PluginDocumentSettingPanel from '../plugin-document-setting-panel';
 import PluginSidebar from '../plugin-sidebar';
@@ -146,6 +147,11 @@ const SidebarContent = ( {
 						<BlockInspector />
 					</Tabs.TabPanel>
 				) }
+				{ ! isAttachment && (
+					<Tabs.TabPanel tabId={ sidebars.ai } focusable={ false }>
+						<AIPanel />
+					</Tabs.TabPanel>
+				) }
 			</Tabs.Context.Provider>
 		</PluginSidebar>
 	);
@@ -164,6 +170,7 @@ const Sidebar = ( { extraPanels, onActionPerformed } ) => {
 			const _isEditorSidebarOpened = [
 				sidebars.block,
 				sidebars.document,
+				sidebars.ai,
 			].includes( sidebar );
 			let _tabName = sidebar;
 			if ( ! _isEditorSidebarOpened ) {

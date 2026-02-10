@@ -21,6 +21,8 @@ interface AwarenessState {
 	isCurrentUserDisconnected: boolean;
 }
 
+const PRESENCE_STALE_THRESHOLD_MS = 15000;
+
 const defaultState: AwarenessState = {
 	activeUsers: [],
 	getAbsolutePositionIndex: () => null,
@@ -32,11 +34,27 @@ const defaultState: AwarenessState = {
 	isCurrentUserDisconnected: false,
 };
 
+function filterStaleUsers( users: ActiveUser[] ): ActiveUser[] {
+	const now = Date.now();
+
+	return users.filter( ( user ) => {
+		const lastSeenAt =
+			user?.userInfo?.lastSeenAt ?? user?.userInfo?.enteredAt;
+		if ( ! lastSeenAt ) {
+			return true;
+		}
+
+		return now - lastSeenAt <= PRESENCE_STALE_THRESHOLD_MS;
+	} );
+}
+
 function getAwarenessState(
 	awareness: PostEditorAwareness,
 	newState?: ActiveUser[]
 ): AwarenessState {
-	const activeUsers = newState ?? awareness.getCurrentState();
+	const activeUsers = filterStaleUsers(
+		newState ?? awareness.getCurrentState()
+	);
 
 	return {
 		activeUsers,

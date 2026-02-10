@@ -65,6 +65,16 @@ const SidebarHeader = ( _, ref ) => {
 					{ __( 'Block' ) }
 				</Tabs.Tab>
 			) }
+			{ ! isAttachment && ! isRevisionsMode && (
+				<Tabs.Tab
+					tabId={ sidebars.ai }
+					// Used for focus management in the SettingsSidebar component.
+					data-tab-id={ sidebars.ai }
+				>
+					{ /* translators: Text label for the AI Assistant Sidebar tab. */ }
+					{ __( 'AI' ) }
+				</Tabs.Tab>
+			) }
 		</Tabs.TabList>
 	);
 };

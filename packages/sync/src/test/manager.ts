@@ -34,7 +34,6 @@ import type {
 	SyncConfig,
 } from '../types';
 import { AwarenessState } from '../awareness/awareness-state';
-import type { WordPressUserInfo } from '../awareness/awareness-types';
 
 /**
  * A minimal mock awareness class for testing.
@@ -58,7 +57,6 @@ describe( 'SyncManager', () => {
 	let mockProviderCreator: jest.Mock< ProviderCreator >;
 	let mockProviderResult: ProviderCreatorResult;
 	let mockRecord: ObjectData;
-	let mockCurrentUser: WordPressUserInfo;
 	let mockSyncConfig: jest.MockedObject< SyncConfig >;
 
 	beforeEach( () => {
@@ -68,17 +66,6 @@ describe( 'SyncManager', () => {
 		mockRecord = {
 			id: '123',
 			title: 'Test Post',
-		};
-
-		mockCurrentUser = {
-			id: 1,
-			name: 'Test User',
-			slug: 'test-user',
-			avatar_urls: {
-				'24': 'https://example.com/avatar.jpg',
-				'48': 'https://example.com/avatar-48.jpg',
-				'96': 'https://example.com/avatar-96.jpg',
-			},
 		};
 
 		mockProviderResult = {
@@ -122,9 +109,6 @@ describe( 'SyncManager', () => {
 			refetchRecord: jest.fn( async () => Promise.resolve() ),
 			restoreUndoMeta: jest.fn(),
 			saveRecord: jest.fn( async () => Promise.resolve() ),
-			getCurrentUser: jest.fn( async () =>
-				Promise.resolve( mockCurrentUser )
-			),
 		};
 	} );
 

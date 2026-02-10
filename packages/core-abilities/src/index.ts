@@ -1,7 +1,12 @@
 /**
  * WordPress dependencies
  */
-import { registerAbility, registerAbilityCategory } from '@wordpress/abilities';
+import {
+	getAbility,
+	getAbilityCategory,
+	registerAbility,
+	registerAbilityCategory,
+} from '@wordpress/abilities';
 import type {
 	Ability,
 	AbilityCategory,
@@ -84,6 +89,10 @@ async function initializeCategories(): Promise< void > {
 
 		if ( categories && Array.isArray( categories ) ) {
 			for ( const category of categories ) {
+				if ( getAbilityCategory( category.slug ) ) {
+					continue;
+				}
+
 				registerAbilityCategory( category.slug, {
 					label: category.label,
 					description: category.description,
@@ -113,6 +122,10 @@ async function initializeAbilities(): Promise< void > {
 
 		if ( abilities && Array.isArray( abilities ) ) {
 			for ( const ability of abilities ) {
+				if ( getAbility( ability.name ) ) {
+					continue;
+				}
+
 				// Register the ability with a callback
 				// The abilities package filters annotations to allowed keys
 				registerAbility( {

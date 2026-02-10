@@ -2,7 +2,7 @@
  * External dependencies
  */
 import type * as Y from 'yjs';
-import { ObservableV2 } from 'lib0/observable';
+import { Observable } from 'lib0/observable';
 import { Awareness } from 'y-protocols/awareness';
 
 /**
@@ -29,7 +29,7 @@ interface BaseEventTypes extends EventTypes {
  * Yjs provider that uses HTTP polling for real-time synchronization. It manages
  * document updates and awareness states through a central sync server.
  */
-class HttpPollingProvider extends ObservableV2< BaseEventTypes > {
+class HttpPollingProvider extends Observable< keyof BaseEventTypes > {
 	protected awareness: Awareness;
 	protected synced = false;
 
@@ -81,6 +81,7 @@ class HttpPollingProvider extends ObservableV2< BaseEventTypes > {
 	 * @param status The connection status
 	 */
 	protected emitStatus( status: 'connected' | 'disconnected' ): void {
+		// @ts-ignore - Observable emit method exists at runtime
 		this.emit( 'status', [ { status } ] );
 	}
 
@@ -104,6 +105,7 @@ class HttpPollingProvider extends ObservableV2< BaseEventTypes > {
 		if ( ! this.synced ) {
 			this.synced = true;
 			this.log( 'Synced' );
+			// @ts-ignore - Observable emit method exists at runtime
 			this.emit( 'synced', [ { synced: true } ] );
 		}
 	};

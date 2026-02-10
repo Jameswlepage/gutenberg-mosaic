@@ -2,7 +2,7 @@
  * Internal dependencies
  */
 import type { User } from '../entity-types';
-import type { UserInfo } from './types';
+import type { AiState, UserInfo } from './types';
 
 /**
  * The color palette for the user highlight.
@@ -140,6 +140,30 @@ export function areUserInfosEqual(
 }
 
 /**
+ * Check if two AI state objects are equal.
+ *
+ * @param aiState1 - The first AI state.
+ * @param aiState2 - The second AI state.
+ * @return True if the AI states are equal, false otherwise.
+ */
+export function areAiStatesEqual(
+	aiState1?: AiState,
+	aiState2?: AiState
+): boolean {
+	if ( ! aiState1 || ! aiState2 ) {
+		return aiState1 === aiState2;
+	}
+
+	if ( Object.keys( aiState1 ).length !== Object.keys( aiState2 ).length ) {
+		return false;
+	}
+
+	return Object.entries( aiState1 ).every( ( [ key, value ] ) => {
+		return value === aiState2[ key as keyof AiState ];
+	} );
+}
+
+/**
  * Generate a user info object from a current user and a list of existing colors.
  *
  * @param currentUser    - The current user.
@@ -150,10 +174,12 @@ export function generateUserInfo(
 	currentUser: User< 'view' >,
 	existingColors: string[]
 ): UserInfo {
+	const now = Date.now();
 	return {
 		...currentUser,
 		browserType: getBrowserName(),
 		color: getNewUserColor( existingColors ),
-		enteredAt: Date.now(),
+		enteredAt: now,
+		lastSeenAt: now,
 	};
 }
