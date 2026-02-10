@@ -41,12 +41,17 @@ export function getProviderCreators(): ProviderCreator[] {
 		return providerCreators;
 	}
 
+	// Check if real-time collaboration is enabled via WordPress setting.
+	if ( ! window.__wpSyncEnabled ) {
+		return [];
+	}
+
 	/**
-	 * Filter the
+	 * Filter the available provider creators.
 	 */
 	const filteredProviderCreators: unknown = applyFilters(
 		'sync.providers',
-		getDefaultProviderCreators() // HTTP polling enabled
+		getDefaultProviderCreators()
 	);
 
 	// If the returned value is not an array, ignore and set to empty array.

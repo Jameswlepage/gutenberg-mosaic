@@ -2,7 +2,10 @@
  * Internal dependencies
  */
 import { useEntityRecordsWithPermissions } from './hooks/use-entity-records';
-import { useActiveUsers } from './hooks/use-post-editor-awareness-state';
+import {
+	useActiveUsers,
+	useActiveCollaborators,
+} from './hooks/use-post-editor-awareness-state';
 import { RECEIVE_INTERMEDIATE_RESULTS } from './utils';
 import { getSyncManager } from './sync';
 import { lock } from './lock-unlock';
@@ -13,4 +16,5 @@ lock( privateApis, {
 	useEntityRecordsWithPermissions,
 	RECEIVE_INTERMEDIATE_RESULTS,
 	getSyncManager,
+	useActiveCollaborators,
 } );

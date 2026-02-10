@@ -10,6 +10,12 @@
 			"path": "../abilities"
 		},
 		{
+			"path": "../core-abilities"
+		},
+		{
+			"path": "../private-apis"
+		},
+		{
 			"path": "../api-fetch"
 		},
 		{

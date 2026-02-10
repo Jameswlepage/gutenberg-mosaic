@@ -9,6 +9,7 @@
 		{ "path": "../api-fetch" },
 		{ "path": "../blob" },
 		{ "path": "../block-editor" },
+		{ "path": "../block-serialization-default-parser" },
 		{ "path": "../components" },
 		{ "path": "../compose" },
 		{ "path": "../core-data" },
@@ -19,6 +20,7 @@
 		{ "path": "../dom" },
 		{ "path": "../element" },
 		{ "path": "../fields" },
+		{ "path": "../gemini-live-agent" },
 		{ "path": "../global-styles-engine" },
 		{ "path": "../global-styles-ui" },
 		{ "path": "../hooks" },
@@ -36,6 +38,7 @@
 		{ "path": "../sync" },
 		{ "path": "../rich-text" },
 		{ "path": "../url" },
+		{ "path": "../upload-media" },
 		{ "path": "../warning" },
 		{ "path": "../wordcount" }
 	]

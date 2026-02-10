@@ -32,6 +32,7 @@
 		{ "path": "packages/escape-html" },
 		{ "path": "packages/eslint-plugin" },
 		{ "path": "packages/fields" },
+		{ "path": "packages/gemini-live-agent" },
 		{ "path": "packages/global-styles-engine" },
 		{ "path": "packages/global-styles-ui" },
 		{ "path": "packages/hooks" },

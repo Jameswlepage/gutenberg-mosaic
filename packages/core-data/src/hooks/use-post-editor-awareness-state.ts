@@ -8,61 +8,44 @@ import { useEffect, useState } from '@wordpress/element';
  */
 import { getSyncManager } from '../sync';
 import type {
-	PostEditorAwarenessState as ActiveUser,
+	PostEditorAwarenessState as ActiveCollaborator,
 	YDocDebugData,
 } from '../awareness/types';
 import type { SelectionCursor } from '../types';
 import type { PostEditorAwareness } from '../awareness/post-editor-awareness';
 
 interface AwarenessState {
-	activeUsers: ActiveUser[];
+	activeCollaborators: ActiveCollaborator[];
 	getAbsolutePositionIndex: ( selection: SelectionCursor ) => number | null;
 	getDebugData: () => YDocDebugData;
-	isCurrentUserDisconnected: boolean;
+	isCurrentCollaboratorDisconnected: boolean;
 }
 
-const PRESENCE_STALE_THRESHOLD_MS = 15000;
-
 const defaultState: AwarenessState = {
-	activeUsers: [],
+	activeCollaborators: [],
 	getAbsolutePositionIndex: () => null,
 	getDebugData: () => ( {
 		doc: {},
 		clients: {},
-		userMap: {},
+		collaboratorMap: {},
 	} ),
-	isCurrentUserDisconnected: false,
+	isCurrentCollaboratorDisconnected: false,
 };
-
-function filterStaleUsers( users: ActiveUser[] ): ActiveUser[] {
-	const now = Date.now();
-
-	return users.filter( ( user ) => {
-		const lastSeenAt =
-			user?.userInfo?.lastSeenAt ?? user?.userInfo?.enteredAt;
-		if ( ! lastSeenAt ) {
-			return true;
-		}
-
-		return now - lastSeenAt <= PRESENCE_STALE_THRESHOLD_MS;
-	} );
-}
 
 function getAwarenessState(
 	awareness: PostEditorAwareness,
-	newState?: ActiveUser[]
+	newState?: ActiveCollaborator[]
 ): AwarenessState {
-	const activeUsers = filterStaleUsers(
-		newState ?? awareness.getCurrentState()
-	);
+	const activeCollaborators = newState ?? awareness.getCurrentState();
 
 	return {
-		activeUsers,
+		activeCollaborators,
 		getAbsolutePositionIndex: ( selection: SelectionCursor ) =>
 			awareness.getAbsolutePositionIndex( selection ),
 		getDebugData: () => awareness.getDebugData(),
-		isCurrentUserDisconnected:
-			activeUsers.find( ( user ) => user.isMe )?.isConnected === false,
+		isCurrentCollaboratorDisconnected:
+			activeCollaborators.find( ( collaborator ) => collaborator.isMe )
+				?.isConnected === false,
 	};
 }
 
@@ -96,7 +79,7 @@ function usePostEditorAwarenessState(
 		setState( getAwarenessState( awareness ) );
 
 		const unsubscribe = awareness?.onStateChange(
-			( newState: ActiveUser[] ) => {
+			( newState: ActiveCollaborator[] ) => {
 				setState( getAwarenessState( awareness, newState ) );
 			}
 		);
@@ -108,18 +91,23 @@ function usePostEditorAwarenessState(
 }
 
 /**
- * Hook to get the active users for a post editor.
+ * Hook to get the active collaborators for a post editor.
  *
  * @param  postId   - The ID of the post.
  * @param  postType - The type of the post.
- * @return {ActiveUser[]} The active users.
+ * @return {ActiveCollaborator[]} The active collaborators.
  */
-export function useActiveUsers(
+export function useActiveCollaborators(
 	postId: number | null,
 	postType: string | null
-): ActiveUser[] {
-	return usePostEditorAwarenessState( postId, postType ).activeUsers;
+): ActiveCollaborator[] {
+	return usePostEditorAwarenessState( postId, postType ).activeCollaborators;
 }
+
+/**
+ * Alias for useActiveCollaborators for backward compatibility.
+ */
+export const useActiveUsers = useActiveCollaborators;
 
 /**
  * Hook to get the absolute position index for a post editor.
@@ -151,16 +139,16 @@ export function useGetDebugData(
 }
 
 /**
- * Hook to check if the current user is disconnected.
+ * Hook to check if the current collaborator is disconnected.
  *
  * @param  postId   - The ID of the post.
  * @param  postType - The type of the post.
- * @return {boolean} Whether the current user is disconnected.
+ * @return {boolean} Whether the current collaborator is disconnected.
  */
 export function useIsDisconnected(
 	postId: number | null,
 	postType: string | null
 ): boolean {
 	return usePostEditorAwarenessState( postId, postType )
-		.isCurrentUserDisconnected;
+		.isCurrentCollaboratorDisconnected;
 }

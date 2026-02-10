@@ -30,6 +30,7 @@ import {
 	PATTERN_POST_TYPE,
 	NAVIGATION_POST_TYPE,
 } from '../../store/constants';
+import { CollaboratorsPresence } from '../collaborators-presence/index';
 import { unlock } from '../../lock-unlock';
 
 function Header( {
@@ -41,6 +42,7 @@ function Header( {
 	const isLargeViewport = useViewportMatch( 'medium' );
 	const isTooNarrowForDocumentBar = useMediaQuery( '(max-width: 403px)' );
 	const {
+		postId,
 		postType,
 		isTextEditor,
 		isPublishSidebarOpened,
@@ -55,6 +57,7 @@ function Header( {
 		const {
 			getEditorMode,
 			getCurrentPostType,
+			getCurrentPostId,
 			isPublishSidebarOpened: _isPublishSidebarOpened,
 		} = select( editorStore );
 		const { getStylesPath, getShowStylebook } = unlock(
@@ -65,6 +68,7 @@ function Header( {
 		);
 
 		return {
+			postId: getCurrentPostId(),
 			postType: getCurrentPostType(),
 			isTextEditor: getEditorMode() === 'text',
 			isPublishSidebarOpened: _isPublishSidebarOpened(),
@@ -121,7 +125,17 @@ function Header( {
 					) }
 				</>
 			}
-			center={ hasCenter ? <DocumentBar /> : undefined }
+			center={
+				hasCenter ? (
+					<>
+						<CollaboratorsPresence
+							postType={ postType }
+							postId={ postId }
+						/>
+						<DocumentBar />
+					</>
+				) : undefined
+			}
 			settings={
 				<>
 					{ ! customSaveButton && ! isPublishSidebarOpened && (

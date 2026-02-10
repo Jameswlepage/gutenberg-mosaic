@@ -46,6 +46,7 @@ export default function FormRegularField< Item >( {
 	field,
 	onChange,
 	hideLabelFromVision,
+	markWhenOptional,
 	validity,
 }: FieldLayoutProps< Item > ) {
 	const { fields } = useContext( DataFormContext );
@@ -97,7 +98,9 @@ export default function FormRegularField< Item >( {
 						`dataforms-layouts-regular__field-label--label-position-${ labelPosition }`
 					) }
 				>
-					{ fieldDefinition.label }
+					<BaseControl.VisualLabel>
+						{ fieldDefinition.label }
+					</BaseControl.VisualLabel>
 				</div>
 				<div className="dataforms-layouts-regular__field-control">
 					{ fieldDefinition.readOnly === true ? (
@@ -112,6 +115,7 @@ export default function FormRegularField< Item >( {
 							field={ fieldDefinition }
 							onChange={ onChange }
 							hideLabelFromVision
+							markWhenOptional={ markWhenOptional }
 							validity={ validity }
 						/>
 					) }
@@ -144,6 +148,7 @@ export default function FormRegularField< Item >( {
 					hideLabelFromVision={
 						labelPosition === 'none' ? true : hideLabelFromVision
 					}
+					markWhenOptional={ markWhenOptional }
 					validity={ validity }
 				/>
 			) }
