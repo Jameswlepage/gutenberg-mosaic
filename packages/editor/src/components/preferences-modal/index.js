@@ -5,12 +5,19 @@
 import { __ } from '@wordpress/i18n';
 import { useViewportMatch } from '@wordpress/compose';
 import { useSelect, useDispatch } from '@wordpress/data';
-import { useMemo } from '@wordpress/element';
+import { useMemo, useState, useCallback } from '@wordpress/element';
 import {
 	store as preferencesStore,
 	privateApis as preferencesPrivateApis,
 } from '@wordpress/preferences';
 import { store as interfaceStore } from '@wordpress/interface';
+import {
+	TextControl,
+	Button,
+	Notice,
+	__experimentalHStack as HStack,
+	__experimentalText as Text,
+} from '@wordpress/components';
 
 /**
  * Internal dependencies
@@ -33,6 +40,219 @@ const {
 	PreferencesModalSection,
 	PreferenceToggleControl,
 } = unlock( preferencesPrivateApis );
+
+const GEMINI_API_KEY_STORAGE_KEY = 'gutenberg_gemini_api_key';
+const GEMINI_VOICE_STORAGE_KEY = 'gutenberg_gemini_voice';
+const GEMINI_LANGUAGE_STORAGE_KEY = 'gutenberg_gemini_language';
+
+const VOICE_PRESETS = [
+	{ value: 'Zephyr', label: 'Zephyr — Bright' },
+	{ value: 'Puck', label: 'Puck — Upbeat' },
+	{ value: 'Charon', label: 'Charon — Informative' },
+	{ value: 'Kore', label: 'Kore — Firm' },
+	{ value: 'Fenrir', label: 'Fenrir — Excitable' },
+	{ value: 'Aoede', label: 'Aoede — Breezy' },
+	{ value: 'Leda', label: 'Leda — Youthful' },
+	{ value: 'Orus', label: 'Orus — Firm' },
+];
+
+const LANGUAGES = [
+	{ value: '', label: __( 'Auto-detect' ) },
+	{ value: 'en-US', label: 'English (US)' },
+	{ value: 'en-GB', label: 'English (UK)' },
+	{ value: 'es-ES', label: 'Spanish' },
+	{ value: 'fr-FR', label: 'French' },
+	{ value: 'de-DE', label: 'German' },
+	{ value: 'it-IT', label: 'Italian' },
+	{ value: 'pt-BR', label: 'Portuguese (BR)' },
+	{ value: 'ja-JP', label: 'Japanese' },
+	{ value: 'ko-KR', label: 'Korean' },
+	{ value: 'zh-CN', label: 'Chinese (Simplified)' },
+	{ value: 'hi-IN', label: 'Hindi' },
+	{ value: 'ar-SA', label: 'Arabic' },
+	{ value: 'nl-NL', label: 'Dutch' },
+	{ value: 'pl-PL', label: 'Polish' },
+	{ value: 'ru-RU', label: 'Russian' },
+	{ value: 'sv-SE', label: 'Swedish' },
+	{ value: 'tr-TR', label: 'Turkish' },
+	{ value: 'vi-VN', label: 'Vietnamese' },
+];
+
+function getStored( key, fallback = '' ) {
+	try {
+		return localStorage.getItem( key ) || fallback;
+	} catch {
+		return fallback;
+	}
+}
+
+function setStored( key, value ) {
+	try {
+		localStorage.setItem( key, value );
+	} catch {
+		// Ignore storage errors.
+	}
+}
+
+function AIPreferencesContent() {
+	const [ apiKey, setApiKey ] = useState( () =>
+		getStored( GEMINI_API_KEY_STORAGE_KEY )
+	);
+	const [ tempApiKey, setTempApiKey ] = useState( '' );
+	const [ isEditingKey, setIsEditingKey ] = useState( false );
+	const [ keyError, setKeyError ] = useState( null );
+	const [ voicePreset, setVoicePreset ] = useState( () =>
+		getStored( GEMINI_VOICE_STORAGE_KEY, 'Aoede' )
+	);
+	const [ languageCode, setLanguageCode ] = useState( () =>
+		getStored( GEMINI_LANGUAGE_STORAGE_KEY, '' )
+	);
+
+	const handleSaveApiKey = useCallback( () => {
+		if ( ! tempApiKey.trim() ) {
+			setKeyError( __( 'API key is required' ) );
+			return;
+		}
+		setStored( GEMINI_API_KEY_STORAGE_KEY, tempApiKey.trim() );
+		setApiKey( tempApiKey.trim() );
+		setIsEditingKey( false );
+		setTempApiKey( '' );
+		setKeyError( null );
+	}, [ tempApiKey ] );
+
+	const handleVoiceChange = useCallback( ( e ) => {
+		const value = e.target.value;
+		setVoicePreset( value );
+		setStored( GEMINI_VOICE_STORAGE_KEY, value );
+	}, [] );
+
+	const handleLanguageChange = useCallback( ( e ) => {
+		const value = e.target.value;
+		setLanguageCode( value );
+		setStored( GEMINI_LANGUAGE_STORAGE_KEY, value );
+	}, [] );
+
+	return (
+		<>
+			<PreferencesModalSection
+				title={ __( 'API key' ) }
+				description={ __(
+					'A Gemini API key is required to use the AI assistant.'
+				) }
+			>
+				{ apiKey && ! isEditingKey ? (
+					<HStack alignment="left">
+						<Text>
+							{ '••••••••' + apiKey.slice( -4 ) }
+						</Text>
+						<Button
+							__next40pxDefaultSize
+							variant="link"
+							onClick={ () => {
+								setIsEditingKey( true );
+								setTempApiKey( '' );
+							} }
+						>
+							{ __( 'Change' ) }
+						</Button>
+					</HStack>
+				) : (
+					<>
+						<TextControl
+							__next40pxDefaultSize
+							label={ __( 'API Key' ) }
+							value={ tempApiKey }
+							onChange={ ( value ) => {
+								setTempApiKey( value );
+								setKeyError( null );
+							} }
+							type="password"
+							help={
+								<a
+									href="https://aistudio.google.com/app/apikey"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									{ __(
+										'Get your API key from Google AI Studio'
+									) }
+								</a>
+							}
+						/>
+						{ keyError && (
+							<Notice status="error" isDismissible={ false }>
+								{ keyError }
+							</Notice>
+						) }
+						<HStack alignment="left">
+							<Button
+								__next40pxDefaultSize
+								variant="primary"
+								onClick={ handleSaveApiKey }
+								disabled={ ! tempApiKey.trim() }
+							>
+								{ __( 'Save' ) }
+							</Button>
+							{ apiKey && (
+								<Button
+									__next40pxDefaultSize
+									variant="tertiary"
+									onClick={ () => {
+										setIsEditingKey( false );
+										setTempApiKey( '' );
+										setKeyError( null );
+									} }
+								>
+									{ __( 'Cancel' ) }
+								</Button>
+							) }
+						</HStack>
+					</>
+				) }
+			</PreferencesModalSection>
+			<PreferencesModalSection
+				title={ __( 'Voice' ) }
+				description={ __(
+					'Choose a voice for the AI assistant.'
+				) }
+			>
+				{ /* eslint-disable-next-line jsx-a11y/no-onchange */ }
+				<select
+					id="gemini-voice-select"
+					className="editor-ai-preferences__select"
+					value={ voicePreset }
+					onChange={ handleVoiceChange }
+				>
+					{ VOICE_PRESETS.map( ( voice ) => (
+						<option key={ voice.value } value={ voice.value }>
+							{ voice.label }
+						</option>
+					) ) }
+				</select>
+			</PreferencesModalSection>
+			<PreferencesModalSection
+				title={ __( 'Language' ) }
+				description={ __(
+					'Set the language for speech recognition.'
+				) }
+			>
+				{ /* eslint-disable-next-line jsx-a11y/no-onchange */ }
+				<select
+					id="gemini-lang-select"
+					className="editor-ai-preferences__select"
+					value={ languageCode }
+					onChange={ handleLanguageChange }
+				>
+					{ LANGUAGES.map( ( lang ) => (
+						<option key={ lang.value } value={ lang.value }>
+							{ lang.label }
+						</option>
+					) ) }
+				</select>
+			</PreferencesModalSection>
+		</>
+	);
+}
 
 export default function EditorPreferencesModal( { extraSections = {} } ) {
 	const isActive = useSelect( ( select ) => {
@@ -297,6 +517,11 @@ function PreferencesModalContents( { extraSections = {} } ) {
 							</PreferencesModalSection>
 						</>
 					),
+				},
+				{
+					name: 'ai',
+					tabLabel: __( 'AI' ),
+					content: <AIPreferencesContent />,
 				},
 				window.__experimentalMediaProcessing && {
 					name: 'media',

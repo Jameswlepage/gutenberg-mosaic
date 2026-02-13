@@ -1,14 +1,14 @@
 import { __ } from '@wordpress/i18n';
 import { Popover, Button } from '@wordpress/components';
 import { close } from '@wordpress/icons';
-import { type PostEditorAwarenessState } from '@wordpress/core-data';
 
 import { Avatar } from './avatar';
+import { type CollaboratorPresenceItem } from './types';
 
 import './styles/collaborators-list.scss';
 
 interface CollaboratorsListProps {
-	activeCollaborators: PostEditorAwarenessState[];
+	activeCollaborators: CollaboratorPresenceItem[];
 	popoverAnchor?: HTMLElement | null;
 	setIsPopoverVisible: ( isVisible: boolean ) => void;
 }

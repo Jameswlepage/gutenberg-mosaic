@@ -108,7 +108,7 @@ export function registerSearchOpenverseAbility(): void {
 				: [];
 
 			return {
-				results: results.map( ( result ) => ( {
+				results: results.map( ( result: any ) => ( {
 					id: result.id,
 					title:
 						result.title?.toLowerCase().startsWith( 'file:' )
@@ -150,6 +150,11 @@ export function registerSearchPostsAbility(): void {
 					type: 'string',
 					description: 'Post type (default: post)',
 				},
+				postStatus: {
+					type: 'string',
+					description:
+						'Optional post status filter (e.g. publish, draft, pending, private, future, trash)',
+				},
 				perPage: {
 					type: 'integer',
 					description: 'Results per page (max 20)',
@@ -184,15 +189,23 @@ export function registerSearchPostsAbility(): void {
 		callback: async ( input: {
 			search: string;
 			postType?: string;
+			postStatus?: string;
 			perPage?: number;
 		} ) => {
 			const type = input.postType || 'post';
 			const perPage = Math.min( Math.max( input.perPage || 10, 1 ), 20 );
-			const query = {
+			const postStatus = input.postStatus?.trim();
+			const query: Record< string, string | number > = {
 				search: input.search,
 				per_page: perPage,
-				context: 'view',
+				context:
+					postStatus && postStatus !== 'publish'
+						? 'edit'
+						: 'view',
 			};
+			if ( postStatus ) {
+				query.status = postStatus;
+			}
 
 			// @ts-ignore core store types are not exposed here.
 			const results = select( 'core' ).getEntityRecords(
@@ -206,7 +219,7 @@ export function registerSearchPostsAbility(): void {
 			}
 
 			return {
-				results: results.map( ( item ) => ( {
+				results: results.map( ( item: any ) => ( {
 					id: item.id,
 					title: item.title?.rendered || '',
 					link: item.link || '',
@@ -318,10 +331,210 @@ export function registerSearchContentAbility(): void {
 }
 
 /**
+ * Exa API configuration
+ */
+const EXA_API_URL = 'https://api.exa.ai/search';
+
+type GeminiRuntimeConfig = {
+	exaApiKey?: string;
+};
+
+function getExaApiKey(): string {
+	try {
+		const runtimeConfig = (
+			window as Window & {
+				gutenbergGeminiAgentConfig?: GeminiRuntimeConfig;
+			}
+		).gutenbergGeminiAgentConfig;
+		const runtimeKey = runtimeConfig?.exaApiKey?.trim();
+		if ( runtimeKey ) {
+			return runtimeKey;
+		}
+	} catch {
+		// Ignore runtime config read errors.
+	}
+
+	try {
+		const stored = localStorage
+			.getItem( 'gutenberg_exa_api_key' )
+			?.trim();
+		if ( stored ) {
+			return stored;
+		}
+	} catch {
+		// Ignore localStorage read errors.
+	}
+
+	return '';
+}
+
+/**
+ * Register the web search ability (powered by Exa)
+ */
+export function registerSearchWebAbility(): void {
+	if ( getAbility( 'agent/search-web' ) ) {
+		return;
+	}
+
+	registerAbility( {
+		name: 'agent/search-web',
+		label: 'Search the Web',
+		description:
+			'Searches the web via Exa search. Defaults to instant mode for low-latency lookups of docs, references, news, and external content.',
+		category: AGENT_CATEGORY,
+		input_schema: {
+			type: 'object',
+			properties: {
+				query: {
+					type: 'string',
+					description: 'Search query — can be a question or topic',
+				},
+				numResults: {
+					type: 'integer',
+					description:
+						'Number of results to return (1-10, default 5)',
+				},
+				type: {
+					type: 'string',
+					enum: [ 'instant', 'auto', 'fast', 'neural', 'deep' ],
+					description:
+						'Search type: "instant" (default) for lowest latency, "auto" for balanced quality/speed, "fast" for streamlined retrieval, "neural" for semantic search, "deep" for expanded retrieval',
+				},
+				includeDomains: {
+					type: 'array',
+					items: { type: 'string' },
+					description:
+						'Only include results from these domains (e.g. ["developer.wordpress.org", "github.com"])',
+				},
+				excludeDomains: {
+					type: 'array',
+					items: { type: 'string' },
+					description:
+						'Exclude results from these domains',
+				},
+				startPublishedDate: {
+					type: 'string',
+					description:
+						'Only include results published after this date (ISO 8601, e.g. "2025-01-01T00:00:00.000Z")',
+				},
+			},
+			required: [ 'query' ],
+		},
+		output_schema: {
+			type: 'object',
+			properties: {
+				results: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							title: { type: 'string' },
+							url: { type: 'string' },
+							highlights: {
+								type: 'array',
+								items: { type: 'string' },
+							},
+							author: { type: 'string' },
+						},
+					},
+				},
+			},
+		},
+		meta: {
+			annotations: {
+				readonly: true,
+				idempotent: true,
+			},
+		},
+		callback: async ( input: {
+			query: string;
+			numResults?: number;
+			type?: 'instant' | 'auto' | 'fast' | 'neural' | 'deep';
+			includeDomains?: string[];
+			excludeDomains?: string[];
+			startPublishedDate?: string;
+		} ) => {
+			const exaApiKey = getExaApiKey();
+			if ( ! exaApiKey ) {
+				throw new Error(
+					'Missing Exa API key. Set window.gutenbergGeminiAgentConfig.exaApiKey or localStorage key "gutenberg_exa_api_key".'
+				);
+			}
+
+			const numResults = Math.min(
+				Math.max( input.numResults || 5, 1 ),
+				10
+			);
+
+			const requestedType =
+				typeof input.type === 'string' ? input.type : '';
+			const searchType =
+				requestedType === 'keyword'
+					? 'fast'
+					: requestedType || 'instant';
+
+			const body: Record< string, any > = {
+				query: input.query,
+				numResults,
+				type: searchType,
+				contents: {
+					highlights: {
+						maxCharacters: 3000,
+					},
+				},
+			};
+
+			if ( input.includeDomains && input.includeDomains.length > 0 ) {
+				body.includeDomains = input.includeDomains;
+			}
+			if ( input.excludeDomains && input.excludeDomains.length > 0 ) {
+				body.excludeDomains = input.excludeDomains;
+			}
+			if ( input.startPublishedDate ) {
+				body.startPublishedDate = input.startPublishedDate;
+			}
+
+			const response = await window.fetch( EXA_API_URL, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'x-api-key': exaApiKey,
+				},
+				body: JSON.stringify( body ),
+			} );
+
+			if ( ! response.ok ) {
+				const errorText = await response.text().catch( () => '' );
+				throw new Error(
+					`Exa search failed (${ response.status }): ${ errorText }`
+				);
+			}
+
+			const json = await response.json();
+			const results = Array.isArray( json.results )
+				? json.results
+				: [];
+
+			return {
+				results: results.map( ( result: any ) => ( {
+					title: result.title || '',
+					url: result.url || '',
+					highlights: Array.isArray( result.highlights )
+						? result.highlights
+						: [],
+					author: result.author || '',
+				} ) ),
+			};
+		},
+	} );
+}
+
+/**
  * Register all search abilities
  */
 export function registerSearchAbilities(): void {
 	registerSearchOpenverseAbility();
 	registerSearchPostsAbility();
 	registerSearchContentAbility();
+	registerSearchWebAbility();
 }

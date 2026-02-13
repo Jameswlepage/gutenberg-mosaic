@@ -2,7 +2,9 @@
  * WordPress dependencies
  */
 import { dispatch, resolveSelect, select } from '@wordpress/data';
+// @ts-expect-error No type declarations for blocks.
 import { parse } from '@wordpress/blocks';
+// @ts-expect-error No type declarations for block-editor.
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as coreStore } from '@wordpress/core-data';
 import { getAbility, registerAbility } from '@wordpress/abilities';

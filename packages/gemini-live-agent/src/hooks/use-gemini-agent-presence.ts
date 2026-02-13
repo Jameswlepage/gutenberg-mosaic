@@ -17,6 +17,7 @@ export function useGeminiAgentPresence() {
 			isAudioEnabled: storeSelect.getIsAudioEnabled(),
 			lastError: storeSelect.getLastError(),
 			activeBlockClientId: storeSelect.getActiveBlockClientId(),
+			imageEditTargetClientId: storeSelect.getImageEditTargetClientId(),
 		};
 	}, [] );
 }

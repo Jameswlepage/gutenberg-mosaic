@@ -2,7 +2,7 @@
  * WordPress dependencies
  */
 import { dispatch, resolveSelect, select } from '@wordpress/data';
-import { parse, serialize } from '@wordpress/blocks';
+import { parse, serialize, pasteHandler } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as coreDataStore } from '@wordpress/core-data';
 import { getAbility, registerAbility } from '@wordpress/abilities';
@@ -56,6 +56,24 @@ function getCurrentPost(): { postId: number | null; postType: string | null } {
 	};
 }
 
+type NavigateToEntityRecord = ( input: {
+	postId: number;
+	postType: string;
+} ) => void;
+
+function getEditorEntityNavigator(): NavigateToEntityRecord | null {
+	const blockEditor = select( blockEditorStore ) as {
+		getSettings?: () => {
+			onNavigateToEntityRecord?: unknown;
+		};
+	};
+	const callback = blockEditor?.getSettings?.()?.onNavigateToEntityRecord;
+
+	return typeof callback === 'function'
+		? ( callback as NavigateToEntityRecord )
+		: null;
+}
+
 function getEditedPostContent(): string {
 	const editor = select( 'core/editor' ) as {
 		getEditedPostContent?: () => string;
@@ -87,6 +105,22 @@ function getEditedPostContent(): string {
 	return record?.content || '';
 }
 
+function contentToBlocks( content: string ): Array< unknown > {
+	// If content already contains block delimiters, parse directly.
+	if ( content.indexOf( '<!-- wp:' ) !== -1 ) {
+		return parse( content, { __unstableSkipMigrationLogs: true } );
+	}
+
+	// Otherwise treat as markdown/plain text and convert to blocks.
+	// pasteHandler runs showdown (markdown → HTML) then converts to blocks.
+	const blocks = pasteHandler( {
+		plainText: content,
+		mode: 'BLOCKS',
+	} );
+
+	return Array.isArray( blocks ) ? blocks : [];
+}
+
 function setEditedPostContent( content: string ): void {
 	const editor = dispatch( 'core/editor' ) as {
 		editPost?: ( payload: { content: string } ) => void;
@@ -95,12 +129,16 @@ function setEditedPostContent( content: string ): void {
 		resetBlocks?: ( blocks: Array< unknown > ) => void;
 	};
 
+	const blocks = contentToBlocks( content );
+
+	// Serialize the blocks back to block markup so editPost gets valid content.
+	const blockContent = serialize( blocks );
+
 	if ( typeof editor?.editPost === 'function' ) {
-		editor.editPost( { content } );
+		editor.editPost( { content: blockContent } );
 	}
 
 	if ( typeof blockEditor?.resetBlocks === 'function' ) {
-		const blocks = parse( content, { __unstableSkipMigrationLogs: true } );
 		blockEditor.resetBlocks( blocks );
 	}
 }
@@ -301,6 +339,167 @@ function getPostFields() {
 	};
 }
 
+type PostTemplateOption = {
+	id: number | null;
+	slug: string;
+	title: string;
+	source: string;
+	isCustom: boolean;
+};
+
+function stripHtmlTags( value: string ): string {
+	return value.replace( /<[^>]*>/g, ' ' ).replace( /\s+/g, ' ' ).trim();
+}
+
+function normalizeTemplateValue( value: string ): string {
+	return value.toLowerCase().trim().replace( /\s+/g, ' ' );
+}
+
+function getEntityTitleFromRecord( record: Record< string, unknown > ): string {
+	const rawTitle = record.title;
+
+	if ( typeof rawTitle === 'string' ) {
+		const stripped = stripHtmlTags( rawTitle );
+		if ( stripped ) {
+			return stripped;
+		}
+	}
+
+	if ( isPlainObject( rawTitle ) ) {
+		const rendered = rawTitle.rendered;
+		if ( typeof rendered === 'string' ) {
+			const stripped = stripHtmlTags( rendered );
+			if ( stripped ) {
+				return stripped;
+			}
+		}
+		const raw = rawTitle.raw;
+		if ( typeof raw === 'string' ) {
+			const stripped = stripHtmlTags( raw );
+			if ( stripped ) {
+				return stripped;
+			}
+		}
+	}
+
+	if ( typeof record.slug === 'string' && record.slug ) {
+		return record.slug;
+	}
+
+	if ( typeof record.id === 'number' ) {
+		return `#${ record.id }`;
+	}
+
+	return 'Untitled';
+}
+
+function toTemplateTitle( template: Record< string, unknown > ): string {
+	const rawTitle = template.title;
+
+	if ( typeof rawTitle === 'string' ) {
+		const stripped = stripHtmlTags( rawTitle );
+		if ( stripped ) {
+			return stripped;
+		}
+	}
+
+	if ( isPlainObject( rawTitle ) ) {
+		const rendered = rawTitle.rendered;
+		if ( typeof rendered === 'string' ) {
+			const stripped = stripHtmlTags( rendered );
+			if ( stripped ) {
+				return stripped;
+			}
+		}
+	}
+
+	const slug =
+		typeof template.slug === 'string'
+			? template.slug
+			: typeof template.name === 'string'
+			? template.name
+			: '';
+
+	return slug || 'Untitled template';
+}
+
+async function getPostTemplatesForType(
+	postType: string,
+	search?: string,
+	perPage?: number
+): Promise< PostTemplateOption[] > {
+	const records = ( await resolveSelect( coreDataStore ).getEntityRecords(
+		'postType',
+		'wp_template',
+		{
+			per_page: -1,
+			post_type: postType,
+			context: 'edit',
+		}
+	) ) as Array< Record< string, unknown > > | null;
+
+	const normalizedSearch = search
+		? normalizeTemplateValue( search )
+		: '';
+
+	const templates = Array.isArray( records )
+		? records
+				.map( ( template ) => {
+					const slug =
+						typeof template.slug === 'string'
+							? template.slug
+							: typeof template.name === 'string'
+							? template.name
+							: '';
+					if ( ! slug ) {
+						return null;
+					}
+
+					const source =
+						typeof template.source === 'string'
+							? template.source
+							: ( template.is_custom ? 'custom' : 'theme' );
+
+					return {
+						id:
+							typeof template.id === 'number' ? template.id : null,
+						slug,
+						title: toTemplateTitle( template ),
+						source,
+						isCustom: Boolean( template.is_custom ),
+					} as PostTemplateOption;
+				} )
+				.filter(
+					(
+						template
+					): template is PostTemplateOption => template !== null
+				)
+		: [];
+
+	const withDefault: PostTemplateOption[] = [
+		{
+			id: null,
+			slug: '',
+			title: 'Default template',
+			source: 'default',
+			isCustom: false,
+		},
+		...templates,
+	];
+
+	const filtered = normalizedSearch
+		? withDefault.filter( ( template ) =>
+				normalizeTemplateValue( template.title ).includes(
+					normalizedSearch
+				)
+		  )
+		: withDefault;
+
+	const maxResults =
+		typeof perPage === 'number' ? clampPerPage( perPage, 100 ) : 100;
+	return filtered.slice( 0, maxResults );
+}
+
 /**
  * Register get post fields ability
  */
@@ -442,6 +641,666 @@ export function registerUpdatePostFieldsAbility(): void {
 			}
 
 			return { success: true, message: 'Post fields updated.' };
+		},
+	} );
+}
+
+/**
+ * Register create post ability
+ */
+export function registerCreatePostAbility(): void {
+	if ( getAbility( 'agent/create-post' ) ) {
+		return;
+	}
+
+	registerAbility( {
+		name: 'agent/create-post',
+		label: 'Create Post',
+		description:
+			'Creates a new page or custom post type item and can open it in the editor.',
+		category: AGENT_CATEGORY,
+		input_schema: {
+			type: 'object',
+			properties: {
+				postType: {
+					type: 'string',
+					description:
+						'Post type to create (defaults to "page", but can be any CPT slug).',
+				},
+				title: {
+					type: 'string',
+					description: 'Post title (defaults to "Untitled").',
+				},
+				status: {
+					type: 'string',
+					description:
+						'Initial status (defaults to "draft"). Common values: draft, publish, pending, private.',
+				},
+				slug: {
+					type: 'string',
+					description: 'Optional post slug.',
+				},
+				content: {
+					type: 'string',
+					description: 'Optional post content.',
+				},
+				excerpt: {
+					type: 'string',
+					description: 'Optional excerpt.',
+				},
+				template: {
+					type: 'string',
+					description: 'Optional template slug.',
+				},
+				navigate: {
+					type: 'boolean',
+					description:
+						'Whether to navigate to the created item in the editor (default: true).',
+				},
+			},
+		},
+		output_schema: {
+			type: 'object',
+			properties: {
+				success: { type: 'boolean' },
+				message: { type: 'string' },
+				postId: { type: [ 'integer', 'null' ] },
+				postType: { type: 'string' },
+				title: { type: 'string' },
+				status: { type: 'string' },
+				link: { type: 'string' },
+			},
+		},
+		meta: {
+			annotations: {
+				destructive: true,
+				idempotent: false,
+			},
+		},
+		callback: async ( input: {
+			postType?: string;
+			title?: string;
+			status?: string;
+			slug?: string;
+			content?: string;
+			excerpt?: string;
+			template?: string;
+			navigate?: boolean;
+		} ) => {
+			const postType =
+				typeof input.postType === 'string' && input.postType.trim()
+					? input.postType.trim()
+					: 'page';
+			const title =
+				typeof input.title === 'string' && input.title.trim()
+					? input.title.trim()
+					: 'Untitled';
+			const status =
+				typeof input.status === 'string' && input.status.trim()
+					? input.status.trim()
+					: 'draft';
+			const payload: Record< string, unknown > = {
+				title,
+				status,
+			};
+
+			if ( typeof input.slug === 'string' && input.slug.trim() ) {
+				payload.slug = input.slug.trim();
+			}
+			if ( typeof input.content === 'string' ) {
+				payload.content = input.content;
+			}
+			if ( typeof input.excerpt === 'string' ) {
+				payload.excerpt = input.excerpt;
+			}
+			if ( typeof input.template === 'string' ) {
+				payload.template = input.template;
+			}
+
+			try {
+				const created = ( await dispatch(
+					coreDataStore
+				).saveEntityRecord(
+					'postType',
+					postType,
+					payload,
+					{ throwOnError: true }
+				) ) as Record< string, unknown >;
+
+				const postId =
+					typeof created?.id === 'number' ? created.id : null;
+				const createdTitle = isPlainObject( created )
+					? getEntityTitleFromRecord( created )
+					: title;
+				const createdStatus =
+					typeof created?.status === 'string'
+						? created.status
+						: status;
+				const navigate =
+					typeof input.navigate === 'boolean'
+						? input.navigate
+						: true;
+
+				if ( navigate && postId ) {
+					const onNavigate = getEditorEntityNavigator();
+					onNavigate?.( {
+						postId,
+						postType,
+					} );
+				}
+
+				return {
+					success: Boolean( postId ),
+					message: postId
+						? `Created ${ postType } "${ createdTitle }".`
+						: `Created ${ postType }.`,
+					postId,
+					postType,
+					title: createdTitle,
+					status: createdStatus,
+					link: typeof created?.link === 'string' ? created.link : '',
+				};
+			} catch ( error ) {
+				return {
+					success: false,
+					message:
+						error instanceof Error
+							? error.message
+							: `Failed to create ${ postType }.`,
+					postId: null,
+					postType,
+					title,
+					status,
+					link: '',
+				};
+			}
+		},
+	} );
+}
+
+/**
+ * Register site editor navigation ability
+ */
+export function registerNavigateSiteEditorAbility(): void {
+	if ( getAbility( 'agent/navigate-site-editor' ) ) {
+		return;
+	}
+
+	registerAbility( {
+		name: 'agent/navigate-site-editor',
+		label: 'Navigate Site Editor',
+		description:
+			'Navigates to a post, page, or template entity in the Site Editor using native editor navigation.',
+		category: AGENT_CATEGORY,
+		input_schema: {
+			type: 'object',
+			properties: {
+				postId: {
+					type: 'integer',
+					description:
+						'Entity ID to navigate to. Provide this directly when known.',
+				},
+				postType: {
+					type: 'string',
+					description:
+						'Post type to open (defaults to "page"). Can also be wp_template, wp_template_part, etc.',
+				},
+				title: {
+					type: 'string',
+					description:
+						'Optional title query used to resolve postId when postId is not provided.',
+				},
+			},
+		},
+		output_schema: {
+			type: 'object',
+			properties: {
+				success: { type: 'boolean' },
+				message: { type: 'string' },
+				postId: { type: [ 'integer', 'null' ] },
+				postType: { type: 'string' },
+				title: { type: 'string' },
+				matches: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							postId: { type: 'integer' },
+							title: { type: 'string' },
+							status: { type: 'string' },
+						},
+					},
+				},
+			},
+		},
+		meta: {
+			annotations: {
+				readonly: false,
+				idempotent: true,
+			},
+		},
+		callback: async ( input: {
+			postId?: number;
+			postType?: string;
+			title?: string;
+		} ) => {
+			const onNavigate = getEditorEntityNavigator();
+			const postType =
+				typeof input.postType === 'string' && input.postType.trim()
+					? input.postType.trim()
+					: 'page';
+
+			if ( ! onNavigate ) {
+				return {
+					success: false,
+					message:
+						'Site editor navigation is not available in this context.',
+					postId: null,
+					postType,
+					title: '',
+					matches: [],
+				};
+			}
+
+			let postId =
+				typeof input.postId === 'number' ? input.postId : null;
+			let resolvedTitle = '';
+			let matches: Array< {
+				postId: number;
+				title: string;
+				status: string;
+			} > = [];
+
+			if ( ! postId && typeof input.title === 'string' ) {
+				const search = input.title.trim();
+				if ( search ) {
+					const records = ( await resolveSelect(
+						coreDataStore
+					).getEntityRecords( 'postType', postType, {
+						search,
+						per_page: 20,
+						context: 'edit',
+					} ) ) as Array< Record< string, unknown > > | null;
+
+					matches = Array.isArray( records )
+						? records
+								.map( ( record ) => {
+									const id =
+										typeof record.id === 'number'
+											? record.id
+											: null;
+									if ( ! id ) {
+										return null;
+									}
+									return {
+										postId: id,
+										title: getEntityTitleFromRecord(
+											record
+										),
+										status:
+											typeof record.status === 'string'
+												? record.status
+												: '',
+									};
+								} )
+								.filter(
+									(
+										match
+									): match is {
+										postId: number;
+										title: string;
+										status: string;
+									} => match !== null
+								)
+						: [];
+
+					const normalizedSearch =
+						normalizeTemplateValue( search );
+					const exactMatches = matches.filter(
+						( match ) =>
+							normalizeTemplateValue( match.title ) ===
+							normalizedSearch
+					);
+					const startsWithMatches = matches.filter(
+						( match ) =>
+							normalizeTemplateValue( match.title ).startsWith(
+								normalizedSearch
+							)
+					);
+					const partialMatches = matches.filter( ( match ) =>
+						normalizeTemplateValue( match.title ).includes(
+							normalizedSearch
+						)
+					);
+
+					if ( exactMatches.length === 1 ) {
+						postId = exactMatches[ 0 ].postId;
+						resolvedTitle = exactMatches[ 0 ].title;
+					} else if ( startsWithMatches.length === 1 ) {
+						postId = startsWithMatches[ 0 ].postId;
+						resolvedTitle = startsWithMatches[ 0 ].title;
+					} else if ( partialMatches.length === 1 ) {
+						postId = partialMatches[ 0 ].postId;
+						resolvedTitle = partialMatches[ 0 ].title;
+					}
+				}
+			}
+
+			if ( ! postId ) {
+				return {
+					success: false,
+					message:
+						'Could not resolve a target. Provide postId or a more specific title.',
+					postId: null,
+					postType,
+					title: '',
+					matches: matches.slice( 0, 10 ),
+				};
+			}
+
+			if ( ! resolvedTitle ) {
+				const record = select( coreDataStore ).getEntityRecord(
+					'postType',
+					postType,
+					postId
+				) as Record< string, unknown > | undefined;
+				if ( record ) {
+					resolvedTitle = getEntityTitleFromRecord( record );
+				}
+			}
+
+			onNavigate( { postId, postType } );
+
+			return {
+				success: true,
+				message: resolvedTitle
+					? `Navigated to "${ resolvedTitle }".`
+					: `Navigated to ${ postType } ${ postId }.`,
+				postId,
+				postType,
+				title: resolvedTitle,
+				matches: [],
+			};
+		},
+	} );
+}
+
+/**
+ * Register list post templates ability
+ */
+export function registerListPostTemplatesAbility(): void {
+	if ( getAbility( 'agent/list-post-templates' ) ) {
+		return;
+	}
+
+	registerAbility( {
+		name: 'agent/list-post-templates',
+		label: 'List Post Templates',
+		description: 'Lists available templates for the current post type',
+		category: AGENT_CATEGORY,
+		input_schema: {
+			type: 'object',
+			properties: {
+				search: {
+					type: 'string',
+					description: 'Optional template title search text',
+				},
+				postType: {
+					type: 'string',
+					description: 'Post type (defaults to current post type)',
+				},
+				perPage: {
+					type: 'integer',
+					description: 'Maximum templates to return (max 100)',
+				},
+			},
+		},
+		output_schema: {
+			type: 'object',
+			properties: {
+				templates: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							id: { type: [ 'integer', 'null' ] },
+							slug: { type: 'string' },
+							title: { type: 'string' },
+							source: { type: 'string' },
+							isCustom: { type: 'boolean' },
+						},
+					},
+				},
+			},
+		},
+		meta: {
+			annotations: {
+				readonly: true,
+				idempotent: true,
+			},
+		},
+		callback: async ( input: {
+			search?: string;
+			postType?: string;
+			perPage?: number;
+		} ) => {
+			const current = getCurrentPost();
+			const postType = input.postType ?? current.postType;
+
+			if ( ! postType ) {
+				return { templates: [] };
+			}
+
+			const templates = await getPostTemplatesForType(
+				postType,
+				input.search,
+				input.perPage
+			);
+
+			return { templates };
+		},
+	} );
+}
+
+/**
+ * Register switch post template ability
+ */
+export function registerSwitchPostTemplateAbility(): void {
+	if ( getAbility( 'agent/switch-post-template' ) ) {
+		return;
+	}
+
+	registerAbility( {
+		name: 'agent/switch-post-template',
+		label: 'Switch Post Template',
+		description:
+			'Switches the current post template by template title or slug',
+		category: AGENT_CATEGORY,
+		input_schema: {
+			type: 'object',
+			properties: {
+				templateTitle: {
+					type: 'string',
+					description:
+						'Template title to match (for example "Default template" or "Page with Sidebar")',
+				},
+				templateSlug: {
+					type: 'string',
+					description:
+						'Template slug to apply directly (for example "page-with-sidebar")',
+				},
+				postType: {
+					type: 'string',
+					description: 'Post type (defaults to current post type)',
+				},
+			},
+		},
+		output_schema: {
+			type: 'object',
+			properties: {
+				success: { type: 'boolean' },
+				message: { type: 'string' },
+				templateSlug: { type: 'string' },
+				templateTitle: { type: 'string' },
+				matches: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							slug: { type: 'string' },
+							title: { type: 'string' },
+						},
+					},
+				},
+			},
+		},
+		meta: {
+			annotations: {
+				destructive: true,
+				idempotent: false,
+			},
+		},
+		callback: async ( input: {
+			templateTitle?: string;
+			templateSlug?: string;
+			postType?: string;
+		} ) => {
+			const current = getCurrentPost();
+			const postType = input.postType ?? current.postType;
+
+			if ( ! current.postId || ! postType ) {
+				return {
+					success: false,
+					message: 'No post context available.',
+					templateSlug: '',
+					templateTitle: '',
+					matches: [],
+				};
+			}
+
+			const templateTitle =
+				typeof input.templateTitle === 'string'
+					? input.templateTitle.trim()
+					: '';
+			const templateSlug =
+				typeof input.templateSlug === 'string'
+					? input.templateSlug.trim()
+					: '';
+
+			if ( ! templateTitle && ! templateSlug ) {
+				return {
+					success: false,
+					message: 'Provide templateTitle or templateSlug.',
+					templateSlug: '',
+					templateTitle: '',
+					matches: [],
+				};
+			}
+
+			const templates = await getPostTemplatesForType( postType );
+			let match: PostTemplateOption | undefined;
+
+			if ( templateSlug ) {
+				match = templates.find(
+					( template ) => template.slug === templateSlug
+				);
+			}
+
+			if ( ! match && templateTitle ) {
+				const targetTitle = normalizeTemplateValue(
+					templateTitle
+				);
+				const exactMatches = templates.filter(
+					( template ) =>
+						normalizeTemplateValue( template.title ) ===
+						targetTitle
+				);
+				const startsWithMatches = templates.filter(
+					( template ) =>
+						normalizeTemplateValue( template.title ).startsWith(
+							targetTitle
+						)
+				);
+				const partialMatches = templates.filter( ( template ) =>
+					normalizeTemplateValue( template.title ).includes(
+						targetTitle
+					)
+				);
+
+				if ( exactMatches.length === 1 ) {
+					match = exactMatches[ 0 ];
+				} else if ( exactMatches.length > 1 ) {
+					return {
+						success: false,
+						message:
+							'Multiple templates matched this title. Please be more specific.',
+						templateSlug: '',
+						templateTitle: '',
+						matches: exactMatches
+							.slice( 0, 10 )
+							.map( ( template ) => ( {
+								slug: template.slug,
+								title: template.title,
+							} ) ),
+					};
+				} else if ( startsWithMatches.length === 1 ) {
+					match = startsWithMatches[ 0 ];
+				} else if ( startsWithMatches.length > 1 ) {
+					return {
+						success: false,
+						message:
+							'Multiple templates matched this title. Please be more specific.',
+						templateSlug: '',
+						templateTitle: '',
+						matches: startsWithMatches
+							.slice( 0, 10 )
+							.map( ( template ) => ( {
+								slug: template.slug,
+								title: template.title,
+							} ) ),
+					};
+				} else if ( partialMatches.length === 1 ) {
+					match = partialMatches[ 0 ];
+				} else if ( partialMatches.length > 1 ) {
+					return {
+						success: false,
+						message:
+							'Multiple templates matched this title. Please be more specific.',
+						templateSlug: '',
+						templateTitle: '',
+						matches: partialMatches
+							.slice( 0, 10 )
+							.map( ( template ) => ( {
+								slug: template.slug,
+								title: template.title,
+							} ) ),
+					};
+				}
+			}
+
+			if ( ! match ) {
+				return {
+					success: false,
+					message:
+						'No matching template found. Use list-post-templates first.',
+					templateSlug: '',
+					templateTitle: '',
+					matches: templates.slice( 0, 10 ).map( ( template ) => ( {
+						slug: template.slug,
+						title: template.title,
+					} ) ),
+				};
+			}
+
+			dispatch( 'core/editor' ).editPost( { template: match.slug } );
+
+			return {
+				success: true,
+				message: `Template switched to "${ match.title }".`,
+				templateSlug: match.slug,
+				templateTitle: match.title,
+				matches: [],
+			};
 		},
 	} );
 }
@@ -983,7 +1842,7 @@ export function registerGetGlobalStylesAbility(): void {
 				};
 			}
 
-			const record = await resolveSelect( coreDataStore ).getEntityRecord(
+			const record: any = await resolveSelect( coreDataStore ).getEntityRecord(
 				'root',
 				'globalStyles',
 				Number( globalStylesId )
@@ -1060,7 +1919,7 @@ export function registerUpdateGlobalStylesAbility(): void {
 				};
 			}
 
-			const record = await resolveSelect( coreDataStore ).getEntityRecord(
+			const record: any = await resolveSelect( coreDataStore ).getEntityRecord(
 				'root',
 				'globalStyles',
 				Number( globalStylesId )
@@ -1102,6 +1961,10 @@ export function registerContentAbilities(): void {
 	registerUpdatePostMetaAbility();
 	registerGetPostFieldsAbility();
 	registerUpdatePostFieldsAbility();
+	registerCreatePostAbility();
+	registerNavigateSiteEditorAbility();
+	registerListPostTemplatesAbility();
+	registerSwitchPostTemplateAbility();
 	registerListPostRevisionsAbility();
 	registerRestorePostRevisionAbility();
 	registerSavePostAbility();

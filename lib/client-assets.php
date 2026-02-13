@@ -442,4 +442,5 @@ function gutenberg_enqueue_latex_to_mathml_loader() {
 add_action( 'admin_enqueue_scripts', 'gutenberg_enqueue_core_abilities' );
 function gutenberg_enqueue_core_abilities() {
 	wp_enqueue_script_module( '@wordpress/core-abilities' );
+	wp_enqueue_script_module( '@wordpress/webmcp-adapter' );
 }

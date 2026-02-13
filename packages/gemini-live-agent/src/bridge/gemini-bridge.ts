@@ -44,20 +44,38 @@ Your role is to help users create and edit content by:
 2. Listening to their requests and questions
 3. Making edits to the document using the available tools
 
+If live video/screen sharing is enabled, rely on that visual context as your primary source of truth for what is currently in the editor.
+
+Visual-first behavior:
+- For visual questions/requests (for example: "what can you see?", "what is currently showing?", "describe this image/screen"), use live video first.
+- Do not answer visual questions from document tools alone when live video is available.
+- If live video is not available, explicitly say that, then use document tools as a fallback.
+
 When making edits:
-- Use get-document-context first to understand the current state
-- Be precise about which blocks to modify using clientIds
-- Explain what you're doing briefly
-- Create notes to leave feedback or suggestions for the user
+- Start with get-document-context in "outline" mode (default) — fast overview of the full block tree even for large documents
+- To locate a specific block by its text, use find-blocks with a query — returns clientId + path breadcrumb instantly
+- Use get-document-context with rootClientId to zoom into a subtree, or "summary"/"full" detail for more info
+- Use get-block to inspect a block's full attributes (including HTML content with <a>, <strong>, <em>) before updating
+- Blocks are often nested 5+ levels deep (patterns > grids > groups > stacks > content). The tools handle this — use them to drill in
+- For image requests, prefer existing Media Library assets first: use search-media-library, then insert-media-library-image
+- Use generate-image only when the user explicitly asks for a new AI-generated image, or when no suitable media-library image exists
+- Use edit-image only when the user explicitly asks to transform/edit an existing image
+- Be precise with clientIds. Explain what you're doing briefly
 
 Available block types include:
-- core/paragraph - For regular text
-- core/heading - For headings (use level attribute: 1-6)
+- core/paragraph - For regular text (attribute: content)
+- core/heading - For headings (attributes: content, level 1-6)
 - core/image - For images
-- core/list - For bullet/numbered lists
+- core/list - For bullet/numbered lists. IMPORTANT: Do NOT use a "values" or "value" attribute. Instead pass innerBlocks, each being {blockName:"core/list-item", attributes:{content:"item text"}}. To edit an existing list, use update-block with innerBlocks.
 - core/quote - For quotations
 - core/code - For code snippets
 - core/table - For tables
+
+For UI actions beyond block CRUD (save, undo/redo, toggle panels, formatting, etc.) use list-shortcuts to discover names, then run-shortcut to execute.
+To create a new page or CPT item, use create-post.
+To navigate within the Site Editor canvas, use navigate-site-editor.
+For template changes, first use list-post-templates, then switch-post-template by title or slug.
+For history recovery, prefer undo/redo for recent steps and list-post-revisions + restore-post-revision for older states.
 
 Be helpful, concise, and proactive in suggesting improvements to the content.`;
 
@@ -111,6 +129,7 @@ export class GeminiBridge {
 	private audioWorklet: AudioWorkletNode | null = null;
 	private audioPlaybackTime = 0;
 	private audioSampleRate: number | null = null;
+	private activeAudioSources: Set< AudioBufferSourceNode > = new Set();
 	private toolNameToAbilityName: Map< string, string > = new Map();
 	private toolDeclarations: GeminiToolDeclaration[] = [];
 
@@ -360,6 +379,8 @@ export class GeminiBridge {
 			this.ws = null;
 		}
 
+		this.interruptAudioOutput();
+
 		if ( this.audioContext ) {
 			this.audioContext.close();
 			this.audioContext = null;
@@ -368,6 +389,30 @@ export class GeminiBridge {
 		}
 
 		this.connectionState = 'disconnected';
+	}
+
+	/**
+	 * Immediately stop currently playing and queued output audio.
+	 * Useful for "barge-in" behavior when the user starts speaking.
+	 */
+	public interruptAudioOutput(): void {
+		for ( const source of this.activeAudioSources ) {
+			try {
+				source.stop();
+			} catch {
+				// Source may already be stopped.
+			}
+			source.disconnect();
+		}
+		this.activeAudioSources.clear();
+
+		if ( this.audioContext ) {
+			this.audioPlaybackTime = this.audioContext.currentTime;
+		} else {
+			this.audioPlaybackTime = 0;
+		}
+
+		this.eventHandlers.onOutputAudioLevel?.( 0 );
 	}
 
 	/**
@@ -385,7 +430,9 @@ export class GeminiBridge {
 
 		if ( responseModality === 'AUDIO' ) {
 			const voiceName = this.config.voiceName || 'Aoede';
+			const languageCode = this.config.languageCode || '';
 			generationConfig.speechConfig = {
+				languageCode: languageCode || undefined,
 				voiceConfig: {
 					prebuiltVoiceConfig: {
 						voiceName,
@@ -398,6 +445,9 @@ export class GeminiBridge {
 			setup: {
 				model: `models/${ this.config.model }`,
 				generationConfig,
+				// Enable text transcription of audio
+				outputAudioTranscription: {},
+				inputAudioTranscription: {},
 				systemInstruction: {
 					parts: [
 						{
@@ -501,12 +551,26 @@ export class GeminiBridge {
 
 		const content = message.serverContent;
 
+		// Handle audio output transcription (text version of what the model said)
+		if ( content.outputTranscription?.text ) {
+			this.eventHandlers.onModelResponse?.(
+				content.outputTranscription.text
+			);
+		}
+
+		// Handle audio input transcription (text version of what the user said)
+		if ( content.inputTranscription?.text ) {
+			this.eventHandlers.onInputTranscription?.(
+				content.inputTranscription.text
+			);
+		}
+
 		if ( content.modelTurn?.parts ) {
 			const functionResponses: GeminiFunctionResponse[] = [];
 
 			for ( const part of content.modelTurn.parts ) {
-				// Handle text response
-				if ( part.text ) {
+				// Handle text response (TEXT modality, skip thoughts)
+				if ( part.text && ! part.thought ) {
 					this.eventHandlers.onModelResponse?.( part.text );
 				}
 
@@ -521,9 +585,28 @@ export class GeminiBridge {
 
 				// Handle function calls in content
 				if ( part.functionCall ) {
-					const response = await this.executeFunctionCall(
+					this.eventHandlers.onFunctionCall?.( part.functionCall );
+					this.eventHandlers.onFunctionCallStart?.( part.functionCall );
+					this.pendingFunctionCalls.set(
+						part.functionCall.id,
 						part.functionCall
 					);
+					let response: GeminiFunctionResponse;
+					try {
+						response = await this.executeFunctionCall(
+							part.functionCall
+						);
+					} finally {
+						if (
+							this.pendingFunctionCalls.delete(
+								part.functionCall.id
+							)
+						) {
+							this.eventHandlers.onFunctionCallEnd?.(
+								part.functionCall
+							);
+						}
+					}
 					functionResponses.push( response );
 				}
 			}
@@ -551,7 +634,16 @@ export class GeminiBridge {
 
 		for ( const call of functionCalls ) {
 			this.eventHandlers.onFunctionCall?.( call );
-			const response = await this.executeFunctionCall( call );
+			this.eventHandlers.onFunctionCallStart?.( call );
+			this.pendingFunctionCalls.set( call.id, call );
+			let response: GeminiFunctionResponse;
+			try {
+				response = await this.executeFunctionCall( call );
+			} finally {
+				if ( this.pendingFunctionCalls.delete( call.id ) ) {
+					this.eventHandlers.onFunctionCallEnd?.( call );
+				}
+			}
 			responses.push( response );
 		}
 
@@ -570,7 +662,10 @@ export class GeminiBridge {
 		}
 
 		for ( const id of message.toolCallCancellation.ids ) {
-			this.pendingFunctionCalls.delete( id );
+			const call = this.pendingFunctionCalls.get( id );
+			if ( call && this.pendingFunctionCalls.delete( id ) ) {
+				this.eventHandlers.onFunctionCallEnd?.( call );
+			}
 		}
 	}
 
@@ -585,6 +680,11 @@ export class GeminiBridge {
 		const abilityName = this.toolNameToAbilityName.get( call.name );
 
 		if ( ! abilityName ) {
+			// eslint-disable-next-line no-console
+			console.warn(
+				`[GeminiBridge] ❌ Unknown tool: "${ call.name }"`,
+				{ id: call.id, args: call.args }
+			);
 			return {
 				id: call.id,
 				name: call.name,
@@ -594,8 +694,22 @@ export class GeminiBridge {
 			};
 		}
 
+		// eslint-disable-next-line no-console
+		console.group(
+			`[GeminiBridge] 🔧 ${ abilityName } (${ call.name })`
+		);
+		// eslint-disable-next-line no-console
+		console.log( '📥 Input:', call.args );
+		const startTime = performance.now();
+
 		try {
 			const result = await executeAbility( abilityName, call.args );
+			const duration = Math.round( performance.now() - startTime );
+
+			// eslint-disable-next-line no-console
+			console.log( `📤 Output (${duration}ms):`, result );
+			// eslint-disable-next-line no-console
+			console.groupEnd();
 
 			return {
 				id: call.id,
@@ -605,6 +719,13 @@ export class GeminiBridge {
 				},
 			};
 		} catch ( error ) {
+			const duration = Math.round( performance.now() - startTime );
+
+			// eslint-disable-next-line no-console
+			console.error( `💥 Error (${duration}ms):`, error );
+			// eslint-disable-next-line no-console
+			console.groupEnd();
+
 			return {
 				id: call.id,
 				name: call.name,
@@ -759,13 +880,22 @@ export class GeminiBridge {
 			);
 			const channelData = audioBuffer.getChannelData( 0 );
 
+			let sum = 0;
 			for ( let i = 0; i < pcmData.length; i++ ) {
-				channelData[ i ] = pcmData[ i ] / 32768;
+				const sample = pcmData[ i ] / 32768;
+				channelData[ i ] = sample;
+				sum += sample * sample;
 			}
+			const rms = Math.sqrt( sum / pcmData.length );
+			this.eventHandlers.onOutputAudioLevel?.( rms );
 
 			const source = this.audioContext.createBufferSource();
 			source.buffer = audioBuffer;
 			source.connect( this.audioContext.destination );
+			this.activeAudioSources.add( source );
+			source.onended = () => {
+				this.activeAudioSources.delete( source );
+			};
 			const now = this.audioContext.currentTime;
 			if ( this.audioPlaybackTime < now ) {
 				this.audioPlaybackTime = now;

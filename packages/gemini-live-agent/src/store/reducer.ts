@@ -9,6 +9,8 @@ const DEFAULT_STATE: GeminiAgentState = {
 	isAudioEnabled: false,
 	lastError: null,
 	activeBlockClientId: null,
+	imageEditTargetClientId: null,
+	conversationMessages: [],
 };
 
 export default function reducer(
@@ -40,6 +42,31 @@ export default function reducer(
 			return {
 				...state,
 				activeBlockClientId: action.clientId,
+			};
+		case 'SET_IMAGE_EDIT_TARGET_CLIENT_ID':
+			return {
+				...state,
+				imageEditTargetClientId: action.clientId,
+			};
+		case 'ADD_CONVERSATION_MESSAGE':
+			return {
+				...state,
+				conversationMessages: [
+					...state.conversationMessages,
+					action.message,
+				],
+			};
+		case 'UPDATE_CONVERSATION_MESSAGE':
+			return {
+				...state,
+				conversationMessages: state.conversationMessages.map( ( m ) =>
+					m.id === action.id ? { ...m, ...action.updates } : m
+				),
+			};
+		case 'CLEAR_CONVERSATION':
+			return {
+				...state,
+				conversationMessages: [],
 			};
 		default:
 			return state;

@@ -7,6 +7,11 @@ import type {
 	SetAudioEnabledAction,
 	SetLastErrorAction,
 	SetActiveBlockClientIdAction,
+	SetImageEditTargetClientIdAction,
+	AddConversationMessageAction,
+	UpdateConversationMessageAction,
+	ClearConversationAction,
+	ConversationMessage,
 } from './types';
 import type { ConnectionState } from '../types';
 
@@ -50,5 +55,40 @@ export function setActiveBlockClientId(
 	return {
 		type: 'SET_ACTIVE_BLOCK_CLIENT_ID',
 		clientId,
+	};
+}
+
+export function setImageEditTargetClientId(
+	clientId: string | null
+): SetImageEditTargetClientIdAction {
+	return {
+		type: 'SET_IMAGE_EDIT_TARGET_CLIENT_ID',
+		clientId,
+	};
+}
+
+export function addConversationMessage(
+	message: ConversationMessage
+): AddConversationMessageAction {
+	return {
+		type: 'ADD_CONVERSATION_MESSAGE',
+		message,
+	};
+}
+
+export function updateConversationMessage(
+	id: number,
+	updates: Partial< Pick< ConversationMessage, 'text' | 'toolCalls' > >
+): UpdateConversationMessageAction {
+	return {
+		type: 'UPDATE_CONVERSATION_MESSAGE',
+		id,
+		updates,
+	};
+}
+
+export function clearConversation(): ClearConversationAction {
+	return {
+		type: 'CLEAR_CONVERSATION',
 	};
 }

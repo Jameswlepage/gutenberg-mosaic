@@ -5,15 +5,11 @@ import { __ } from '@wordpress/i18n';
 import { useState, useEffect } from '@wordpress/element';
 import {
 	Button,
-	DropdownMenu,
-	MenuGroup,
-	MenuItem,
 	TextControl,
 	Notice,
 	__experimentalHStack as HStack,
 	__experimentalText as Text,
 } from '@wordpress/components';
-import { moreVertical } from '@wordpress/icons';
 
 /**
  * External dependencies
@@ -25,24 +21,27 @@ import {
 import './ai-panel.scss';
 
 const API_KEY_STORAGE_KEY = 'gutenberg_gemini_api_key';
+const VOICE_STORAGE_KEY = 'gutenberg_gemini_voice';
+const LANGUAGE_STORAGE_KEY = 'gutenberg_gemini_language';
 
 registerAllAgentAbilities();
 
-function getStoredApiKey() {
+function getStored( key, fallback = '' ) {
 	try {
-		return localStorage.getItem( API_KEY_STORAGE_KEY ) || '';
+		return localStorage.getItem( key ) || fallback;
 	} catch {
-		return '';
+		return fallback;
 	}
 }
 
-function storeApiKey( key ) {
+function setStored( key, value ) {
 	try {
-		localStorage.setItem( API_KEY_STORAGE_KEY, key );
+		localStorage.setItem( key, value );
 	} catch {
 		// Ignore
 	}
 }
+
 
 /**
  * AI Panel component
@@ -52,10 +51,16 @@ export default function AIPanel() {
 	const [ tempApiKey, setTempApiKey ] = useState( '' );
 	const [ showKeyInput, setShowKeyInput ] = useState( true );
 	const [ keyError, setKeyError ] = useState( null );
+	const [ voicePreset ] = useState(
+		() => getStored( VOICE_STORAGE_KEY, 'Aoede' )
+	);
+	const [ languageCode ] = useState(
+		() => getStored( LANGUAGE_STORAGE_KEY, '' )
+	);
 
 	// Load stored API key
 	useEffect( () => {
-		const storedKey = getStoredApiKey();
+		const storedKey = getStored( API_KEY_STORAGE_KEY );
 		if ( storedKey ) {
 			setApiKey( storedKey );
 			setShowKeyInput( false );
@@ -68,27 +73,16 @@ export default function AIPanel() {
 			return;
 		}
 
-		storeApiKey( tempApiKey.trim() );
+		setStored( API_KEY_STORAGE_KEY, tempApiKey.trim() );
 		setApiKey( tempApiKey.trim() );
 		setShowKeyInput( false );
 		setKeyError( null );
-	};
-
-	const handleChangeApiKey = () => {
-		setTempApiKey( '' );
-		setKeyError( null );
-		setShowKeyInput( true );
 	};
 
 	// API Key input screen
 	if ( showKeyInput ) {
 		return (
 			<div className="editor-ai-panel">
-				<div className="editor-ai-panel__header">
-					<Text className="editor-ai-panel__title">
-						{ __( 'Gemini Live' ) }
-					</Text>
-				</div>
 				<div className="editor-ai-panel__section">
 					<Text>
 						{ __(
@@ -145,30 +139,11 @@ export default function AIPanel() {
 
 	return (
 		<div className="editor-ai-panel">
-			<div className="editor-ai-panel__header">
-				<Text className="editor-ai-panel__title">
-					{ __( 'Gemini Live' ) }
-				</Text>
-				<DropdownMenu
-					icon={ moreVertical }
-					label={ __( 'Gemini options' ) }
-					className="editor-ai-panel__menu"
-				>
-					{ ( { onClose } ) => (
-						<MenuGroup>
-							<MenuItem
-								onClick={ () => {
-									handleChangeApiKey();
-									onClose();
-								} }
-							>
-								{ __( 'Change API key' ) }
-							</MenuItem>
-						</MenuGroup>
-					) }
-				</DropdownMenu>
-			</div>
-			<AIAssistantPanel apiKey={ apiKey } />
+			<AIAssistantPanel
+				apiKey={ apiKey }
+				defaultVoiceName={ voicePreset }
+				defaultLanguageCode={ languageCode }
+			/>
 		</div>
 	);
 }

@@ -55,6 +55,9 @@ export {
 // Hooks
 export { useGeminiAgent, useGeminiAgentPresence } from './hooks';
 
+// Store
+export { sharedAudioLevel } from './store';
+
 // Components
 export { AIAssistantPanel } from './components';
 
@@ -82,6 +85,10 @@ export type {
 	RestorePostRevisionInput,
 	SearchPostsInput,
 	SearchContentInput,
+	CreatePostInput,
+	NavigateSiteEditorInput,
+	ListPostTemplatesInput,
+	SwitchPostTemplateInput,
 	UpdatePostTitleInput,
 	UpdatePostMetaInput,
 	GetGlobalStylesOutput,
@@ -93,8 +100,11 @@ export type {
 	PublishPostInput,
 	ListShortcutsInput,
 	RunShortcutInput,
+	UndoInput,
+	RedoInput,
 	OpenMediaLibraryInput,
 	SearchMediaLibraryInput,
+	InsertMediaLibraryImageInput,
 	GetDocumentContextOutput,
 	AgentEventHandler,
 } from './types';

@@ -1,47 +1,484 @@
+/* ── Panel root ── */
+
 .gemini-live-agent-panel {
-	--gemini-border: #dcdcde;
-	--gemini-muted: #646970;
+	position: relative;
 	display: flex;
 	flex-direction: column;
-	padding: 0;
-	margin: 0;
+	width: 100%;
+	flex: 1;
+	overflow: hidden;
+}
+
+/* ══════════════════════════════════════════════════════
+   Background Aura — subtle layered gradient glow (light bg)
+   ══════════════════════════════════════════════════════ */
+
+.gemini-aura {
+	pointer-events: none;
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	opacity: 0;
+	transition: opacity 0.6s ease-out;
+
+	&.is-active {
+		opacity: 1;
+	}
+}
+
+/* Center bottom pool */
+.gemini-aura__pool {
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 140%;
+	height: 35%;
+	background:
+ radial-gradient(ellipse 100% 100% at 50% 100%, rgba(99, 102, 241, 0.14) 0%, rgba(168, 85, 247, 0.1) 35%, rgba(251, 146, 60, 0.08) 70%, transparent 100%);
+	filter: blur(50px);
+}
+
+/* Pulsing layer */
+.gemini-aura__pulse {
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 110%;
+	height: 28%;
+	background:
+ radial-gradient(ellipse 100% 100% at 50% 100%, rgba(134, 239, 172, 0.1) 0%, rgba(192, 132, 252, 0.08) 50%, transparent 100%);
+	filter: blur(40px);
+	animation: gemini-pulse-glow 6s ease-in-out infinite;
+}
+
+/* Left corner bloom */
+.gemini-aura__left {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	width: 55%;
+	height: 38%;
+	background:
+ radial-gradient(circle at 0% 100%, rgba(34, 211, 238, 0.12) 0%, rgba(134, 239, 172, 0.06) 30%, transparent 60%);
+	filter: blur(45px);
+}
+
+/* Left rising glow */
+.gemini-aura__left-rise {
+	position: absolute;
+	bottom: 0;
+	left: -10px;
+	width: 45%;
+	height: 55%;
+	background:
+ radial-gradient(ellipse 50% 100% at 10% 100%, rgba(34, 211, 238, 0.1) 0%, rgba(134, 239, 172, 0.05) 25%, transparent 60%);
+	filter: blur(40px);
+	animation: gemini-drift-glow 8s ease-in-out infinite alternate;
+}
+
+/* Right corner bloom */
+.gemini-aura__right {
+	position: absolute;
+	bottom: 0;
+	right: 0;
+	width: 55%;
+	height: 38%;
+	background:
+ radial-gradient(circle at 100% 100%, rgba(251, 146, 60, 0.12) 0%, rgba(251, 146, 60, 0.06) 30%, transparent 60%);
+	filter: blur(45px);
+}
+
+/* Right rising glow */
+.gemini-aura__right-rise {
+	position: absolute;
+	bottom: 0;
+	right: -10px;
+	width: 45%;
+	height: 55%;
+	background:
+ radial-gradient(ellipse 50% 100% at 90% 100%, rgba(251, 146, 60, 0.1) 0%, rgba(192, 132, 252, 0.05) 25%, transparent 60%);
+	filter: blur(40px);
+	animation: gemini-drift-glow 8s ease-in-out infinite alternate-reverse;
+}
+
+/* Shimmer sweep */
+.gemini-aura__shimmer {
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 100%;
+	height: 22%;
+	background:
+ linear-gradient(90deg, rgba(34, 211, 238, 0.06) 0%, rgba(168, 85, 247, 0.06) 30%, rgba(251, 146, 60, 0.06) 60%, rgba(134, 239, 172, 0.06) 100%);
+	filter: blur(20px);
+	animation: gemini-shimmer-sweep 12s linear infinite;
+}
+
+/* ── Aura streaming state — livelier when text is flowing ── */
+
+.gemini-aura.is-streaming {
+	.gemini-aura__pool {
+		opacity: 1.2;
+		height: 42%;
+		transition: height 0.8s ease, opacity 0.8s ease;
+	}
+
+	.gemini-aura__pulse {
+		animation-duration: 2.5s;
+		height: 34%;
+		transition: height 0.8s ease;
+	}
+
+	.gemini-aura__left-rise {
+		animation-duration: 3s;
+		opacity: 1;
+		transition: opacity 0.8s ease;
+	}
+
+	.gemini-aura__right-rise {
+		animation-duration: 3s;
+		opacity: 1;
+		transition: opacity 0.8s ease;
+	}
+
+	.gemini-aura__shimmer {
+		animation-duration: 5s;
+		height: 28%;
+		transition: height 0.8s ease;
+	}
+}
+
+/* Reset when not streaming */
+.gemini-aura:not(.is-streaming) {
+	.gemini-aura__pool,
+	.gemini-aura__pulse,
+	.gemini-aura__left-rise,
+	.gemini-aura__right-rise,
+	.gemini-aura__shimmer {
+		transition: height 1.2s ease, opacity 1.2s ease;
+	}
+}
+
+/* ── Aura keyframes ── */
+
+@keyframes gemini-pulse-glow {
+	0%,
+	100% {
+		opacity: 0.7;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+@keyframes gemini-drift-glow {
+	0% {
+		opacity: 0.5;
+		transform: translateY(0) scale(1);
+	}
+	100% {
+		opacity: 0.85;
+		transform: translateY(-4%) scale(1.02);
+	}
+}
+
+@keyframes gemini-shimmer-sweep {
+	0% {
+		transform: translateX(-70%) scale(1);
+	}
+	50% {
+		transform: translateX(20%) scale(1.08);
+	}
+	100% {
+		transform: translateX(-70%) scale(1);
+	}
+}
+
+/* ══════════════════════════════════════════════════════
+   Content & layout
+   ══════════════════════════════════════════════════════ */
+
+.gemini-live-agent-panel__content {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	flex: 1;
 	width: 100%;
 }
 
-.gemini-live-agent-panel__section {
+.gemini-live-agent-panel__main {
+	position: relative;
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* ── Layer system (opacity crossfade) ── */
+
+.gemini-live-agent-panel__layer {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.5s ease;
+
+	&.is-visible {
+		opacity: 1;
+		pointer-events: auto;
+	}
+}
+
+/* ── Status messages ── */
+
+.gemini-live-agent-panel__status-msg {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.5s ease;
+
+	&.is-visible {
+		opacity: 1;
+	}
+}
+
+.gemini-live-agent-panel__shimmer-lg,
+.gemini-live-agent-panel__shimmer-xl {
+	font-size: 16px;
+	font-weight: 400;
+	letter-spacing: 0.01em;
+	white-space: nowrap;
+	color: #9ca3af;
+}
+
+/* ══════════════════════════════════════════════════════
+   Idle state — WP-native button + hint
+   ══════════════════════════════════════════════════════ */
+
+.gemini-live-agent-panel__idle {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
-	padding: 16px;
-	border-bottom: 1px solid var( --gemini-border );
+	align-items: center;
+	gap: 16px;
 }
 
-.gemini-live-agent-panel__section:last-child {
-	border-bottom: 0;
+/* WP Button — black background like save button */
+.gemini-live-agent-panel__start-btn.components-button.is-primary {
+	background: #000;
+	border-color: #000;
+	color: #fff;
+
+	&:hover:not(:disabled) {
+		background: #1e1e1e;
+		border-color: #1e1e1e;
+	}
+
+	&:focus:not(:disabled) {
+		background: #000;
+		border-color: #000;
+		box-shadow: 0 0 0 var(--wp-admin-border-width-focus) #1e1e1e;
+	}
 }
 
-.gemini-live-agent-panel__status-title {
+.gemini-live-agent-panel__idle-hint {
+	font-size: 13px;
+	color: #9ca3af;
+	text-align: center;
+
+	&.is-error {
+		color: #dc2626;
+	}
+}
+
+/* ══════════════════════════════════════════════════════
+   Conversation transcript — scrollable message list
+   ══════════════════════════════════════════════════════ */
+
+.gemini-transcript {
+	position: absolute;
+	inset: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.gemini-transcript__messages {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 20px 16px;
+	min-height: 100%;
+	justify-content: flex-end;
+}
+
+/* ── Message bubble ── */
+
+.gemini-message {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.gemini-message__label {
+	font-size: 11px;
 	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #9ca3af;
+	padding: 0 2px;
 }
 
-.gemini-live-agent-panel__status-detail {
-	color: var( --gemini-muted );
+.gemini-message__text {
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 1.65;
+	color: rgba(0, 0, 0, 0.82);
+
+	strong {
+		font-weight: 600;
+	}
+
+	em {
+		font-style: italic;
+	}
+
+	code {
+		font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+		font-size: 0.92em;
+		padding: 0 4px;
+		border-radius: 4px;
+		background: rgba(0, 0, 0, 0.08);
+	}
 }
 
-.gemini-live-agent-panel__actions {
+.gemini-message.is-user .gemini-message__text {
+	color: rgba(0, 0, 0, 0.55);
+}
+
+.gemini-message.is-assistant .gemini-message__text {
+	color: rgba(0, 0, 0, 0.85);
+}
+
+/* ── Tool call indicator — plain inline text + icon ── */
+
+.gemini-message__tool-call {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	font-weight: 400;
+	color: #9ca3af;
+	animation: gemini-tool-call-in 0.35s ease both;
+
+	svg {
+		flex-shrink: 0;
+	}
+
+	.gemini-message__tool-call-text {
+		position: relative;
+		z-index: 1;
+	}
+
+	&.is-in-progress {
+		.gemini-message__tool-call-text {
+			color: transparent;
+			background-image: linear-gradient(110deg, #6b7280 20%, #d1d5db 50%, #6b7280 80%);
+			background-size: 220% 100%;
+			background-clip: text;
+			-webkit-background-clip: text;
+			animation: gemini-tool-call-shimmer 1s linear infinite;
+		}
+	}
+}
+
+@keyframes gemini-tool-call-in {
+	from {
+		opacity: 0;
+		filter: blur(3px);
+	}
+	to {
+		opacity: 1;
+		filter: none;
+	}
+}
+
+@keyframes gemini-tool-call-shimmer {
+	0% {
+		background-position: 140% 0;
+	}
+	100% {
+		background-position: -120% 0;
+	}
+}
+
+/* ── Character blur-to-clear reveal ── */
+
+.gemini-transcript-char {
+	display: inline;
+	opacity: 0;
+	filter: blur(4px);
+	animation: gemini-char-reveal 0.75s ease forwards;
+}
+
+@keyframes gemini-char-reveal {
+	to {
+		opacity: 1;
+		filter: none;
+	}
+}
+
+/* ══════════════════════════════════════════════════════
+   Bottom controls — "End" button
+   ══════════════════════════════════════════════════════ */
+
+.gemini-live-agent-panel__bottom {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	padding: 16px;
+	opacity: 0;
+	transform: translateY(8px);
+	pointer-events: none;
+	transition: opacity 0.35s ease, transform 0.35s ease;
+
+	&.is-visible {
+		opacity: 1;
+		transform: translateY(0);
+		pointer-events: auto;
+	}
 }
 
-.gemini-live-agent-panel__section-title {
-	font-weight: 600;
+/* Mic toggle — square icon-only button, matches Stop outline style */
+.gemini-live-agent-panel__mic-btn.components-button.is-secondary {
+	flex-shrink: 0;
+	min-width: 32px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	&:not(.is-active) {
+		opacity: 0.5;
+	}
 }
 
-.gemini-live-agent-panel__voice-note {
-	color: var( --gemini-muted );
+/* Stop button — full-width outline */
+.gemini-live-agent-panel__stop-btn.components-button.is-secondary {
+	flex: 1;
+	justify-content: center;
 }
 
-.gemini-live-agent-panel__voice.is-disabled {
-	color: var( --gemini-muted );
+/* ── Error notice ── */
+
+.gemini-live-agent-panel__error {
+	padding: 16px;
+	width: 100%;
 }

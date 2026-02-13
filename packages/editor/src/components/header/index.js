@@ -11,7 +11,6 @@ import { PinnedItems } from '@wordpress/interface';
 /**
  * Internal dependencies
  */
-import CollaboratorsAvatars from '../collaborators-avatars';
 import CollapsibleBlockToolbar from '../collapsible-block-toolbar';
 import DocumentBar from '../document-bar';
 import DocumentTools from '../document-tools';
@@ -164,8 +163,6 @@ function Header( {
 					{ isWideViewport && canBeZoomedOut && (
 						<ZoomOutToggle disabled={ isStylesCanvasActive } />
 					) }
-
-					<CollaboratorsAvatars />
 
 					{ ( isWideViewport || ! showIconLabels ) && (
 						<PinnedItems.Slot scope="core" />

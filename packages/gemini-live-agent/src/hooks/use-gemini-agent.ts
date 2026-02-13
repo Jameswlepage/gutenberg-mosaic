@@ -19,7 +19,7 @@ import type {
 	ConnectionState,
 	GeminiFunctionCall,
 } from '../types';
-import { store as geminiAgentStore } from '../store';
+import { store as geminiAgentStore, sharedAudioLevel } from '../store';
 import { unlock } from '../lock-unlock';
 
 /**
@@ -31,10 +31,14 @@ interface UseGeminiAgentOptions {
 	systemInstruction?: string;
 	responseModality?: 'AUDIO' | 'TEXT';
 	voiceName?: string;
+	languageCode?: string;
 	abilityCategories?: string[];
 	serverAbilitiesTimeoutMs?: number;
 	onModelResponse?: ( text: string ) => void;
+	onInputTranscription?: ( text: string ) => void;
 	onAudioResponse?: ( audioData: ArrayBuffer ) => void;
+	onFunctionCallStart?: ( call: GeminiFunctionCall ) => void;
+	onFunctionCallEnd?: ( call: GeminiFunctionCall ) => void;
 	onFunctionCall?: ( call: GeminiFunctionCall ) => void;
 	onError?: ( error: Error ) => void;
 }
@@ -42,12 +46,23 @@ interface UseGeminiAgentOptions {
 /**
  * Hook return type
  */
+/**
+ * Ref object for reading audio level without re-renders.
+ */
+export interface AudioLevelRef {
+	/** Current input audio level (0-1 RMS, smoothed). */
+	current: number;
+}
+
 interface UseGeminiAgentReturn {
 	// State
 	connectionState: ConnectionState;
 	isScreenSharing: boolean;
 	isAudioEnabled: boolean;
 	error: string | null;
+
+	/** Ref that contains the latest audio input level (0-1). Read in rAF loops. */
+	audioLevelRef: AudioLevelRef;
 
 	// Actions
 	connect: () => Promise< void >;
@@ -76,6 +91,7 @@ function getConfigKey( config: GeminiConfig ): string {
 		systemInstruction: config.systemInstruction || '',
 		responseModality: config.responseModality || '',
 		voiceName: config.voiceName || '',
+		languageCode: config.languageCode || '',
 		abilityCategories: ( config.abilityCategories || [] ).slice().sort(),
 		serverAbilitiesTimeoutMs: config.serverAbilitiesTimeoutMs || 0,
 	} );
@@ -125,10 +141,14 @@ export function useGeminiAgent(
 		systemInstruction,
 		responseModality,
 		voiceName,
+		languageCode,
 		abilityCategories,
 		serverAbilitiesTimeoutMs,
 		onModelResponse,
+		onInputTranscription,
 		onAudioResponse,
+		onFunctionCallStart,
+		onFunctionCallEnd,
 		onFunctionCall,
 		onError,
 	} = options;
@@ -166,6 +186,12 @@ export function useGeminiAgent(
 	const screenCaptureRef = useRef< ScreenCapture | null >( null );
 	const audioCaptureRef = useRef< AudioCapture | null >( null );
 
+	// Audio level refs — written by callbacks, read in rAF loops (no re-renders)
+	const audioInputLevelRef = useRef< number >( 0 );
+	const audioOutputLevelRef = useRef< number >( 0 );
+	// Combined level (max of input and output) for the orb
+	const audioLevelRef = useRef< number >( 0 );
+
 	// Initialize bridge with config
 	useEffect( () => {
 		const config: GeminiConfig = {
@@ -174,6 +200,7 @@ export function useGeminiAgent(
 			systemInstruction,
 			responseModality,
 			voiceName,
+			languageCode,
 			abilityCategories,
 			serverAbilitiesTimeoutMs,
 		};
@@ -197,6 +224,20 @@ export function useGeminiAgent(
 
 			sharedAudioCapture.setOnStop( () => {
 				dispatch( geminiAgentStore ).setAudioEnabled( false );
+				audioInputLevelRef.current = 0;
+				audioLevelRef.current = 0;
+				sharedAudioLevel.current = 0;
+			} );
+
+			sharedAudioCapture.setOnAudioLevel( ( level: number ) => {
+				// Smooth with exponential moving average
+				audioInputLevelRef.current +=
+					( level - audioInputLevelRef.current ) * 0.3;
+				audioLevelRef.current = Math.max(
+					audioInputLevelRef.current,
+					audioOutputLevelRef.current
+				);
+				sharedAudioLevel.current = audioLevelRef.current;
 			} );
 
 			sharedConfigKey = configKey;
@@ -219,6 +260,12 @@ export function useGeminiAgent(
 				dispatch( geminiAgentStore ).setScreenSharing( false );
 				dispatch( geminiAgentStore ).setAudioEnabled( false );
 				dispatch( geminiAgentStore ).setActiveBlockClientId( null );
+				dispatch( geminiAgentStore ).setImageEditTargetClientId(
+					null
+				);
+				audioInputLevelRef.current = 0;
+				audioOutputLevelRef.current = 0;
+				audioLevelRef.current = 0;
 			},
 			onError: ( err ) => {
 				sharedScreenCapture?.stop();
@@ -227,12 +274,35 @@ export function useGeminiAgent(
 				dispatch( geminiAgentStore ).setConnectionState( 'error' );
 				dispatch( geminiAgentStore ).setLastError( err.message );
 				dispatch( geminiAgentStore ).setActiveBlockClientId( null );
+				dispatch( geminiAgentStore ).setImageEditTargetClientId(
+					null
+				);
 			},
 			onModelResponse: ( text ) => {
 				onModelResponse?.( text );
 			},
+			onInputTranscription: ( text ) => {
+				// Barge-in: if user starts talking, stop any in-flight AI audio.
+				sharedBridge?.interruptAudioOutput();
+				onInputTranscription?.( text );
+			},
 			onAudioResponse: ( audioData ) => {
 				onAudioResponse?.( audioData );
+			},
+			onOutputAudioLevel: ( level ) => {
+				audioOutputLevelRef.current +=
+					( level - audioOutputLevelRef.current ) * 0.25;
+				audioLevelRef.current = Math.max(
+					audioInputLevelRef.current,
+					audioOutputLevelRef.current
+				);
+				sharedAudioLevel.current = audioLevelRef.current;
+			},
+			onFunctionCallStart: ( call ) => {
+				onFunctionCallStart?.( call );
+			},
+			onFunctionCallEnd: ( call ) => {
+				onFunctionCallEnd?.( call );
 			},
 			onFunctionCall: ( call ) => {
 				onFunctionCall?.( call );
@@ -244,8 +314,16 @@ export function useGeminiAgent(
 		systemInstruction,
 		responseModality,
 		voiceName,
+		languageCode,
 		abilityCategories,
 		serverAbilitiesTimeoutMs,
+		onModelResponse,
+		onInputTranscription,
+		onAudioResponse,
+		onFunctionCallStart,
+		onFunctionCallEnd,
+		onFunctionCall,
+		onError,
 	] );
 
 	// Connect to Gemini
@@ -311,6 +389,7 @@ export function useGeminiAgent(
 		dispatch( geminiAgentStore ).setScreenSharing( false );
 		dispatch( geminiAgentStore ).setAudioEnabled( false );
 		dispatch( geminiAgentStore ).setActiveBlockClientId( null );
+		dispatch( geminiAgentStore ).setImageEditTargetClientId( null );
 	}, [] );
 
 	// Start screen sharing
@@ -381,6 +460,7 @@ export function useGeminiAgent(
 		isScreenSharing,
 		isAudioEnabled,
 		error,
+		audioLevelRef,
 		connect,
 		disconnect,
 		startScreenShare,

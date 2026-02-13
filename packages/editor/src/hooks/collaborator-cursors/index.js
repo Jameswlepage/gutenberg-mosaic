@@ -17,9 +17,7 @@ import { unlock } from '../../lock-unlock';
 import { store as editorStore } from '../../store';
 import { getStableCollaboratorColor } from '../../utils/collaborator-colors';
 
-const coreDataApis = coreDataPrivateApis
-	? unlock( coreDataPrivateApis )
-	: {};
+const coreDataApis = coreDataPrivateApis ? unlock( coreDataPrivateApis ) : {};
 const { useActiveUsers } = coreDataApis;
 const useActiveUsersSafe =
 	typeof useActiveUsers === 'function' ? useActiveUsers : () => [];
@@ -32,7 +30,11 @@ const SELECTION_TYPE = {
 	WholeBlock: 'whole-block',
 };
 
-function getSelectionBlockIds( selection, getBlockRootClientId, getBlockOrder ) {
+function getSelectionBlockIds(
+	selection,
+	getBlockRootClientId,
+	getBlockOrder
+) {
 	if ( ! selection || selection.type === SELECTION_TYPE.None ) {
 		return [];
 	}
@@ -107,6 +109,7 @@ const withCollaboratorCursors = createHigherOrderComponent(
 			const {
 				connectionState: aiConnectionState,
 				activeBlockClientId: aiActiveBlockClientId,
+				imageEditTargetClientId,
 			} = useGeminiAgentPresence();
 			const {
 				postId,
@@ -115,17 +118,17 @@ const withCollaboratorCursors = createHigherOrderComponent(
 				getBlockRootClientId,
 				getSelectedBlockClientId,
 			} = useSelect( ( select ) => {
-					const editor = select( editorStore );
-					const blockEditor = select( blockEditorStore );
-					return {
-						postId: editor.getCurrentPostId(),
-						postType: editor.getCurrentPostType(),
-						getBlockOrder: blockEditor.getBlockOrder,
-						getBlockRootClientId: blockEditor.getBlockRootClientId,
-						getSelectedBlockClientId:
-							blockEditor.getSelectedBlockClientId,
-					};
-				}, [] );
+				const editor = select( editorStore );
+				const blockEditor = select( blockEditorStore );
+				return {
+					postId: editor.getCurrentPostId(),
+					postType: editor.getCurrentPostType(),
+					getBlockOrder: blockEditor.getBlockOrder,
+					getBlockRootClientId: blockEditor.getBlockRootClientId,
+					getSelectedBlockClientId:
+						blockEditor.getSelectedBlockClientId,
+				};
+			}, [] );
 			const selectedBlockClientId =
 				typeof getSelectedBlockClientId === 'function'
 					? getSelectedBlockClientId()
@@ -195,22 +198,38 @@ const withCollaboratorCursors = createHigherOrderComponent(
 				blockUsers.length || aiUsers.length
 					? [ ...blockUsers, ...aiUsers ]
 					: [];
-			if ( ! allBlockUsers || allBlockUsers.length === 0 ) {
+			const isImageEditTarget = imageEditTargetClientId === clientId;
+			const uniqueUsers =
+				allBlockUsers.length > 0 ? dedupeUsers( allBlockUsers ) : [];
+
+			if ( uniqueUsers.length === 0 && ! isImageEditTarget ) {
 				return <BlockListBlock { ...props } />;
 			}
 
-			const uniqueUsers = dedupeUsers( allBlockUsers );
 			if ( uniqueUsers.length === 0 ) {
-				return <BlockListBlock { ...props } />;
+				const shimmerWrapperProps = {
+					...wrapperProps,
+					className: [
+						wrapperProps?.className,
+						'editor-ai-image-editing',
+					]
+						.filter( Boolean )
+						.join( ' ' ),
+				};
+
+				return (
+					<BlockListBlock
+						{ ...props }
+						wrapperProps={ shimmerWrapperProps }
+					/>
+				);
 			}
 
 			const primaryUser = uniqueUsers[ 0 ];
 			const primaryName =
 				primaryUser?.userInfo?.name || __( 'Collaborator' );
 			const labelSuffix =
-				uniqueUsers.length > 1
-					? ` +${ uniqueUsers.length - 1 }`
-					: '';
+				uniqueUsers.length > 1 ? ` +${ uniqueUsers.length - 1 }` : '';
 			const label = `${ primaryName }${ labelSuffix }`;
 			const color = getStableCollaboratorColor( primaryUser, '#3858e9' );
 			const names = uniqueUsers
@@ -226,6 +245,7 @@ const withCollaboratorCursors = createHigherOrderComponent(
 					uniqueUsers.length > 1
 						? 'editor-collab-cursor--multi'
 						: null,
+					isImageEditTarget ? 'editor-ai-image-editing' : null,
 				]
 					.filter( Boolean )
 					.join( ' ' ),
@@ -241,7 +261,10 @@ const withCollaboratorCursors = createHigherOrderComponent(
 			};
 
 			return (
-				<BlockListBlock { ...props } wrapperProps={ mergedWrapperProps } />
+				<BlockListBlock
+					{ ...props }
+					wrapperProps={ mergedWrapperProps }
+				/>
 			);
 		};
 	},

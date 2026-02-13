@@ -85,11 +85,7 @@ export class ScreenCapture {
 		}
 
 		try {
-			const displayMediaOptions: DisplayMediaStreamConstraints & {
-				preferCurrentTab?: boolean;
-				selfBrowserSurface?: 'include' | 'exclude';
-				surfaceSwitching?: 'include' | 'exclude';
-			} = {
+			const displayMediaOptions = {
 				video: {
 					cursor: 'always',
 					displaySurface: 'browser',
@@ -98,7 +94,7 @@ export class ScreenCapture {
 				preferCurrentTab: true,
 				selfBrowserSurface: 'include',
 				surfaceSwitching: 'exclude',
-			};
+			} as any;
 
 			// Request screen capture permission
 			this.stream =

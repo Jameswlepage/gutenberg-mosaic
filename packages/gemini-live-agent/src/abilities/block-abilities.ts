@@ -2,7 +2,7 @@
  * WordPress dependencies
  */
 import { dispatch, select } from '@wordpress/data';
-import { createBlock, getBlockType, parse, type BlockInstance } from '@wordpress/blocks';
+import { createBlock, getBlockType, parse, pasteHandler, type BlockInstance } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import {
 	getAbility,
@@ -44,6 +44,36 @@ export function registerAgentCategory(): void {
 }
 
 /**
+ * Parse HTML or plain-text list content into core/list-item inner blocks.
+ *
+ * Handles `<li>…</li>` HTML as well as plain-text lines.
+ */
+function parseListItems( html: string ): BlockInstance[] {
+	const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+	const items: BlockInstance[] = [];
+	let match;
+
+	while ( ( match = liRegex.exec( html ) ) !== null ) {
+		items.push(
+			createBlock( 'core/list-item', { content: match[ 1 ] } )
+		);
+	}
+
+	// No <li> tags — treat as newline-separated plain-text items.
+	if ( items.length === 0 && html.trim().length > 0 ) {
+		const lines = html
+			.split( /\n+/ )
+			.map( ( l ) => l.trim() )
+			.filter( Boolean );
+		for ( const line of lines ) {
+			items.push( createBlock( 'core/list-item', { content: line } ) );
+		}
+	}
+
+	return items;
+}
+
+/**
  * Helper to recursively create blocks from input
  *
  * @param input The block input definition.
@@ -59,7 +89,19 @@ function createBlockFromInput( input: InsertBlockInput ): BlockInstance {
 		: [];
 
 	const content = typeof input.content === 'string' ? input.content : null;
-	if ( content ) {
+
+	// core/list: convert deprecated `values`/`value` attribute to core/list-item inner blocks.
+	if ( input.blockName === 'core/list' && innerBlocks.length === 0 ) {
+		const listContent =
+			( attributes.values as string ) ||
+			( attributes.value as string ) ||
+			content;
+		delete attributes.values;
+		delete attributes.value;
+		if ( typeof listContent === 'string' && listContent.length > 0 ) {
+			innerBlocks = parseListItems( listContent );
+		}
+	} else if ( content ) {
 		if ( blockType?.attributes?.content ) {
 			attributes.content = content;
 		} else if ( blockType?.attributes?.value ) {
@@ -72,7 +114,12 @@ function createBlockFromInput( input: InsertBlockInput ): BlockInstance {
 					__unstableSkipMigrationLogs: true,
 				} );
 			} else {
-				innerBlocks = [ createBlock( 'core/paragraph', { content } ) ];
+				// Convert markdown/plain text to proper blocks.
+				const converted = pasteHandler( {
+					plainText: content,
+					mode: 'BLOCKS',
+				} );
+				innerBlocks = Array.isArray( converted ) ? converted : [];
 			}
 		}
 	}
@@ -92,7 +139,7 @@ export function registerInsertBlockAbility(): void {
 		name: 'agent/insert-block',
 		label: 'Insert Block',
 		description:
-			'Inserts a new block into the editor at the specified position',
+			'Inserts a block at a given position. For core/list, use innerBlocks with core/list-item entries (not the deprecated value attribute).',
 		category: AGENT_CATEGORY,
 		input_schema: {
 			type: 'object',
@@ -226,7 +273,8 @@ export function registerUpdateBlockAbility(): void {
 	registerAbility( {
 		name: 'agent/update-block',
 		label: 'Update Block',
-		description: 'Updates the attributes of an existing block',
+		description:
+			'Updates attributes and/or inner blocks of an existing block. For core/list, pass innerBlocks as core/list-item entries.',
 		category: AGENT_CATEGORY,
 		input_schema: {
 			type: 'object',
@@ -240,8 +288,14 @@ export function registerUpdateBlockAbility(): void {
 					description:
 						'The attributes to update (merged with existing)',
 				},
+				innerBlocks: {
+					type: 'array',
+					description:
+						'Replace child blocks. Each entry: {blockName, attributes, innerBlocks?}.',
+					items: { type: 'object' },
+				},
 			},
-			required: [ 'clientId', 'attributes' ],
+			required: [ 'clientId' ],
 		},
 		output_schema: {
 			type: 'object',
@@ -258,7 +312,8 @@ export function registerUpdateBlockAbility(): void {
 		},
 		callback: async ( input: UpdateBlockInput ) => {
 			try {
-				const { updateBlockAttributes } = dispatch( blockEditorStore );
+				const { updateBlockAttributes, replaceInnerBlocks } =
+					dispatch( blockEditorStore );
 				const { getBlock } = select( blockEditorStore );
 
 				const block = getBlock( input.clientId );
@@ -269,7 +324,20 @@ export function registerUpdateBlockAbility(): void {
 					};
 				}
 
-				updateBlockAttributes( input.clientId, input.attributes );
+				if ( input.attributes ) {
+					updateBlockAttributes(
+						input.clientId,
+						input.attributes
+					);
+				}
+
+				if ( input.innerBlocks ) {
+					const newInner = input.innerBlocks.map(
+						createBlockFromInput
+					);
+					replaceInnerBlocks( input.clientId, newInner );
+				}
+
 				dispatch( geminiAgentStore ).setActiveBlockClientId(
 					input.clientId
 				);
@@ -532,6 +600,29 @@ export function registerMoveBlocksAbility(): void {
 }
 
 /**
+ * Extract a short content preview from block attributes.
+ */
+function getContentPreview(
+	attrs: Record< string, unknown >,
+	maxLen: number = 80
+): string {
+	const raw =
+		( attrs.content as string ) ||
+		( attrs.text as string ) ||
+		( attrs.value as string ) ||
+		( attrs.citation as string ) ||
+		'';
+	if ( ! raw ) {
+		return '';
+	}
+	// Strip HTML tags for the preview.
+	const plain = raw.replace( /<[^>]+>/g, '' ).trim();
+	return plain.length > maxLen
+		? plain.substring( 0, maxLen ) + '…'
+		: plain;
+}
+
+/**
  * Register the get-document-context ability
  */
 export function registerGetDocumentContextAbility(): void {
@@ -543,19 +634,26 @@ export function registerGetDocumentContextAbility(): void {
 		name: 'agent/get-document-context',
 		label: 'Get Document Context',
 		description:
-			'Retrieves the current document structure and selected block',
+			'Returns document block tree with configurable detail level. Use "outline" (default) for large docs, "summary" for content previews, "full" for all attributes. Supports subtree queries via rootClientId.',
 		category: AGENT_CATEGORY,
 		input_schema: {
 			type: 'object',
 			properties: {
-				includeContent: {
-					type: 'boolean',
+				detail: {
+					type: 'string',
+					enum: [ 'outline', 'summary', 'full' ],
 					description:
-						'Whether to include block content in the response',
+						'Detail level. "outline": clientId + name + innerBlockCount (lightweight). "summary": + truncated content preview. "full": all attributes. Default: outline.',
+				},
+				rootClientId: {
+					type: 'string',
+					description:
+						'Start from this block instead of document root. Use to zoom into a subtree.',
 				},
 				maxDepth: {
 					type: 'integer',
-					description: 'Maximum depth of nested blocks to include',
+					description:
+						'Max nesting depth (default 10).',
 				},
 			},
 		},
@@ -565,19 +663,155 @@ export function registerGetDocumentContextAbility(): void {
 				postId: { type: 'integer' },
 				postType: { type: 'string' },
 				title: { type: 'string' },
-				blocks: {
+				blocks: { type: 'array' },
+				selectedBlockClientId: {
+					anyOf: [ { type: 'string' }, { type: 'null' } ],
+				},
+				totalBlocks: { type: 'integer' },
+			},
+		},
+		meta: {
+			annotations: {
+				readonly: true,
+				idempotent: true,
+			},
+		},
+		callback: async ( input: {
+			detail?: 'outline' | 'summary' | 'full';
+			rootClientId?: string;
+			maxDepth?: number;
+		} ): Promise< GetDocumentContextOutput > => {
+			const { getBlocks, getBlock, getSelectedBlockClientId } =
+				select( blockEditorStore );
+			const editorSelectors = select( 'core/editor' ) as {
+				getCurrentPostId: () => number;
+				getCurrentPostType: () => string;
+				getEditedPostAttribute: ( attribute: string ) => string;
+			};
+
+			const detail = input.detail || 'outline';
+			const maxDepth = input.maxDepth ?? 10;
+
+			// Count total blocks in tree for context.
+			function countBlocks( blocks: BlockInstance[] ): number {
+				let count = blocks.length;
+				for ( const block of blocks ) {
+					count += countBlocks( block.innerBlocks );
+				}
+				return count;
+			}
+
+			function serializeBlocks(
+				blocks: BlockInstance[],
+				depth: number = 0
+			): Array< Record< string, unknown > > {
+				return blocks.map( ( block ) => {
+					const entry: Record< string, unknown > = {
+						clientId: block.clientId,
+						name: block.name,
+					};
+
+					if ( detail === 'outline' ) {
+						if ( block.innerBlocks.length > 0 ) {
+							entry.innerBlockCount = block.innerBlocks.length;
+						}
+					} else if ( detail === 'summary' ) {
+						const preview = getContentPreview(
+							block.attributes
+						);
+						if ( preview ) {
+							entry.content = preview;
+						}
+						if ( block.innerBlocks.length > 0 ) {
+							entry.innerBlockCount = block.innerBlocks.length;
+						}
+					} else {
+						// full
+						entry.attributes = block.attributes;
+					}
+
+					if (
+						block.innerBlocks.length > 0 &&
+						depth < maxDepth
+					) {
+						entry.innerBlocks = serializeBlocks(
+							block.innerBlocks,
+							depth + 1
+						);
+					}
+
+					return entry;
+				} );
+			}
+
+			let rootBlocks: BlockInstance[];
+			if ( input.rootClientId ) {
+				const rootBlock = getBlock( input.rootClientId );
+				rootBlocks = rootBlock ? rootBlock.innerBlocks : [];
+			} else {
+				rootBlocks = getBlocks();
+			}
+
+			return {
+				postId: editorSelectors.getCurrentPostId(),
+				postType: editorSelectors.getCurrentPostType(),
+				title:
+					editorSelectors.getEditedPostAttribute( 'title' ) || '',
+				blocks: serializeBlocks( rootBlocks ),
+				selectedBlockClientId: getSelectedBlockClientId(),
+				totalBlocks: countBlocks( rootBlocks ),
+			};
+		},
+	} );
+}
+
+/**
+ * Register the find-blocks ability
+ */
+export function registerFindBlocksAbility(): void {
+	if ( getAbility( 'agent/find-blocks' ) ) {
+		return;
+	}
+
+	registerAbility( {
+		name: 'agent/find-blocks',
+		label: 'Find Blocks',
+		description:
+			'Searches the entire block tree by text content and/or block name. Returns matching blocks with clientId, path breadcrumb, and content preview. Fastest way to locate a block in deeply nested documents.',
+		category: AGENT_CATEGORY,
+		input_schema: {
+			type: 'object',
+			properties: {
+				query: {
+					type: 'string',
+					description:
+						'Text to search for in block content (case-insensitive, searches HTML-stripped text).',
+				},
+				blockName: {
+					type: 'string',
+					description:
+						'Filter by block name, e.g. "core/paragraph".',
+				},
+				limit: {
+					type: 'integer',
+					description: 'Max results (default 20).',
+				},
+			},
+		},
+		output_schema: {
+			type: 'object',
+			properties: {
+				results: {
 					type: 'array',
 					items: {
 						type: 'object',
 						properties: {
 							clientId: { type: 'string' },
 							name: { type: 'string' },
-							attributes: { type: 'object' },
+							path: { type: 'string' },
+							content: { type: 'string' },
 						},
 					},
-				},
-				selectedBlockClientId: {
-					anyOf: [ { type: 'string' }, { type: 'null' } ],
 				},
 			},
 		},
@@ -588,89 +822,76 @@ export function registerGetDocumentContextAbility(): void {
 			},
 		},
 		callback: async ( input: {
-			includeContent?: boolean;
-			maxDepth?: number;
-		} ): Promise< GetDocumentContextOutput > => {
-			const { getBlocks, getSelectedBlockClientId } =
-				select( blockEditorStore );
-			const editorSelectors = select( 'core/editor' ) as {
-				getCurrentPostId: () => number;
-				getCurrentPostType: () => string;
-				getEditedPostAttribute: ( attribute: string ) => string;
-			};
+			query?: string;
+			blockName?: string;
+			limit?: number;
+		} ) => {
+			const { getBlocks } = select( blockEditorStore );
+			const limit = Math.min( Math.max( input.limit || 20, 1 ), 100 );
+			const queryLower = ( input.query || '' ).toLowerCase();
+			const blockNameFilter = input.blockName || '';
 
-			const maxDepth = input.maxDepth ?? 3;
-
-			function serializeBlocks(
-				blocks: BlockInstance[],
-				depth: number = 0
-			): Array< {
+			interface Match {
 				clientId: string;
 				name: string;
-				attributes: Record< string, unknown >;
-				innerBlocks?: Array< {
-					clientId: string;
-					name: string;
-					attributes: Record< string, unknown >;
-				} >;
-			} > {
-				return blocks.map( ( block ) => {
-					const serialized: {
-						clientId: string;
-						name: string;
-						attributes: Record< string, unknown >;
-						innerBlocks?: Array< {
-							clientId: string;
-							name: string;
-							attributes: Record< string, unknown >;
-						} >;
-					} = {
-						clientId: block.clientId,
-						name: block.name,
-						attributes: input.includeContent
-							? block.attributes
-							: filterAttributes( block.attributes ),
-					};
+				path: string;
+				content: string;
+			}
 
-					if ( block.innerBlocks.length > 0 && depth < maxDepth ) {
-						serialized.innerBlocks = serializeBlocks(
-							block.innerBlocks,
-							depth + 1
+			const results: Match[] = [];
+
+			function getBlockTitle( block: BlockInstance ): string {
+				const bt = getBlockType( block.name );
+				return bt?.title || block.name;
+			}
+
+			function walk(
+				blocks: BlockInstance[],
+				ancestors: string[]
+			): void {
+				for ( const block of blocks ) {
+					if ( results.length >= limit ) {
+						return;
+					}
+
+					const title = getBlockTitle( block );
+					const currentPath = [ ...ancestors, title ];
+
+					// Check name filter.
+					const nameMatch =
+						! blockNameFilter ||
+						block.name === blockNameFilter;
+
+					// Check text query.
+					let textMatch = ! queryLower;
+					let preview = '';
+					if ( nameMatch ) {
+						preview = getContentPreview(
+							block.attributes,
+							120
 						);
+						if ( queryLower ) {
+							textMatch = preview
+								.toLowerCase()
+								.includes( queryLower );
+						}
 					}
 
-					return serialized;
-				} );
-			}
-
-			// Filter out large content attributes for lighter payloads
-			function filterAttributes(
-				attrs: Record< string, unknown >
-			): Record< string, unknown > {
-				const filtered: Record< string, unknown > = {};
-				for ( const [ key, value ] of Object.entries( attrs ) ) {
-					// Skip large content fields unless explicitly requested
-					if (
-						key === 'content' &&
-						typeof value === 'string' &&
-						value.length > 200
-					) {
-						filtered[ key ] =
-							value.substring( 0, 200 ) + '... (truncated)';
-					} else {
-						filtered[ key ] = value;
+					if ( nameMatch && textMatch ) {
+						results.push( {
+							clientId: block.clientId,
+							name: block.name,
+							path: currentPath.join( ' > ' ),
+							content: preview,
+						} );
 					}
+
+					walk( block.innerBlocks, currentPath );
 				}
-				return filtered;
 			}
 
-			return {
-				postId: editorSelectors.getCurrentPostId(),
-				postType: editorSelectors.getCurrentPostType(),
-				title: editorSelectors.getEditedPostAttribute( 'title' ) || '',
-				blocks: serializeBlocks( getBlocks() ),
-				selectedBlockClientId: getSelectedBlockClientId(),
-			};
+			walk( getBlocks(), [] );
+			return { results };
 		},
 	} );
 }
@@ -839,6 +1060,73 @@ export function registerSelectBlockAbility(): void {
 }
 
 /**
+ * Register the get-block ability
+ */
+export function registerGetBlockAbility(): void {
+	if ( getAbility( 'agent/get-block' ) ) {
+		return;
+	}
+
+	registerAbility( {
+		name: 'agent/get-block',
+		label: 'Get Block',
+		description:
+			'Returns full details of a single block by clientId — attributes (including rich-text HTML content with links/formatting), name, and inner blocks.',
+		category: AGENT_CATEGORY,
+		input_schema: {
+			type: 'object',
+			properties: {
+				clientId: {
+					type: 'string',
+					description: 'The block clientId to inspect',
+				},
+			},
+			required: [ 'clientId' ],
+		},
+		output_schema: {
+			type: 'object',
+			properties: {
+				found: { type: 'boolean' },
+				block: {
+					type: 'object',
+					properties: {
+						clientId: { type: 'string' },
+						name: { type: 'string' },
+						attributes: { type: 'object' },
+						innerBlocks: { type: 'array' },
+					},
+				},
+			},
+		},
+		meta: {
+			annotations: {
+				readonly: true,
+				idempotent: true,
+			},
+		},
+		callback: async ( input: { clientId: string } ) => {
+			const { getBlock } = select( blockEditorStore );
+			const block = getBlock( input.clientId );
+
+			if ( ! block ) {
+				return { found: false, block: null };
+			}
+
+			function serializeBlock( b: BlockInstance ): Record< string, unknown > {
+				return {
+					clientId: b.clientId,
+					name: b.name,
+					attributes: b.attributes,
+					innerBlocks: b.innerBlocks.map( serializeBlock ),
+				};
+			}
+
+			return { found: true, block: serializeBlock( block ) };
+		},
+	} );
+}
+
+/**
  * Register all block-related abilities
  */
 export function registerBlockAbilities(): void {
@@ -848,6 +1136,8 @@ export function registerBlockAbilities(): void {
 	registerRemoveBlockAbility();
 	registerMoveBlocksAbility();
 	registerGetDocumentContextAbility();
+	registerFindBlocksAbility();
 	registerSelectBlockAbility();
 	registerGetBlockSchemaAbility();
+	registerGetBlockAbility();
 }

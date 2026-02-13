@@ -2,6 +2,7 @@
  * WordPress dependencies
  */
 import { dispatch, select } from '@wordpress/data';
+// @ts-expect-error No type declarations for block-editor.
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as coreDataStore } from '@wordpress/core-data';
 import { getAbility, registerAbility } from '@wordpress/abilities';
@@ -461,7 +462,7 @@ export function registerGetNotesAbility(): void {
 					query.status = 'approved';
 				}
 
-				const comments = getEntityRecords( 'root', 'comment', query );
+				const comments = getEntityRecords( 'root', 'comment', query ) as Array< Record< string, any > > | null | undefined;
 
 				if ( ! comments ) {
 					return { notes: [] };

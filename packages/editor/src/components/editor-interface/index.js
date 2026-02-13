@@ -30,6 +30,7 @@ import TextEditor from '../text-editor';
 import VisualEditor from '../visual-editor';
 import StylesCanvas from '../styles-canvas';
 import { MediaPreview } from '../media';
+import FloatingAIIndicator from '../floating-ai-indicator';
 
 const interfaceLabels = {
 	/* translators: accessibility text for the editor top bar landmark region. */
@@ -150,6 +151,8 @@ export default function EditorInterface( {
 	}
 
 	return (
+		<>
+		<FloatingAIIndicator />
 		<InterfaceSkeleton
 			isDistractionFree={ isDistractionFree }
 			className={ clsx( 'editor-editor-interface', className, {
@@ -256,5 +259,6 @@ export default function EditorInterface( {
 					: undefined
 			}
 		/>
+		</>
 	);
 }

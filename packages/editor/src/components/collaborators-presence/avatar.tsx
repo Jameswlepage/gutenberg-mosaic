@@ -1,11 +1,11 @@
 import { clsx } from 'clsx';
-import { type PostEditorAwarenessState } from '@wordpress/core-data';
+import { type CollaboratorPresenceInfo } from './types';
 import './styles/avatar.scss';
 
 type AvatarSize = 'small' | 'medium';
 
 interface AvatarProps {
-	collaboratorInfo: PostEditorAwarenessState[ 'collaboratorInfo' ];
+	collaboratorInfo: CollaboratorPresenceInfo;
 	showCollaboratorColorBorder?: boolean;
 	size?: AvatarSize;
 }
@@ -37,7 +37,7 @@ export function Avatar( {
 
 	const avatarStyles = {
 		'--avatar-url': `url(${ avatarUrl })`,
-		'--collaborator-color': collaboratorInfo.color,
+		'--collaborator-color': collaboratorInfo.color || '#3858e9',
 	} as React.CSSProperties;
 
 	return (

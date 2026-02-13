@@ -11,6 +11,7 @@ export interface GeminiConfig {
 	systemInstruction?: string;
 	responseModality?: 'AUDIO' | 'TEXT';
 	voiceName?: string;
+	languageCode?: string;
 	abilityCategories?: string[];
 	serverAbilitiesTimeoutMs?: number;
 }
@@ -96,6 +97,7 @@ export interface GeminiSetupMessage {
 		generationConfig?: {
 			responseModalities: string[];
 			speechConfig?: {
+				languageCode?: string;
 				voiceConfig?: {
 					prebuiltVoiceConfig?: {
 						voiceName: string;
@@ -103,6 +105,10 @@ export interface GeminiSetupMessage {
 				};
 			};
 		};
+		/** Enable text transcription of the model's audio output. */
+		outputAudioTranscription?: Record< string, never >;
+		/** Enable text transcription of the user's audio input. */
+		inputAudioTranscription?: Record< string, never >;
 		systemInstruction?: {
 			parts: Array< { text: string } >;
 		};
@@ -158,12 +164,21 @@ export interface GeminiServerContentMessage {
 		modelTurn?: {
 			parts: Array< {
 				text?: string;
+				thought?: boolean;
 				functionCall?: GeminiFunctionCall;
 				inlineData?: {
 					mimeType: string;
 					data: string;
 				};
 			} >;
+		};
+		/** Text transcription of the model's audio output. */
+		outputTranscription?: {
+			text: string;
+		};
+		/** Text transcription of the user's audio input. */
+		inputTranscription?: {
+			text: string;
 		};
 		turnComplete?: boolean;
 	};
@@ -201,7 +216,8 @@ export interface InsertBlockInput {
 
 export interface UpdateBlockInput {
 	clientId: string;
-	attributes: Record< string, unknown >;
+	attributes?: Record< string, unknown >;
+	innerBlocks?: InsertBlockInput[];
 }
 
 export interface MoveBlocksInput {
@@ -291,6 +307,7 @@ export interface RestorePostRevisionInput {
 export interface SearchPostsInput {
 	search: string;
 	postType?: string;
+	postStatus?: string;
 	perPage?: number;
 }
 
@@ -298,6 +315,35 @@ export interface SearchContentInput {
 	search: string;
 	postTypes?: string[];
 	perPage?: number;
+}
+
+export interface CreatePostInput {
+	postType?: string;
+	title?: string;
+	status?: string;
+	slug?: string;
+	content?: string;
+	excerpt?: string;
+	template?: string;
+	navigate?: boolean;
+}
+
+export interface NavigateSiteEditorInput {
+	postId?: number;
+	postType?: string;
+	title?: string;
+}
+
+export interface ListPostTemplatesInput {
+	search?: string;
+	postType?: string;
+	perPage?: number;
+}
+
+export interface SwitchPostTemplateInput {
+	templateTitle?: string;
+	templateSlug?: string;
+	postType?: string;
 }
 
 export interface UpdatePostTitleInput {
@@ -356,6 +402,14 @@ export interface RunShortcutInput {
 	useAlias?: boolean;
 }
 
+export interface UndoInput {
+	steps?: number;
+}
+
+export interface RedoInput {
+	steps?: number;
+}
+
 export interface OpenMediaLibraryInput {
 	mediaType?: string;
 	multiple?: boolean;
@@ -367,16 +421,23 @@ export interface SearchMediaLibraryInput {
 	perPage?: number;
 }
 
+export interface InsertMediaLibraryImageInput {
+	mediaId?: number;
+	search?: string;
+	mediaType?: 'image' | 'video' | 'audio';
+	perPage?: number;
+	position?: 'before' | 'after' | 'first' | 'last';
+	targetClientId?: string;
+	replaceTarget?: boolean;
+}
+
 export interface GetDocumentContextOutput {
 	postId: number;
 	postType: string;
 	title: string;
-	blocks: Array< {
-		clientId: string;
-		name: string;
-		attributes: Record< string, unknown >;
-	} >;
+	blocks: Array< Record< string, unknown > >;
 	selectedBlockClientId: string | null;
+	totalBlocks?: number;
 }
 
 /**
@@ -387,6 +448,10 @@ export type AgentEventHandler = {
 	onDisconnect?: () => void;
 	onError?: ( error: Error ) => void;
 	onModelResponse?: ( text: string ) => void;
+	onInputTranscription?: ( text: string ) => void;
 	onAudioResponse?: ( audioData: ArrayBuffer ) => void;
+	onOutputAudioLevel?: ( level: number ) => void;
+	onFunctionCallStart?: ( call: GeminiFunctionCall ) => void;
+	onFunctionCallEnd?: ( call: GeminiFunctionCall ) => void;
 	onFunctionCall?: ( call: GeminiFunctionCall ) => void;
 };

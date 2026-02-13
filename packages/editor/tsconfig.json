@@ -20,7 +20,6 @@
 		{ "path": "../dom" },
 		{ "path": "../element" },
 		{ "path": "../fields" },
-		{ "path": "../gemini-live-agent" },
 		{ "path": "../global-styles-engine" },
 		{ "path": "../global-styles-ui" },
 		{ "path": "../hooks" },

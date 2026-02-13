@@ -3,12 +3,21 @@
  */
 import type { ConnectionState } from '../types';
 
+export interface ConversationMessage {
+	id: number;
+	role: 'user' | 'assistant';
+	text: string;
+	toolCalls?: string[];
+}
+
 export interface GeminiAgentState {
 	connectionState: ConnectionState;
 	isScreenSharing: boolean;
 	isAudioEnabled: boolean;
 	lastError: string | null;
 	activeBlockClientId: string | null;
+	imageEditTargetClientId: string | null;
+	conversationMessages: ConversationMessage[];
 }
 
 export type SetConnectionStateAction = {
@@ -36,9 +45,33 @@ export type SetActiveBlockClientIdAction = {
 	clientId: string | null;
 };
 
+export type SetImageEditTargetClientIdAction = {
+	type: 'SET_IMAGE_EDIT_TARGET_CLIENT_ID';
+	clientId: string | null;
+};
+
+export type AddConversationMessageAction = {
+	type: 'ADD_CONVERSATION_MESSAGE';
+	message: ConversationMessage;
+};
+
+export type UpdateConversationMessageAction = {
+	type: 'UPDATE_CONVERSATION_MESSAGE';
+	id: number;
+	updates: Partial< Pick< ConversationMessage, 'text' | 'toolCalls' > >;
+};
+
+export type ClearConversationAction = {
+	type: 'CLEAR_CONVERSATION';
+};
+
 export type Action =
 	| SetConnectionStateAction
 	| SetScreenSharingAction
 	| SetAudioEnabledAction
 	| SetLastErrorAction
-	| SetActiveBlockClientIdAction;
+	| SetActiveBlockClientIdAction
+	| SetImageEditTargetClientIdAction
+	| AddConversationMessageAction
+	| UpdateConversationMessageAction
+	| ClearConversationAction;

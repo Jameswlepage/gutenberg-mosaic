@@ -13,6 +13,8 @@ export { registerContentAbilities } from './content-abilities';
 export { registerShortcutAbilities } from './shortcut-abilities';
 export { registerMediaAbilities } from './media-abilities';
 export { registerPatternAbilities } from './pattern-abilities';
+export { registerUserAbilities } from './user-abilities';
+export { registerImageGenerationAbilities } from './image-generation-abilities';
 
 import { registerBlockAbilities } from './block-abilities';
 import { registerNoteAbilities } from './note-abilities';
@@ -21,6 +23,8 @@ import { registerContentAbilities } from './content-abilities';
 import { registerShortcutAbilities } from './shortcut-abilities';
 import { registerMediaAbilities } from './media-abilities';
 import { registerPatternAbilities } from './pattern-abilities';
+import { registerUserAbilities } from './user-abilities';
+import { registerImageGenerationAbilities } from './image-generation-abilities';
 
 /**
  * Register all agent abilities with the WordPress Abilities API
@@ -36,4 +40,6 @@ export function registerAllAgentAbilities(): void {
 	registerShortcutAbilities();
 	registerMediaAbilities();
 	registerPatternAbilities();
+	registerUserAbilities();
+	registerImageGenerationAbilities();
 }

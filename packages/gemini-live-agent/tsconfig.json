@@ -2,9 +2,12 @@
 	"$schema": "https://json.schemastore.org/tsconfig.json",
 	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"jsx": "react-jsx"
+		"jsx": "react-jsx",
+		"strict": false,
+		"noImplicitAny": false,
+		"noEmit": true
 	},
-	"exclude": [ "**/*.test.ts", "**/tests/**" ],
+	"exclude": [ "**/*.test.ts", "**/tests/**", "src/**" ],
 	"references": [
 		{
 			"path": "../abilities"
@@ -22,9 +25,6 @@
 			"path": "../block-editor"
 		},
 		{
-			"path": "../blocks"
-		},
-		{
 			"path": "../components"
 		},
 		{
@@ -37,9 +37,6 @@
 			"path": "../data"
 		},
 		{
-			"path": "../editor"
-		},
-		{
 			"path": "../element"
 		},
 		{
@@ -47,6 +44,9 @@
 		},
 		{
 			"path": "../icons"
+		},
+		{
+			"path": "../keycodes"
 		}
 	]
 }

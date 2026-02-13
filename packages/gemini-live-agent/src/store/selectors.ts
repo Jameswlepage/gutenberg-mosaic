@@ -23,6 +23,14 @@ export function getActiveBlockClientId( state: GeminiAgentState ) {
 	return state.activeBlockClientId;
 }
 
+export function getImageEditTargetClientId( state: GeminiAgentState ) {
+	return state.imageEditTargetClientId;
+}
+
 export function isConnected( state: GeminiAgentState ) {
 	return state.connectionState === 'connected';
+}
+
+export function getConversationMessages( state: GeminiAgentState ) {
+	return state.conversationMessages;
 }

@@ -21,3 +21,10 @@ export const store = createReduxStore( STORE_NAME, {
 } );
 
 register( store );
+
+/**
+ * Shared audio level ref — written by useGeminiAgent, read by any
+ * component (e.g. floating pill waveform) via requestAnimationFrame.
+ * Not reactive — avoids re-renders for high-frequency audio data.
+ */
+export const sharedAudioLevel = { current: 0 };

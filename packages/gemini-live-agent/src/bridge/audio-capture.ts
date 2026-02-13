@@ -26,6 +26,14 @@ class AudioCaptureProcessor extends AudioWorkletProcessor {
 
     const channelData = input[0];
 
+    // Compute RMS for this render quantum (128 samples)
+    let sum = 0;
+    for (let s = 0; s < channelData.length; s++) {
+      sum += channelData[s] * channelData[s];
+    }
+    const rms = Math.sqrt(sum / channelData.length);
+    this.port.postMessage({ type: 'level', rms });
+
     for (let i = 0; i < channelData.length; i++) {
       this.buffer[this.bufferIndex++] = channelData[i];
 
@@ -62,6 +70,7 @@ export class AudioCapture {
 	private isCapturing: boolean = false;
 	private workletBlobUrl: string | null = null;
 	private onStopCallback: ( () => void ) | null = null;
+	private onAudioLevelCallback: ( ( level: number ) => void ) | null = null;
 
 	/**
 	 * Set the bridge to send audio to
@@ -79,6 +88,15 @@ export class AudioCapture {
 	 */
 	public setOnStop( onStop: () => void ): void {
 		this.onStopCallback = onStop;
+	}
+
+	/**
+	 * Set a callback fired with the current audio input level (0-1 RMS).
+	 *
+	 * @param cb The callback to invoke with each level reading.
+	 */
+	public setOnAudioLevel( cb: ( level: number ) => void ): void {
+		this.onAudioLevelCallback = cb;
 	}
 
 	/**
@@ -160,7 +178,16 @@ export class AudioCapture {
 
 		// Handle audio data from worklet
 		this.workletNode.port.onmessage = ( event: MessageEvent ) => {
-			if ( this.bridge && this.isCapturing ) {
+			if ( ! this.isCapturing ) {
+				return;
+			}
+			// Level message (RMS float)
+			if ( event.data && event.data.type === 'level' ) {
+				this.onAudioLevelCallback?.( event.data.rms );
+				return;
+			}
+			// PCM audio buffer
+			if ( this.bridge ) {
 				this.bridge.sendAudioChunk( event.data );
 			}
 		};

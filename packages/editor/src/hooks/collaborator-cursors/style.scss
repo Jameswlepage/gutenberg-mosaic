@@ -3,29 +3,29 @@
 }
 
 .editor-collab-cursor::after {
-	content: '';
+	content: "";
 	position: absolute;
 	inset: -2px;
-	border: 2px solid var( --editor-collab-color, #3858e9 );
+	border: 2px solid var(--editor-collab-color, #3858e9);
 	border-radius: 6px;
 	pointer-events: none;
 	z-index: 2;
 }
 
 .editor-collab-cursor::before {
-	content: attr( data-collab-label );
+	content: attr(data-collab-label);
 	position: absolute;
 	top: -8px;
 	left: 12px;
-	transform: translateY( -100% );
-	background: var( --editor-collab-color, #3858e9 );
-	color: #ffffff;
+	transform: translateY(-100%);
+	background: var(--editor-collab-color, #3858e9);
+	color: #fff;
 	font-size: 11px;
 	line-height: 1;
 	padding: 3px 7px;
 	border-radius: 999px;
 	letter-spacing: 0.01em;
-	box-shadow: 0 2px 6px rgba( 0, 0, 0, 0.15 );
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 	pointer-events: none;
 	white-space: nowrap;
 	z-index: 3;
@@ -33,4 +33,29 @@
 
 .editor-collab-cursor--multi::after {
 	border-style: dashed;
+}
+
+.editor-ai-image-editing .wp-block-image {
+	position: relative;
+	overflow: hidden;
+}
+
+.editor-ai-image-editing .wp-block-image::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(110deg, rgba(255, 255, 255, 0) 20%, rgba(255, 255, 255, 0.45) 50%, rgba(255, 255, 255, 0) 80%);
+	background-size: 220% 100%;
+	animation: editor-ai-image-shimmer 1.1s linear infinite;
+	pointer-events: none;
+	z-index: 4;
+}
+
+@keyframes editor-ai-image-shimmer {
+	0% {
+		background-position: 140% 0;
+	}
+	100% {
+		background-position: -120% 0;
+	}
 }

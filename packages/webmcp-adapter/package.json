@@ -1,0 +1,52 @@
+{
+	"name": "@wordpress/webmcp-adapter",
+	"version": "0.1.0",
+	"description": "WebMCP adapter for exposing WordPress abilities as browser tools.",
+	"author": "The WordPress Contributors",
+	"license": "GPL-2.0-or-later",
+	"keywords": [
+		"wordpress",
+		"abilities",
+		"webmcp",
+		"mcp",
+		"ai"
+	],
+	"homepage": "https://github.com/WordPress/gutenberg/tree/HEAD/packages/webmcp-adapter/README.md",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/WordPress/gutenberg.git",
+		"directory": "packages/webmcp-adapter"
+	},
+	"bugs": {
+		"url": "https://github.com/WordPress/gutenberg/issues"
+	},
+	"engines": {
+		"node": ">=18.12.0",
+		"npm": ">=8.19.2"
+	},
+	"files": [
+		"src",
+		"build",
+		"build-module",
+		"*.md"
+	],
+	"main": "build/index.cjs",
+	"module": "build-module/index.mjs",
+	"exports": {
+		".": {
+			"import": "./build-module/index.mjs",
+			"require": "./build/index.cjs"
+		},
+		"./package.json": "./package.json"
+	},
+	"react-native": "src/index",
+	"wpScriptModuleExports": {
+		".": "./build-module/index.mjs"
+	},
+	"dependencies": {
+		"@wordpress/abilities": "file:../abilities"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}
