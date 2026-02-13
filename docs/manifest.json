@@ -546,9 +546,9 @@
 		"parent": "interactivity-api"
 	},
 	{
-		"title": "API Reference",
-		"slug": "api-reference",
-		"markdown_source": "../docs/reference-guides/interactivity-api/api-reference.md",
+		"title": "Directives and Store",
+		"slug": "directives-and-store",
+		"markdown_source": "../docs/reference-guides/interactivity-api/directives-and-store.md",
 		"parent": "interactivity-api"
 	},
 	{
@@ -1731,6 +1731,12 @@
 		"title": "@wordpress/format-library",
 		"slug": "packages-format-library",
 		"markdown_source": "../packages/format-library/README.md",
+		"parent": "packages"
+	},
+	{
+		"title": "@wordpress/gemini-live-agent",
+		"slug": "packages-gemini-live-agent",
+		"markdown_source": "../packages/gemini-live-agent/README.md",
 		"parent": "packages"
 	},
 	{
