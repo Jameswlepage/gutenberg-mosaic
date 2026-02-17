@@ -25,6 +25,7 @@ import Header from '../header';
 import InserterSidebar from '../inserter-sidebar';
 import ListViewSidebar from '../list-view-sidebar';
 import { RevisionsHeader, RevisionsCanvas } from '../post-revisions-preview';
+import { CollaboratorsOverlay } from '../collaborators-overlay';
 import SavePublishPanels from '../save-publish-panels';
 import TextEditor from '../text-editor';
 import VisualEditor from '../visual-editor';
@@ -59,6 +60,8 @@ export default function EditorInterface( {
 } ) {
 	const {
 		mode,
+		postId,
+		postType,
 		isAttachment,
 		isInserterOpened,
 		isListViewOpened,
@@ -71,8 +74,12 @@ export default function EditorInterface( {
 		isRevisionsMode,
 	} = useSelect( ( select ) => {
 		const { get } = select( preferencesStore );
-		const { getEditorSettings, getPostTypeLabel, getCurrentPostType } =
-			select( editorStore );
+		const {
+			getEditorSettings,
+			getPostTypeLabel,
+			getCurrentPostType,
+			getCurrentPostId,
+		} = select( editorStore );
 		const {
 			getStylesPath,
 			getShowStylebook,
@@ -90,6 +97,8 @@ export default function EditorInterface( {
 
 		return {
 			mode: _mode,
+			postId: getCurrentPostId(),
+			postType: getCurrentPostType(),
 			isInserterOpened: select( editorStore ).isInserterOpened(),
 			isListViewOpened: select( editorStore ).isListViewOpened(),
 			isDistractionFree: get( 'core', 'distractionFree' ),
@@ -152,113 +161,119 @@ export default function EditorInterface( {
 
 	return (
 		<>
-		<FloatingAIIndicator />
-		<InterfaceSkeleton
-			isDistractionFree={ isDistractionFree }
-			className={ clsx( 'editor-editor-interface', className, {
-				'is-entity-save-view-open': !! entitiesSavedStatesCallback,
-				'is-distraction-free': isDistractionFree && ! isPreviewMode,
-			} ) }
-			labels={ {
-				...interfaceLabels,
-				secondarySidebar: secondarySidebarLabel,
-			} }
-			header={
-				! isPreviewMode && (
-					<Header
-						forceIsDirty={ forceIsDirty }
-						setEntitiesSavedStatesCallback={
-							setEntitiesSavedStatesCallback
-						}
-						customSaveButton={ customSaveButton }
-						forceDisableBlockTools={ forceDisableBlockTools }
-					/>
-				)
-			}
-			editorNotices={ <EditorNotices /> }
-			secondarySidebar={
-				! isAttachment &&
-				! isPreviewMode &&
-				mode === 'visual' &&
-				( ( isInserterOpened && <InserterSidebar /> ) ||
-					( isListViewOpened && <ListViewSidebar /> ) )
-			}
-			sidebar={
-				! isPreviewMode &&
-				! isDistractionFree && <ComplementaryArea.Slot scope="core" />
-			}
-			content={
-				<>
-					{ ! isDistractionFree && ! isPreviewMode && (
-						<EditorNotices />
-					) }
-					{ shouldShowMediaEditor && (
-						<MediaPreview { ...iframeProps } />
-					) }
-					{ shouldShowStylesCanvas && <StylesCanvas /> }
-					{ shouldShowBlockEditor && (
-						<>
-							{ ! isPreviewMode && mode === 'text' && (
-								<TextEditor
-									// We should auto-focus the canvas (title) on load.
-									// eslint-disable-next-line jsx-a11y/no-autofocus
-									autoFocus={ autoFocus }
-								/>
-							) }
-							{ ! isPreviewMode &&
-								! isLargeViewport &&
-								mode === 'visual' && (
-									<BlockToolbar hideDragHandle />
+			<FloatingAIIndicator />
+			<InterfaceSkeleton
+				isDistractionFree={ isDistractionFree }
+				className={ clsx( 'editor-editor-interface', className, {
+					'is-entity-save-view-open': !! entitiesSavedStatesCallback,
+					'is-distraction-free': isDistractionFree && ! isPreviewMode,
+				} ) }
+				labels={ {
+					...interfaceLabels,
+					secondarySidebar: secondarySidebarLabel,
+				} }
+				header={
+					! isPreviewMode && (
+						<Header
+							forceIsDirty={ forceIsDirty }
+							setEntitiesSavedStatesCallback={
+								setEntitiesSavedStatesCallback
+							}
+							customSaveButton={ customSaveButton }
+							forceDisableBlockTools={ forceDisableBlockTools }
+						/>
+					)
+				}
+				editorNotices={ <EditorNotices /> }
+				secondarySidebar={
+					! isAttachment &&
+					! isPreviewMode &&
+					mode === 'visual' &&
+					( ( isInserterOpened && <InserterSidebar /> ) ||
+						( isListViewOpened && <ListViewSidebar /> ) )
+				}
+				sidebar={
+					! isPreviewMode &&
+					! isDistractionFree && (
+						<ComplementaryArea.Slot scope="core" />
+					)
+				}
+				content={
+					<>
+						{ ! isDistractionFree && ! isPreviewMode && (
+							<EditorNotices />
+						) }
+						{ shouldShowMediaEditor && (
+							<MediaPreview { ...iframeProps } />
+						) }
+						{ shouldShowStylesCanvas && <StylesCanvas /> }
+						{ shouldShowBlockEditor && (
+							<>
+								{ ! isPreviewMode && mode === 'text' && (
+									<TextEditor
+										// We should auto-focus the canvas (title) on load.
+										// eslint-disable-next-line jsx-a11y/no-autofocus
+										autoFocus={ autoFocus }
+									/>
 								) }
-							{ ( isPreviewMode || mode === 'visual' ) && (
-								<VisualEditor
-									contentRef={ contentRef }
-									disableIframe={ disableIframe }
-									// We should auto-focus the canvas (title) on load.
-									// eslint-disable-next-line jsx-a11y/no-autofocus
-									autoFocus={ autoFocus }
-									iframeProps={ iframeProps }
+								{ ! isPreviewMode &&
+									! isLargeViewport &&
+									mode === 'visual' && (
+										<BlockToolbar hideDragHandle />
+									) }
+								{ ( isPreviewMode || mode === 'visual' ) && (
+									<VisualEditor
+										contentRef={ contentRef }
+										disableIframe={ disableIframe }
+										// We should auto-focus the canvas (title) on load.
+										// eslint-disable-next-line jsx-a11y/no-autofocus
+										autoFocus={ autoFocus }
+										iframeProps={ iframeProps }
+									/>
+								) }
+								{ children }
+								<CollaboratorsOverlay
+									postId={ postId }
+									postType={ postType }
 								/>
-							) }
-							{ children }
-						</>
-					) }
-				</>
-			}
-			footer={
-				! isPreviewMode &&
-				! isDistractionFree &&
-				isLargeViewport &&
-				showBlockBreadcrumbs &&
-				mode === 'visual' && (
-					<BlockBreadcrumb
-						rootLabelText={
-							postTypeLabel
-								? decodeEntities( postTypeLabel )
-								: undefined
-						}
-					/>
-				)
-			}
-			actions={
-				! isPreviewMode
-					? customSavePanel || (
-							<SavePublishPanels
-								closeEntitiesSavedStates={
-									closeEntitiesSavedStates
-								}
-								isEntitiesSavedStatesOpen={
-									entitiesSavedStatesCallback
-								}
-								setEntitiesSavedStatesCallback={
-									setEntitiesSavedStatesCallback
-								}
-								forceIsDirtyPublishPanel={ forceIsDirty }
-							/>
-					  )
-					: undefined
-			}
-		/>
+							</>
+						) }
+					</>
+				}
+				footer={
+					! isPreviewMode &&
+					! isDistractionFree &&
+					isLargeViewport &&
+					showBlockBreadcrumbs &&
+					mode === 'visual' && (
+						<BlockBreadcrumb
+							rootLabelText={
+								postTypeLabel
+									? decodeEntities( postTypeLabel )
+									: undefined
+							}
+						/>
+					)
+				}
+				actions={
+					! isPreviewMode
+						? customSavePanel || (
+								<SavePublishPanels
+									closeEntitiesSavedStates={
+										closeEntitiesSavedStates
+									}
+									isEntitiesSavedStatesOpen={
+										entitiesSavedStatesCallback
+									}
+									setEntitiesSavedStatesCallback={
+										setEntitiesSavedStatesCallback
+									}
+									forceIsDirtyPublishPanel={ forceIsDirty }
+								/>
+						  )
+						: undefined
+				}
+			/>
 		</>
 	);
 }

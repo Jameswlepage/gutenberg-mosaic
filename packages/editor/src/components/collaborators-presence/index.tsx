@@ -1,4 +1,7 @@
-import { Button } from '@wordpress/components';
+import {
+	Button,
+	privateApis as componentsPrivateApis,
+} from '@wordpress/components';
 import { useState } from '@wordpress/element';
 import {
 	privateApis,
@@ -7,14 +10,18 @@ import {
 import { useGeminiAgentPresence } from '@wordpress/gemini-live-agent';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { Avatar } from './avatar';
 import { CollaboratorsList } from './list';
 import { type CollaboratorPresenceItem } from './types';
 import { unlock } from '../../lock-unlock';
+import { getAvatarUrl } from '../collaborators-overlay/get-avatar-url';
+import { getAvatarBorderColor } from '../collab-sidebar/utils';
 
 import './styles/collaborators-presence.scss';
+import { CollaboratorsOverlay } from '../collaborators-overlay';
 
 const { useActiveCollaborators } = unlock( privateApis );
+const { Avatar, AvatarGroup } = unlock( componentsPrivateApis );
+
 const GEMINI_LOGO_URL =
 	'https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/dark/gemini-color.png';
 
@@ -27,9 +34,9 @@ interface CollaboratorsPresenceProps {
  * Renders a list of avatars for the active collaborators, with a maximum of 3 visible avatars.
  * Shows a popover with all collaborators on hover.
  *
- * @param {Object} props          CollaboratorsPresence component props
- * @param {number} props.postId   ID of the post
- * @param {string} props.postType Type of the post
+ * @param props          CollaboratorsPresence component props
+ * @param props.postId   ID of the post
+ * @param props.postType Type of the post
  */
 export function CollaboratorsPresence( {
 	postId,
@@ -158,51 +165,47 @@ export function CollaboratorsPresence( {
 		return null;
 	}
 
-	const visibleCollaborators = presenceItems.slice( 0, 3 );
-	const remainingCollaborators = presenceItems.slice( 3 );
-	const remainingCollaboratorsText = remainingCollaborators
-		.map( ( { collaboratorInfo } ) => collaboratorInfo.name )
-		.join( ', ' );
-
-	return visibleCollaborators.length > 0 ? (
-		<div className="editor-collaborators-presence">
-			<Button
-				__next40pxDefaultSize
-				className="editor-collaborators-presence__button"
-				onClick={ () => setIsPopoverVisible( ! isPopoverVisible ) }
-				isPressed={ isPopoverVisible }
-				ref={ setPopoverAnchor }
-				aria-label={ sprintf(
-					// translators: %d: number of online collaborators.
-					__( 'Collaborators list, %d online' ),
-					presenceItems.length
-				) }
-			>
-				{ visibleCollaborators.map( ( collaboratorState ) => (
-					<Avatar
-						key={ collaboratorState.clientId }
-						collaboratorInfo={ collaboratorState.collaboratorInfo }
-						showCollaboratorColorBorder={ false }
-						size="small"
+	return (
+		<>
+			<div className="editor-collaborators-presence">
+				<Button
+					__next40pxDefaultSize
+					className="editor-collaborators-presence__button"
+					onClick={ () => setIsPopoverVisible( ! isPopoverVisible ) }
+					isPressed={ isPopoverVisible }
+					ref={ setPopoverAnchor }
+					aria-label={ sprintf(
+						// translators: %d: number of online collaborators.
+						__( 'Collaborators list, %d online' ),
+						presenceItems.length
+					) }
+				>
+					<AvatarGroup max={ 3 }>
+						{ presenceItems.map( ( collaboratorState ) => (
+							<Avatar
+								key={ collaboratorState.clientId }
+								src={ getAvatarUrl(
+									collaboratorState.collaboratorInfo
+										.avatar_urls
+								) }
+								name={ collaboratorState.collaboratorInfo.name }
+								borderColor={ getAvatarBorderColor(
+									collaboratorState.collaboratorInfo.id
+								) }
+								size="small"
+							/>
+						) ) }
+					</AvatarGroup>
+				</Button>
+				{ isPopoverVisible && (
+					<CollaboratorsList
+						activeCollaborators={ presenceItems }
+						popoverAnchor={ popoverAnchor }
+						setIsPopoverVisible={ setIsPopoverVisible }
 					/>
-				) ) }
-
-				{ remainingCollaborators.length > 0 && (
-					<div
-						className="editor-collaborators-presence__remaining"
-						title={ remainingCollaboratorsText }
-					>
-						+{ remainingCollaborators.length }
-					</div>
 				) }
-			</Button>
-			{ isPopoverVisible && (
-				<CollaboratorsList
-					activeCollaborators={ presenceItems }
-					popoverAnchor={ popoverAnchor }
-					setIsPopoverVisible={ setIsPopoverVisible }
-				/>
-			) }
-		</div>
-	) : null;
+			</div>
+			<CollaboratorsOverlay postId={ postId } postType={ postType } />
+		</>
+	);
 }
