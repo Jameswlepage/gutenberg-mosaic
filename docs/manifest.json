@@ -2094,15 +2094,15 @@
 		"parent": "packages"
 	},
 	{
-		"title": "@wordpress/webmcp-adapter",
-		"slug": "packages-webmcp-adapter",
-		"markdown_source": "../packages/webmcp-adapter/README.md",
-		"parent": "packages"
-	},
-	{
 		"title": "@wordpress/warning",
 		"slug": "packages-warning",
 		"markdown_source": "../packages/warning/README.md",
+		"parent": "packages"
+	},
+	{
+		"title": "@wordpress/webmcp-adapter",
+		"slug": "packages-webmcp-adapter",
+		"markdown_source": "../packages/webmcp-adapter/README.md",
 		"parent": "packages"
 	},
 	{

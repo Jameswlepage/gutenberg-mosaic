@@ -24,6 +24,7 @@ import useSelectionObserver from './use-selection-observer';
 import useClickSelection from './use-click-selection';
 import useInput from './use-input';
 import useClipboardHandler from './use-clipboard-handler';
+import useIdleCaret from './use-idle-caret';
 import { store as blockEditorStore } from '../../store';
 
 export function useWritingFlow() {
@@ -46,6 +47,7 @@ export function useWritingFlow() {
 			useSelectAll(),
 			useArrowNav(),
 			usePreviewModeNav(),
+			useIdleCaret(),
 			useRefEffect(
 				( node ) => {
 					node.tabIndex = 0;

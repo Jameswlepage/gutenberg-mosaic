@@ -2,7 +2,7 @@
 import { useStyleOverride } from '@wordpress/block-editor';
 import { privateApis as componentsPrivateApis } from '@wordpress/components';
 import { useResizeObserver, useMergeRefs } from '@wordpress/compose';
-import { useEffect, useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 
 import { unlock } from '../../lock-unlock';
 import { useBlockHighlighting } from './use-block-highlighting';
@@ -38,6 +38,7 @@ const COLLABORATORS_OVERLAY_STYLES = `
 }
 .collaborators-overlay-user {
 	position: absolute;
+	pointer-events: auto;
 }
 .collaborators-overlay-user-cursor {
 	position: absolute;
@@ -46,6 +47,42 @@ const COLLABORATORS_OVERLAY_STYLES = `
 	outline: 1px solid #fff;
 	box-shadow: ${ ELEVATION_X_SMALL };
 	animation: collaborators-overlay-cursor-blink 1s infinite;
+	transition: opacity 180ms ease;
+	will-change: transform, opacity, filter;
+}
+
+.collaborators-overlay-selection-highlight {
+	position: absolute;
+	pointer-events: none;
+	border-radius: 2px;
+	opacity: 0.9;
+}
+
+.collaborators-overlay-user::after {
+	content: "";
+	position: absolute;
+	left: -7px;
+	right: -7px;
+	top: -12px;
+	bottom: -8px;
+}
+
+.collaborators-overlay-user-label.components-avatar {
+	opacity: 0;
+	transform: translate(-11px, -100%);
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 220ms ease, visibility 0s linear 220ms;
+	will-change: opacity, transform;
+}
+
+.collaborators-overlay-user.is-hovered .collaborators-overlay-user-label.components-avatar,
+.collaborators-overlay-user:focus-within .collaborators-overlay-user-label.components-avatar {
+	opacity: 1;
+	transform: translate(-11px, -100%);
+	visibility: visible;
+	pointer-events: auto;
+	transition: opacity 220ms ease;
 }
 
 /* ── Avatar component (compiled from packages/components/src/avatar/styles.scss) ── */
@@ -139,56 +176,15 @@ const COLLABORATORS_OVERLAY_STYLES = `
 	position: absolute;
 	transform: translate(-11px, -100%);
 	margin-top: -4px;
-	pointer-events: auto;
 	overflow: visible;
 	width: max-content;
+	transform-origin: bottom center;
 }
 
 @keyframes collaborators-overlay-cursor-blink {
 	0%, 45% { opacity: 1; }
 	55%, 95% { opacity: 0; }
 	100% { opacity: 1; }
-}
-.collaborators-overlay-cursor-highlighted .collaborators-overlay-user-cursor {
-	animation: collaborators-overlay-cursor-highlight 0.6s ease-in-out 3;
-}
-.collaborators-overlay-cursor-highlighted .collaborators-overlay-user-label {
-	animation: collaborators-overlay-label-highlight 0.6s ease-in-out 3;
-}
-@keyframes collaborators-overlay-cursor-highlight {
-	0%, 100% {
-		transform: scale(1);
-		filter: drop-shadow(0 0 0 transparent);
-	}
-	50% {
-		transform: scale(1.2);
-		filter: drop-shadow(0 0 8px currentColor);
-	}
-}
-@keyframes collaborators-overlay-label-highlight {
-	0%, 100% {
-		transform: translate(-11px, -100%) scale(1);
-		filter: drop-shadow(0 0 0 transparent);
-	}
-	50% {
-		transform: translate(-11px, -100%) scale(1.1);
-		filter: drop-shadow(0 0 6px currentColor);
-	}
-}
-.block-editor-block-list__block.is-collaborator-selected:not(:focus)::after {
-	content: "";
-	position: absolute;
-	pointer-events: none;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	left: 0;
-	outline-color: var(--collaborator-outline-color);
-	outline-style: solid;
-	outline-width: calc(var(--wp-admin-border-width-focus) / var(--wp-block-editor-iframe-zoom-out-scale, 1));
-	outline-offset: calc(-1 * var(--wp-admin-border-width-focus) / var(--wp-block-editor-iframe-zoom-out-scale, 1));
-	box-shadow: inset 0 0 0 calc(var(--wp-admin-border-width-focus, 2px) + 1px) #fff, 0 0 0 1px #fff, ${ ELEVATION_X_SMALL };
-	z-index: 1;
 }
 @media (prefers-reduced-motion: reduce) {
 	.components-avatar.has-badge,
@@ -207,6 +203,28 @@ interface OverlayProps {
 	postType: string | null;
 }
 
+const CURSOR_WIDTH = 2;
+const CURSOR_HOVER_X_PADDING = 16;
+const CURSOR_HOVER_Y_PADDING = 16;
+const HIGHLIGHT_HOVER_PADDING = 0;
+const CURSOR_HOVER_EXIT_X_PADDING = 24;
+const CURSOR_HOVER_EXIT_Y_PADDING = 24;
+const HIGHLIGHT_HOVER_EXIT_PADDING = 0;
+const HOVER_EXIT_DELAY_MS = 180;
+
+function isPointInRect(
+	x: number,
+	y: number,
+	rect: { x: number; y: number; width: number; height: number }
+) {
+	return (
+		x >= rect.x &&
+		x <= rect.x + rect.width &&
+		y >= rect.y &&
+		y <= rect.y + rect.height
+	);
+}
+
 /**
  * This component is responsible for rendering the overlay components within the editor iframe.
  *
@@ -221,6 +239,12 @@ export function Overlay( {
 	postId,
 	postType,
 }: OverlayProps ) {
+	const [ hoveredCursorClientId, setHoveredCursorClientId ] = useState<
+		number | null
+	>( null );
+	const hoverClearTimeoutRef = useRef< number | null >( null );
+	const hoveredCursorClientIdRef = useRef< number | null >( null );
+
 	useStyleOverride( {
 		id: 'collaborators-overlay',
 		css: COLLABORATORS_OVERLAY_STYLES,
@@ -236,6 +260,12 @@ export function Overlay( {
 		postId ?? null,
 		postType ?? null
 	);
+	const collaboratorHighlights = useBlockHighlighting(
+		blockEditorDocument ?? null,
+		overlayElement,
+		postId ?? null,
+		postType ?? null
+	);
 
 	// Detect layout changes on overlay (e.g. turning on "Show Template") and window
 	// resizes, and re-render the cursors.
@@ -248,11 +278,127 @@ export function Overlay( {
 		resizeObserverRef,
 	] );
 
-	useBlockHighlighting(
-		blockEditorDocument ?? null,
-		postId ?? null,
-		postType ?? null
-	);
+	useEffect( () => {
+		hoveredCursorClientIdRef.current = hoveredCursorClientId;
+	}, [ hoveredCursorClientId ] );
+
+	useEffect( () => {
+		if ( ! blockEditorDocument || ! overlayElement ) {
+			if ( hoverClearTimeoutRef.current !== null ) {
+				window.clearTimeout( hoverClearTimeoutRef.current );
+				hoverClearTimeoutRef.current = null;
+			}
+			setHoveredCursorClientId( null );
+			return;
+		}
+
+		const clearHoverClearTimeout = () => {
+			if ( hoverClearTimeoutRef.current === null ) {
+				return;
+			}
+
+			window.clearTimeout( hoverClearTimeoutRef.current );
+			hoverClearTimeoutRef.current = null;
+		};
+
+		const scheduleHoverClear = () => {
+			clearHoverClearTimeout();
+			hoverClearTimeoutRef.current = window.setTimeout( () => {
+				setHoveredCursorClientId( null );
+			}, HOVER_EXIT_DELAY_MS );
+		};
+
+		const onPointerMove = ( event: PointerEvent ) => {
+			const overlayRect = overlayElement.getBoundingClientRect();
+			const x = event.clientX - overlayRect.left;
+			const y = event.clientY - overlayRect.top;
+
+			const findHoveredId = (
+				cursorPaddingX: number,
+				cursorPaddingY: number,
+				highlightPadding: number
+			) => {
+				const hoveredCursor = cursors.find( ( cursor ) =>
+					isPointInRect( x, y, {
+						x: cursor.x - cursorPaddingX,
+						y: cursor.y - cursorPaddingY,
+						width: CURSOR_WIDTH + cursorPaddingX * 2,
+						height: cursor.height + cursorPaddingY * 2,
+					} )
+				);
+
+				if ( hoveredCursor ) {
+					return hoveredCursor.clientId;
+				}
+
+				const hoveredHighlight = collaboratorHighlights.find(
+					( highlight ) =>
+						typeof highlight.clientId === 'number' &&
+						isPointInRect( x, y, {
+							x: highlight.x - highlightPadding,
+							y: highlight.y - highlightPadding,
+							width: highlight.width + highlightPadding * 2,
+							height: highlight.height + highlightPadding * 2,
+						} )
+				);
+
+				return hoveredHighlight?.clientId ?? null;
+			};
+
+			const nextHoveredId = findHoveredId(
+				CURSOR_HOVER_X_PADDING,
+				CURSOR_HOVER_Y_PADDING,
+				HIGHLIGHT_HOVER_PADDING
+			);
+			if ( nextHoveredId === null ) {
+				const stickyHoveredId = hoveredCursorClientIdRef.current;
+				if ( stickyHoveredId !== null ) {
+					const stickyIdAtPointer = findHoveredId(
+						CURSOR_HOVER_EXIT_X_PADDING,
+						CURSOR_HOVER_EXIT_Y_PADDING,
+						HIGHLIGHT_HOVER_EXIT_PADDING
+					);
+
+					if ( stickyIdAtPointer === stickyHoveredId ) {
+						clearHoverClearTimeout();
+						return;
+					}
+				}
+
+				scheduleHoverClear();
+				return;
+			}
+
+			clearHoverClearTimeout();
+			setHoveredCursorClientId( ( previousId ) =>
+				previousId === nextHoveredId ? previousId : nextHoveredId
+			);
+		};
+
+		const onPointerLeave = () => {
+			scheduleHoverClear();
+		};
+
+		blockEditorDocument.addEventListener( 'pointermove', onPointerMove );
+		blockEditorDocument.addEventListener( 'pointerleave', onPointerLeave );
+
+		return () => {
+			clearHoverClearTimeout();
+			blockEditorDocument.removeEventListener(
+				'pointermove',
+				onPointerMove
+			);
+			blockEditorDocument.removeEventListener(
+				'pointerleave',
+				onPointerLeave
+			);
+		};
+	}, [
+		blockEditorDocument,
+		overlayElement,
+		cursors,
+		collaboratorHighlights,
+	] );
 
 	// This is a full overlay that covers the entire iframe document. Good for
 	// scrollable elements like cursor indicators.
@@ -261,10 +407,15 @@ export function Overlay( {
 			{ cursors.map( ( cursor ) => (
 				<div
 					key={ cursor.clientId }
-					className="collaborators-overlay-user"
+					className={ `collaborators-overlay-user${
+						hoveredCursorClientId === cursor.clientId
+							? ' is-hovered'
+							: ''
+					}` }
 					style={ {
 						left: `${ cursor.x }px`,
 						top: `${ cursor.y }px`,
+						color: cursor.color,
 					} }
 				>
 					<div
@@ -283,6 +434,19 @@ export function Overlay( {
 						borderColor={ cursor.color }
 					/>
 				</div>
+			) ) }
+			{ collaboratorHighlights.map( ( highlight ) => (
+				<div
+					key={ highlight.id }
+					className="collaborators-overlay-selection-highlight"
+					style={ {
+						left: `${ highlight.x }px`,
+						top: `${ highlight.y }px`,
+						width: `${ highlight.width }px`,
+						height: `${ highlight.height }px`,
+						backgroundColor: highlight.color,
+					} }
+				/>
 			) ) }
 		</div>
 	);

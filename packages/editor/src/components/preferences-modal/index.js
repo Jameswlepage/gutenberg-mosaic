@@ -5,7 +5,7 @@
 import { __ } from '@wordpress/i18n';
 import { useViewportMatch } from '@wordpress/compose';
 import { useSelect, useDispatch } from '@wordpress/data';
-import { useMemo, useState, useCallback } from '@wordpress/element';
+import { useMemo, useState, useCallback, useId } from '@wordpress/element';
 import {
 	store as preferencesStore,
 	privateApis as preferencesPrivateApis,
@@ -42,6 +42,8 @@ const {
 } = unlock( preferencesPrivateApis );
 
 const GEMINI_API_KEY_STORAGE_KEY = 'gutenberg_gemini_api_key';
+const EXA_API_KEY_STORAGE_KEY = 'gutenberg_exa_api_key';
+const FAL_API_KEY_STORAGE_KEY = 'gutenberg_fal_api_key';
 const GEMINI_VOICE_STORAGE_KEY = 'gutenberg_gemini_voice';
 const GEMINI_LANGUAGE_STORAGE_KEY = 'gutenberg_gemini_language';
 
@@ -80,7 +82,7 @@ const LANGUAGES = [
 
 function getStored( key, fallback = '' ) {
 	try {
-		return localStorage.getItem( key ) || fallback;
+		return window.localStorage.getItem( key ) || fallback;
 	} catch {
 		return fallback;
 	}
@@ -88,19 +90,105 @@ function getStored( key, fallback = '' ) {
 
 function setStored( key, value ) {
 	try {
-		localStorage.setItem( key, value );
+		window.localStorage.setItem( key, value );
 	} catch {
 		// Ignore storage errors.
 	}
 }
 
-function AIPreferencesContent() {
-	const [ apiKey, setApiKey ] = useState( () =>
-		getStored( GEMINI_API_KEY_STORAGE_KEY )
+function ApiKeyField( { storageKey, label, helpUrl, helpText } ) {
+	const [ savedKey, setSavedKey ] = useState( () => getStored( storageKey ) );
+	const [ tempKey, setTempKey ] = useState( '' );
+	const [ isEditing, setIsEditing ] = useState( false );
+	const [ error, setError ] = useState( null );
+
+	const handleSave = useCallback( () => {
+		if ( ! tempKey.trim() ) {
+			setError( __( 'API key is required' ) );
+			return;
+		}
+		setStored( storageKey, tempKey.trim() );
+		setSavedKey( tempKey.trim() );
+		setIsEditing( false );
+		setTempKey( '' );
+		setError( null );
+	}, [ tempKey, storageKey ] );
+
+	if ( savedKey && ! isEditing ) {
+		return (
+			<HStack alignment="left">
+				<Text>{ '••••••••' + savedKey.slice( -4 ) }</Text>
+				<Button
+					__next40pxDefaultSize
+					variant="link"
+					onClick={ () => {
+						setIsEditing( true );
+						setTempKey( '' );
+					} }
+				>
+					{ __( 'Change' ) }
+				</Button>
+			</HStack>
+		);
+	}
+
+	return (
+		<>
+			<TextControl
+				__next40pxDefaultSize
+				label={ label }
+				value={ tempKey }
+				onChange={ ( value ) => {
+					setTempKey( value );
+					setError( null );
+				} }
+				type="password"
+				help={
+					helpUrl ? (
+						<a
+							href={ helpUrl }
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							{ helpText }
+						</a>
+					) : undefined
+				}
+			/>
+			{ error && (
+				<Notice status="error" isDismissible={ false }>
+					{ error }
+				</Notice>
+			) }
+			<HStack alignment="left">
+				<Button
+					__next40pxDefaultSize
+					variant="primary"
+					onClick={ handleSave }
+					disabled={ ! tempKey.trim() }
+					accessibleWhenDisabled
+				>
+					{ __( 'Save' ) }
+				</Button>
+				{ savedKey && (
+					<Button
+						__next40pxDefaultSize
+						variant="tertiary"
+						onClick={ () => {
+							setIsEditing( false );
+							setTempKey( '' );
+							setError( null );
+						} }
+					>
+						{ __( 'Cancel' ) }
+					</Button>
+				) }
+			</HStack>
+		</>
 	);
-	const [ tempApiKey, setTempApiKey ] = useState( '' );
-	const [ isEditingKey, setIsEditingKey ] = useState( false );
-	const [ keyError, setKeyError ] = useState( null );
+}
+
+function AIPreferencesContent() {
 	const [ voicePreset, setVoicePreset ] = useState( () =>
 		getStored( GEMINI_VOICE_STORAGE_KEY, 'Aoede' )
 	);
@@ -108,17 +196,8 @@ function AIPreferencesContent() {
 		getStored( GEMINI_LANGUAGE_STORAGE_KEY, '' )
 	);
 
-	const handleSaveApiKey = useCallback( () => {
-		if ( ! tempApiKey.trim() ) {
-			setKeyError( __( 'API key is required' ) );
-			return;
-		}
-		setStored( GEMINI_API_KEY_STORAGE_KEY, tempApiKey.trim() );
-		setApiKey( tempApiKey.trim() );
-		setIsEditingKey( false );
-		setTempApiKey( '' );
-		setKeyError( null );
-	}, [ tempApiKey ] );
+	const voiceSelectId = useId();
+	const langSelectId = useId();
 
 	const handleVoiceChange = useCallback( ( e ) => {
 		const value = e.target.value;
@@ -135,90 +214,50 @@ function AIPreferencesContent() {
 	return (
 		<>
 			<PreferencesModalSection
-				title={ __( 'API key' ) }
+				title={ __( 'Gemini API key' ) }
 				description={ __(
 					'A Gemini API key is required to use the AI assistant.'
 				) }
 			>
-				{ apiKey && ! isEditingKey ? (
-					<HStack alignment="left">
-						<Text>
-							{ '••••••••' + apiKey.slice( -4 ) }
-						</Text>
-						<Button
-							__next40pxDefaultSize
-							variant="link"
-							onClick={ () => {
-								setIsEditingKey( true );
-								setTempApiKey( '' );
-							} }
-						>
-							{ __( 'Change' ) }
-						</Button>
-					</HStack>
-				) : (
-					<>
-						<TextControl
-							__next40pxDefaultSize
-							label={ __( 'API Key' ) }
-							value={ tempApiKey }
-							onChange={ ( value ) => {
-								setTempApiKey( value );
-								setKeyError( null );
-							} }
-							type="password"
-							help={
-								<a
-									href="https://aistudio.google.com/app/apikey"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									{ __(
-										'Get your API key from Google AI Studio'
-									) }
-								</a>
-							}
-						/>
-						{ keyError && (
-							<Notice status="error" isDismissible={ false }>
-								{ keyError }
-							</Notice>
-						) }
-						<HStack alignment="left">
-							<Button
-								__next40pxDefaultSize
-								variant="primary"
-								onClick={ handleSaveApiKey }
-								disabled={ ! tempApiKey.trim() }
-							>
-								{ __( 'Save' ) }
-							</Button>
-							{ apiKey && (
-								<Button
-									__next40pxDefaultSize
-									variant="tertiary"
-									onClick={ () => {
-										setIsEditingKey( false );
-										setTempApiKey( '' );
-										setKeyError( null );
-									} }
-								>
-									{ __( 'Cancel' ) }
-								</Button>
-							) }
-						</HStack>
-					</>
+				<ApiKeyField
+					storageKey={ GEMINI_API_KEY_STORAGE_KEY }
+					label={ __( 'API Key' ) }
+					helpUrl="https://aistudio.google.com/app/apikey"
+					helpText={ __( 'Get your API key from Google AI Studio' ) }
+				/>
+			</PreferencesModalSection>
+			<PreferencesModalSection
+				title={ __( 'Exa API key' ) }
+				description={ __(
+					'An Exa API key enables AI-powered web search.'
 				) }
+			>
+				<ApiKeyField
+					storageKey={ EXA_API_KEY_STORAGE_KEY }
+					label={ __( 'Exa API Key' ) }
+					helpUrl="https://dashboard.exa.ai/api-keys"
+					helpText={ __( 'Get your API key from Exa' ) }
+				/>
+			</PreferencesModalSection>
+			<PreferencesModalSection
+				title={ __( 'Fal API key' ) }
+				description={ __(
+					'A Fal API key enables AI image generation.'
+				) }
+			>
+				<ApiKeyField
+					storageKey={ FAL_API_KEY_STORAGE_KEY }
+					label={ __( 'Fal API Key' ) }
+					helpUrl="https://fal.ai/dashboard/keys"
+					helpText={ __( 'Get your API key from fal.ai' ) }
+				/>
 			</PreferencesModalSection>
 			<PreferencesModalSection
 				title={ __( 'Voice' ) }
-				description={ __(
-					'Choose a voice for the AI assistant.'
-				) }
+				description={ __( 'Choose a voice for the AI assistant.' ) }
 			>
-				{ /* eslint-disable-next-line jsx-a11y/no-onchange */ }
 				<select
-					id="gemini-voice-select"
+					id={ voiceSelectId }
 					className="editor-ai-preferences__select"
 					value={ voicePreset }
 					onChange={ handleVoiceChange }
@@ -232,13 +271,10 @@ function AIPreferencesContent() {
 			</PreferencesModalSection>
 			<PreferencesModalSection
 				title={ __( 'Language' ) }
-				description={ __(
-					'Set the language for speech recognition.'
-				) }
+				description={ __( 'Set the language for speech recognition.' ) }
 			>
-				{ /* eslint-disable-next-line jsx-a11y/no-onchange */ }
 				<select
-					id="gemini-lang-select"
+					id={ langSelectId }
 					className="editor-ai-preferences__select"
 					value={ languageCode }
 					onChange={ handleLanguageChange }

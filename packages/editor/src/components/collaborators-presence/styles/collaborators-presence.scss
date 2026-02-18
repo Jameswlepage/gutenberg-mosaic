@@ -15,6 +15,13 @@
 	}
 }
 
+// Override the design-system Avatar's blue accent background so that
+// transparent images (e.g. AI logos) sit on a white circle instead.
+.editor-collaborators-presence .components-avatar,
+.editor-collaborators-presence .components-avatar__image {
+	background-color: $white;
+}
+
 .editor-collaborators-presence__button.editor-collaborators-presence__button.components-button {
 	display: flex;
 	align-items: center;

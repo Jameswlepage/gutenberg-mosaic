@@ -4,6 +4,7 @@
 import { dispatch, select } from '@wordpress/data';
 import { createBlock } from '@wordpress/blocks';
 import { store as blockEditorStore } from '@wordpress/block-editor';
+import { store as noticesStore } from '@wordpress/notices';
 import { getAbility, registerAbility } from '@wordpress/abilities';
 import apiFetch from '@wordpress/api-fetch';
 
@@ -29,7 +30,7 @@ function getFalApiKey(): string {
 			window as Window & {
 				gutenbergGeminiAgentConfig?: GeminiRuntimeConfig;
 			}
-		).gutenbergGeminiAgentConfig;
+		 ).gutenbergGeminiAgentConfig;
 		const runtimeKey = runtimeConfig?.falApiKey?.trim();
 		if ( runtimeKey ) {
 			return runtimeKey;
@@ -39,9 +40,7 @@ function getFalApiKey(): string {
 	}
 
 	try {
-		const stored = localStorage
-			.getItem( 'gutenberg_fal_api_key' )
-			?.trim();
+		const stored = localStorage.getItem( 'gutenberg_fal_api_key' )?.trim();
 		if ( stored ) {
 			return stored;
 		}
@@ -65,11 +64,11 @@ const ASPECT_RATIOS: { ratio: string; value: number }[] = [
 
 /**
  * Given pixel dimensions, return the closest supported aspect ratio string.
+ *
+ * @param {number} width  Image width in pixels.
+ * @param {number} height Image height in pixels.
  */
-function detectAspectRatio(
-	width: number,
-	height: number
-): string {
+function detectAspectRatio( width: number, height: number ): string {
 	if ( ! width || ! height ) {
 		return '1:1';
 	}
@@ -88,6 +87,8 @@ function detectAspectRatio(
 
 /**
  * Load an image URL and return its natural dimensions.
+ *
+ * @param {string} url The image URL to load.
  */
 function getImageDimensions(
 	url: string
@@ -106,9 +107,7 @@ function blobToDataUrl( blob: Blob ): Promise< string > {
 		const reader = new FileReader();
 		reader.onload = () => resolve( String( reader.result || '' ) );
 		reader.onerror = () =>
-			reject(
-				new Error( 'Failed to convert image blob to data URL.' )
-			);
+			reject( new Error( 'Failed to convert image blob to data URL.' ) );
 		reader.readAsDataURL( blob );
 	} );
 }
@@ -125,10 +124,7 @@ async function resolveFalReferenceImageUrl(
 		return trimmed;
 	}
 
-	const normalized = new URL(
-		trimmed,
-		window.location.origin
-	).toString();
+	const normalized = new URL( trimmed, window.location.origin ).toString();
 
 	// Always pass reference images as Base64 data URLs for consistent behavior.
 	const imageResponse = await window.fetch( normalized );
@@ -208,20 +204,21 @@ export function registerGenerateImageAbility(): void {
 			try {
 				const falApiKey = getFalApiKey();
 				if ( ! falApiKey ) {
+					dispatch( noticesStore ).createErrorNotice(
+						'Fal API key is missing. Add it in Preferences \u2192 AI.',
+						{ type: 'snackbar' }
+					);
 					return {
 						success: false,
 						message:
-							'Missing fal.ai API key. Set window.gutenbergGeminiAgentConfig.falApiKey or localStorage key "gutenberg_fal_api_key".',
+							'Missing fal.ai API key. Add it in Preferences \u2192 AI.',
 						clientId: '',
 						imageUrl: '',
 					};
 				}
 
-				const {
-					insertBlock,
-					selectBlock,
-					updateBlockAttributes,
-				} = dispatch( blockEditorStore );
+				const { insertBlock, selectBlock, updateBlockAttributes } =
+					dispatch( blockEditorStore );
 				const {
 					getSelectedBlockClientId,
 					getBlockRootClientId,
@@ -252,8 +249,7 @@ export function registerGenerateImageAbility(): void {
 					const targetUrl = targetBlock?.attributes?.url;
 					if ( targetUrl ) {
 						try {
-							const dims =
-								await getImageDimensions( targetUrl );
+							const dims = await getImageDimensions( targetUrl );
 							aspectRatio = detectAspectRatio(
 								dims.width,
 								dims.height
@@ -309,9 +305,7 @@ export function registerGenerateImageAbility(): void {
 				}
 
 				// 2. Fetch the generated image as a blob.
-				const imageResponse = await window.fetch(
-					generatedImageUrl
-				);
+				const imageResponse = await window.fetch( generatedImageUrl );
 				if ( ! imageResponse.ok ) {
 					return {
 						success: false,
@@ -338,17 +332,13 @@ export function registerGenerateImageAbility(): void {
 					body: formData,
 				} );
 
-				const wpImageUrl =
-					attachment?.source_url || generatedImageUrl;
+				const wpImageUrl = attachment?.source_url || generatedImageUrl;
 				const attachmentId = attachment?.id;
 
 				// If we have a target image block, update it in place.
 				if ( resolvedTargetId ) {
 					const targetBlock = getBlock( resolvedTargetId );
-					if (
-						! targetBlock ||
-						targetBlock.name !== 'core/image'
-					) {
+					if ( ! targetBlock || targetBlock.name !== 'core/image' ) {
 						return {
 							success: false,
 							message: `Block ${ resolvedTargetId } is not a core/image block or was not found.`,
@@ -390,10 +380,8 @@ export function registerGenerateImageAbility(): void {
 
 				if ( selectedClientId ) {
 					rootClientId =
-						getBlockRootClientId( selectedClientId ) ||
-						undefined;
-					const selectedIndex =
-						getBlockIndex( selectedClientId );
+						getBlockRootClientId( selectedClientId ) || undefined;
+					const selectedIndex = getBlockIndex( selectedClientId );
 
 					switch ( position ) {
 						case 'before':
@@ -507,19 +495,21 @@ export function registerEditImageAbility(): void {
 			try {
 				const falApiKey = getFalApiKey();
 				if ( ! falApiKey ) {
+					dispatch( noticesStore ).createErrorNotice(
+						'Fal API key is missing. Add it in Preferences \u2192 AI.',
+						{ type: 'snackbar' }
+					);
 					return {
 						success: false,
 						message:
-							'Missing fal.ai API key. Set window.gutenbergGeminiAgentConfig.falApiKey or localStorage key "gutenberg_fal_api_key".',
+							'Missing fal.ai API key. Add it in Preferences \u2192 AI.',
 						clientId: '',
 						imageUrl: '',
 					};
 				}
 
-				const {
-					getBlock,
-					getSelectedBlockClientId,
-				} = select( blockEditorStore );
+				const { getBlock, getSelectedBlockClientId } =
+					select( blockEditorStore );
 
 				// Auto-detect selected image block if no targetClientId.
 				let resolvedTargetId = input.targetClientId || '';
@@ -538,14 +528,9 @@ export function registerEditImageAbility(): void {
 
 				if ( resolvedTargetId ) {
 					const targetBlock = getBlock( resolvedTargetId );
-					if (
-						targetBlock &&
-						targetBlock.name === 'core/image'
-					) {
+					if ( targetBlock && targetBlock.name === 'core/image' ) {
 						shimmerTargetId = resolvedTargetId;
-						dispatch(
-							geminiAgentStore
-						).setImageEditTargetClientId(
+						dispatch( geminiAgentStore ).setImageEditTargetClientId(
 							shimmerTargetId
 						);
 					}
@@ -556,12 +541,8 @@ export function registerEditImageAbility(): void {
 
 				if ( ! referenceImageUrl && resolvedTargetId ) {
 					const targetBlock = getBlock( resolvedTargetId );
-					if (
-						targetBlock &&
-						targetBlock.name === 'core/image'
-					) {
-						referenceImageUrl =
-							targetBlock.attributes?.url || '';
+					if ( targetBlock && targetBlock.name === 'core/image' ) {
+						referenceImageUrl = targetBlock.attributes?.url || '';
 					}
 				}
 
@@ -576,9 +557,7 @@ export function registerEditImageAbility(): void {
 				}
 
 				const falReferenceImageUrl =
-					await resolveFalReferenceImageUrl(
-						referenceImageUrl
-					);
+					await resolveFalReferenceImageUrl( referenceImageUrl );
 
 				// 1. Call fal.ai Gemini Flash Edit API.
 				const falResponse = await window.fetch(
@@ -625,8 +604,7 @@ export function registerEditImageAbility(): void {
 				}
 
 				// 2. Fetch the edited image as a blob.
-				const imageResponse =
-					await window.fetch( editedImageUrl );
+				const imageResponse = await window.fetch( editedImageUrl );
 				if ( ! imageResponse.ok ) {
 					return {
 						success: false,
@@ -645,11 +623,7 @@ export function registerEditImageAbility(): void {
 
 				// 3. Upload to WordPress media library.
 				const formData = new FormData();
-				formData.append(
-					'file',
-					imageFile,
-					'ai-edited-image.png'
-				);
+				formData.append( 'file', imageFile, 'ai-edited-image.png' );
 
 				const attachment: any = await apiFetch( {
 					path: '/wp/v2/media',
@@ -657,29 +631,19 @@ export function registerEditImageAbility(): void {
 					body: formData,
 				} );
 
-				const wpImageUrl =
-					attachment?.source_url || editedImageUrl;
+				const wpImageUrl = attachment?.source_url || editedImageUrl;
 				const attachmentId = attachment?.id;
 
 				// 4. Insert or update the image block.
-				const {
-					insertBlock,
-					selectBlock,
-					updateBlockAttributes,
-				} = dispatch( blockEditorStore );
-				const {
-					getBlockRootClientId,
-					getBlockIndex,
-					getBlocks,
-				} = select( blockEditorStore );
+				const { insertBlock, selectBlock, updateBlockAttributes } =
+					dispatch( blockEditorStore );
+				const { getBlockRootClientId, getBlockIndex, getBlocks } =
+					select( blockEditorStore );
 
 				// If we have a resolved target, update it in place.
 				if ( resolvedTargetId ) {
 					const targetBlock = getBlock( resolvedTargetId );
-					if (
-						! targetBlock ||
-						targetBlock.name !== 'core/image'
-					) {
+					if ( ! targetBlock || targetBlock.name !== 'core/image' ) {
 						return {
 							success: false,
 							message: `Block ${ resolvedTargetId } is not a core/image block or was not found.`,
@@ -694,9 +658,7 @@ export function registerEditImageAbility(): void {
 						alt: input.prompt,
 					} );
 
-					dispatch(
-						geminiAgentStore
-					).setActiveBlockClientId(
+					dispatch( geminiAgentStore ).setActiveBlockClientId(
 						resolvedTargetId
 					);
 
@@ -723,10 +685,8 @@ export function registerEditImageAbility(): void {
 
 				if ( selectedClientId ) {
 					rootClientId =
-						getBlockRootClientId( selectedClientId ) ||
-						undefined;
-					const selectedIndex =
-						getBlockIndex( selectedClientId );
+						getBlockRootClientId( selectedClientId ) || undefined;
+					const selectedIndex = getBlockIndex( selectedClientId );
 
 					switch ( position ) {
 						case 'before':
@@ -739,8 +699,7 @@ export function registerEditImageAbility(): void {
 							index = 0;
 							break;
 						case 'last':
-							index =
-								getBlocks( rootClientId ).length;
+							index = getBlocks( rootClientId ).length;
 							break;
 					}
 				} else {
@@ -750,9 +709,9 @@ export function registerEditImageAbility(): void {
 
 				insertBlock( block, index, rootClientId );
 				selectBlock( block.clientId );
-				dispatch(
-					geminiAgentStore
-				).setActiveBlockClientId( block.clientId );
+				dispatch( geminiAgentStore ).setActiveBlockClientId(
+					block.clientId
+				);
 
 				return {
 					success: true,
@@ -772,9 +731,9 @@ export function registerEditImageAbility(): void {
 				};
 			} finally {
 				if ( shimmerTargetId ) {
-					dispatch(
-						geminiAgentStore
-					).setImageEditTargetClientId( null );
+					dispatch( geminiAgentStore ).setImageEditTargetClientId(
+						null
+					);
 				}
 			}
 		},

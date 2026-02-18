@@ -77,7 +77,7 @@ export function CollaboratorsList( {
 								) }
 								name={ collaboratorState.collaboratorInfo.name }
 								borderColor={ getAvatarBorderColor(
-									collaboratorState.collaboratorInfo.id
+									collaboratorState.collaboratorInfo.id ?? 0
 								) }
 							/>
 							<div className="editor-collaborators-presence__list-item-info">

@@ -3,7 +3,7 @@ import {
 	type SelectionCursor,
 	SelectionType,
 } from '@wordpress/core-data';
-import { useEffect, useMemo, useState } from '@wordpress/element';
+import { useEffect, useMemo, useRef, useState } from '@wordpress/element';
 
 import { unlock } from '../../lock-unlock';
 import { getAvatarUrl } from './get-avatar-url';
@@ -11,6 +11,150 @@ import { getAvatarBorderColor } from '../collab-sidebar/utils';
 
 const { useActiveCollaborators, useGetAbsolutePositionIndex } =
 	unlock( coreDataPrivateApis );
+const CURSOR_INACTIVITY_TIMEOUT_MS = 5000;
+
+function getCollaboratorInfo( user: any ) {
+	return user?.collaboratorInfo || user?.userInfo || null;
+}
+
+function getCollaboratorColor( user: any ) {
+	const collaboratorInfo = getCollaboratorInfo( user );
+	const userId = collaboratorInfo?.id ?? user?.clientId;
+	const numericUserId = Number( userId );
+
+	return Number.isFinite( numericUserId )
+		? getAvatarBorderColor( numericUserId )
+		: getAvatarBorderColor( 0 );
+}
+
+function getCollaboratorName( user: any ): string | null {
+	return getCollaboratorInfo( user )?.name ?? null;
+}
+
+function getCollaboratorId( user: any ) {
+	const collaboratorInfo = getCollaboratorInfo( user );
+
+	return String(
+		collaboratorInfo?.id ?? collaboratorInfo?.userId ?? user?.clientId
+	);
+}
+
+function getCollaboratorEnteredAt( user: any ) {
+	return Number( getCollaboratorInfo( user )?.enteredAt ?? 0 );
+}
+
+function getMyUserIds( users: any[] ) {
+	const myUserIds = new Set< string >();
+
+	users.forEach( ( user ) => {
+		if ( ! user?.isMe ) {
+			return;
+		}
+
+		const userId = getCollaboratorId( user );
+		if ( userId ) {
+			myUserIds.add( userId );
+		}
+	} );
+
+	return myUserIds;
+}
+
+function pickPreferredCollaboratorState( existing: any, next: any ): boolean {
+	if ( ! existing ) {
+		return true;
+	}
+
+	if ( next.isMe && ! existing.isMe ) {
+		return true;
+	}
+
+	if ( ! next.isMe && existing.isMe ) {
+		return false;
+	}
+
+	if ( next.isConnected && ! existing.isConnected ) {
+		return true;
+	}
+
+	if ( next.isConnected === existing.isConnected ) {
+		return (
+			getCollaboratorEnteredAt( next ) >=
+			getCollaboratorEnteredAt( existing )
+		);
+	}
+
+	return false;
+}
+
+function dedupeCollaboratorStates( users: any[] ) {
+	const seen = new Map< string, any >();
+	const myUserIds = getMyUserIds( users );
+
+	for ( const user of users ) {
+		if ( ! user || user.isMe ) {
+			continue;
+		}
+
+		const userId = getCollaboratorId( user );
+		if ( myUserIds.has( userId ) ) {
+			continue;
+		}
+		const existing = seen.get( userId );
+
+		if ( pickPreferredCollaboratorState( existing, user ) ) {
+			seen.set( userId, user );
+		}
+	}
+
+	return Array.from( seen.values() );
+}
+
+function getSelectionSignature( selection: any ): string {
+	if ( ! selection ) {
+		return 'none';
+	}
+
+	switch ( selection.type ) {
+		case SelectionType.None:
+			return 'none';
+		case SelectionType.Cursor:
+			return `cursor:${ selection.blockId ?? '' }:${
+				selection?.cursorPosition?.absoluteOffset ?? ''
+			}`;
+		case SelectionType.SelectionInOneBlock:
+			return `selection-one:${ selection.blockId ?? '' }:${
+				selection?.cursorStartPosition?.absoluteOffset ?? ''
+			}:${ selection?.cursorEndPosition?.absoluteOffset ?? '' }`;
+		case SelectionType.SelectionInMultipleBlocks:
+			return `selection-multi:${ selection.blockStartId ?? '' }:${
+				selection.blockEndId ?? ''
+			}:${ selection?.cursorStartPosition?.absoluteOffset ?? '' }:${
+				selection?.cursorEndPosition?.absoluteOffset ?? ''
+			}`;
+		case SelectionType.WholeBlock:
+			return `whole-block:${ selection.blockId ?? '' }`;
+		default:
+			return `unknown:${ String( selection.type ?? '' ) }`;
+	}
+}
+
+function resolveCursorOffset(
+	selection: SelectionCursor,
+	getAbsolutePositionIndex: ( selection: SelectionCursor ) => number | null
+) {
+	const resolvedAbsolutePositionIndex = getAbsolutePositionIndex( selection );
+	if ( resolvedAbsolutePositionIndex !== null ) {
+		return resolvedAbsolutePositionIndex;
+	}
+
+	const fallbackAbsoluteOffset = Number(
+		selection?.cursorPosition?.absoluteOffset
+	);
+	return Number.isFinite( fallbackAbsoluteOffset )
+		? fallbackAbsoluteOffset
+		: null;
+}
 
 export interface CursorData {
 	userName: string;
@@ -20,6 +164,7 @@ export interface CursorData {
 	x: number;
 	y: number;
 	height: number;
+	isHighlighted: boolean;
 }
 
 /**
@@ -49,6 +194,12 @@ export function useRenderCursors(
 	const [ cursorPositions, setCursorPositions ] = useState< CursorData[] >(
 		[]
 	);
+	const lastSelectionSignatureByClientRef = useRef< Map< number, string > >(
+		new Map()
+	);
+	const lastSelectionActivityByClientRef = useRef< Map< number, number > >(
+		new Map()
+	);
 
 	const computeCursors = useMemo(
 		() => () => {
@@ -58,21 +209,76 @@ export function useRenderCursors(
 			}
 
 			const results: CursorData[] = [];
+			const dedupedUsers = dedupeCollaboratorStates( sortedUsers );
+			const now = Date.now();
+			const connectedClientIds = new Set< number >();
 
-			sortedUsers.forEach( ( user: any ) => {
-				if ( user.isMe ) {
+			dedupedUsers.forEach( ( user: any ) => {
+				if ( user?.isConnected ) {
+					connectedClientIds.add( user.clientId );
+				}
+			} );
+
+			for ( const clientId of lastSelectionActivityByClientRef.current.keys() ) {
+				if ( connectedClientIds.has( clientId ) ) {
+					continue;
+				}
+
+				lastSelectionActivityByClientRef.current.delete( clientId );
+				lastSelectionSignatureByClientRef.current.delete( clientId );
+			}
+
+			dedupedUsers.forEach( ( user: any ) => {
+				if ( ! user?.isConnected ) {
 					return;
 				}
 
 				const selection = user.editorState?.selection ?? {
 					type: SelectionType.None,
 				};
-				const userName = user.collaboratorInfo.name;
+				const selectionSignature = getSelectionSignature( selection );
+				const userName = getCollaboratorName( user ) || user.clientId;
 				const clientId = user.clientId;
-				const color = getAvatarBorderColor( user.collaboratorInfo.id );
+				const previousSelectionSignature =
+					lastSelectionSignatureByClientRef.current.get( clientId );
+
+				if ( previousSelectionSignature !== selectionSignature ) {
+					lastSelectionSignatureByClientRef.current.set(
+						clientId,
+						selectionSignature
+					);
+					lastSelectionActivityByClientRef.current.set(
+						clientId,
+						now
+					);
+				}
+
+				if (
+					! lastSelectionActivityByClientRef.current.has( clientId )
+				) {
+					lastSelectionActivityByClientRef.current.set(
+						clientId,
+						now
+					);
+				}
+
+				const lastActivityAt =
+					lastSelectionActivityByClientRef.current.get( clientId ) ??
+					now;
+				const isCollaboratorActive =
+					now - lastActivityAt <= CURSOR_INACTIVITY_TIMEOUT_MS;
+
+				if ( ! isCollaboratorActive ) {
+					return;
+				}
+				const color = getCollaboratorColor( user );
 				const avatarUrl = getAvatarUrl(
-					user.collaboratorInfo.avatar_urls
+					getCollaboratorInfo( user )?.avatar_urls
 				);
+				const isHighlighted = [
+					SelectionType.SelectionInOneBlock,
+					SelectionType.SelectionInMultipleBlocks,
+				].includes( selection.type as SelectionType );
 
 				let coords: {
 					x: number;
@@ -85,8 +291,12 @@ export function useRenderCursors(
 				} else if ( selection.type === SelectionType.WholeBlock ) {
 					// Don't draw a cursor for a whole block selection.
 				} else if ( selection.type === SelectionType.Cursor ) {
+					const cursorOffset = resolveCursorOffset(
+						selection,
+						getAbsolutePositionIndex
+					);
 					coords = getCursorPosition(
-						getAbsolutePositionIndex( selection ),
+						cursorOffset,
 						selection.blockId,
 						blockEditorDocument,
 						overlayElement
@@ -99,8 +309,12 @@ export function useRenderCursors(
 						blockId: selection.blockId,
 						cursorPosition: selection.cursorStartPosition,
 					};
+					const cursorOffset = resolveCursorOffset(
+						selectionAsCursor,
+						getAbsolutePositionIndex
+					);
 					coords = getCursorPosition(
-						getAbsolutePositionIndex( selectionAsCursor ),
+						cursorOffset,
 						selectionAsCursor.blockId,
 						blockEditorDocument,
 						overlayElement
@@ -113,8 +327,12 @@ export function useRenderCursors(
 						blockId: selection.blockStartId,
 						cursorPosition: selection.cursorStartPosition,
 					};
+					const cursorOffset = resolveCursorOffset(
+						selectionAsCursor,
+						getAbsolutePositionIndex
+					);
 					coords = getCursorPosition(
-						getAbsolutePositionIndex( selectionAsCursor ),
+						cursorOffset,
 						selectionAsCursor.blockId,
 						blockEditorDocument,
 						overlayElement
@@ -128,6 +346,7 @@ export function useRenderCursors(
 						color,
 						avatarUrl,
 						...coords,
+						isHighlighted,
 					} );
 				}
 			} );
@@ -143,6 +362,10 @@ export function useRenderCursors(
 	);
 
 	useEffect( computeCursors, [ computeCursors ] );
+	useEffect( () => {
+		const intervalId = window.setInterval( computeCursors, 1000 );
+		return () => window.clearInterval( intervalId );
+	}, [ computeCursors ] );
 
 	const rerenderCursorsAfterDelay = useMemo(
 		() => () => {

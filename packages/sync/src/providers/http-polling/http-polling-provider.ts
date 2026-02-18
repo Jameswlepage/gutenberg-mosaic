@@ -2,7 +2,7 @@
  * External dependencies
  */
 import type * as Y from 'yjs';
-import { ObservableV2 } from 'lib0/observable';
+import { Observable } from 'lib0/observable';
 import { Awareness } from 'y-protocols/awareness';
 
 /**
@@ -23,18 +23,10 @@ export interface ProviderOptions {
 }
 
 /**
- * Event types for HttpPollingProvider.
- * ObservableV2 expects event handlers as functions.
- */
-type HttpPollingEvents = {
-	status: ( status: ConnectionStatus ) => void;
-};
-
-/**
  * Yjs provider that uses HTTP polling for real-time synchronization. It manages
  * document updates and awareness states through a central sync server.
  */
-class HttpPollingProvider extends ObservableV2< HttpPollingEvents > {
+class HttpPollingProvider extends Observable< string > {
 	protected awareness: Awareness;
 	protected status: ConnectionStatus[ 'status' ] = 'disconnected';
 	protected synced = false;
@@ -100,7 +92,6 @@ class HttpPollingProvider extends ObservableV2< HttpPollingEvents > {
 
 		this.log( 'Status change', { status, error } );
 
-		// ObservableV2 expects arguments as an array
 		this.status = status;
 		this.emit( 'status', [ { error, status } ] );
 	};
@@ -153,8 +144,7 @@ export function createHttpPollingProvider(): ProviderCreator {
 
 		return {
 			destroy: () => provider.destroy(),
-			// Adapter: ObservableV2.on is compatible with ProviderOn
-			// The callback receives data as the first parameter
+			// Adapter: Observable.on is compatible with ProviderOn
 			on: ( event, callback ) => {
 				provider.on( event, callback );
 			},

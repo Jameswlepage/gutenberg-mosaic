@@ -1,14 +1,15 @@
 /**
  * WordPress dependencies
  */
-import { select } from '@wordpress/data';
+import { registerAbility, getAbility } from '@wordpress/abilities';
+import { dispatch, select, resolveSelect } from '@wordpress/data';
+import { store as coreStore } from '@wordpress/core-data';
+import { store as noticesStore } from '@wordpress/notices';
 
 /**
  * Internal dependencies
  */
 import { AGENT_CATEGORY } from './block-abilities';
-import { registerAbility, getAbility } from '@wordpress/abilities';
-import { resolveSelect } from '@wordpress/data';
 
 /**
  * Register the Openverse search ability
@@ -110,10 +111,9 @@ export function registerSearchOpenverseAbility(): void {
 			return {
 				results: results.map( ( result: any ) => ( {
 					id: result.id,
-					title:
-						result.title?.toLowerCase().startsWith( 'file:' )
-							? result.title.slice( 5 )
-							: result.title,
+					title: result.title?.toLowerCase().startsWith( 'file:' )
+						? result.title.slice( 5 )
+						: result.title,
 					creator: result.creator || '',
 					url: result.url || '',
 					thumbnail: result.thumbnail || '',
@@ -199,16 +199,14 @@ export function registerSearchPostsAbility(): void {
 				search: input.search,
 				per_page: perPage,
 				context:
-					postStatus && postStatus !== 'publish'
-						? 'edit'
-						: 'view',
+					postStatus && postStatus !== 'publish' ? 'edit' : 'view',
 			};
 			if ( postStatus ) {
 				query.status = postStatus;
 			}
 
 			// @ts-ignore core store types are not exposed here.
-			const results = select( 'core' ).getEntityRecords(
+			const results = select( coreStore ).getEntityRecords(
 				'postType',
 				type,
 				query
@@ -306,11 +304,9 @@ export function registerSearchContentAbility(): void {
 			const results = [];
 			for ( const type of types ) {
 				// @ts-ignore core store types are not exposed here.
-				const records = await resolveSelect( 'core' ).getEntityRecords(
-					'postType',
-					type,
-					query
-				);
+				const records = await resolveSelect(
+					coreStore
+				).getEntityRecords( 'postType', type, query );
 
 				if ( Array.isArray( records ) ) {
 					for ( const item of records ) {
@@ -345,7 +341,7 @@ function getExaApiKey(): string {
 			window as Window & {
 				gutenbergGeminiAgentConfig?: GeminiRuntimeConfig;
 			}
-		).gutenbergGeminiAgentConfig;
+		 ).gutenbergGeminiAgentConfig;
 		const runtimeKey = runtimeConfig?.exaApiKey?.trim();
 		if ( runtimeKey ) {
 			return runtimeKey;
@@ -355,9 +351,7 @@ function getExaApiKey(): string {
 	}
 
 	try {
-		const stored = localStorage
-			.getItem( 'gutenberg_exa_api_key' )
-			?.trim();
+		const stored = localStorage.getItem( 'gutenberg_exa_api_key' )?.trim();
 		if ( stored ) {
 			return stored;
 		}
@@ -409,8 +403,7 @@ export function registerSearchWebAbility(): void {
 				excludeDomains: {
 					type: 'array',
 					items: { type: 'string' },
-					description:
-						'Exclude results from these domains',
+					description: 'Exclude results from these domains',
 				},
 				startPublishedDate: {
 					type: 'string',
@@ -456,8 +449,12 @@ export function registerSearchWebAbility(): void {
 		} ) => {
 			const exaApiKey = getExaApiKey();
 			if ( ! exaApiKey ) {
+				dispatch( noticesStore ).createErrorNotice(
+					'Exa API key is missing. Add it in Preferences \u2192 AI.',
+					{ type: 'snackbar' }
+				);
 				throw new Error(
-					'Missing Exa API key. Set window.gutenbergGeminiAgentConfig.exaApiKey or localStorage key "gutenberg_exa_api_key".'
+					'Missing Exa API key. Add it in Preferences \u2192 AI.'
 				);
 			}
 
@@ -511,9 +508,7 @@ export function registerSearchWebAbility(): void {
 			}
 
 			const json = await response.json();
-			const results = Array.isArray( json.results )
-				? json.results
-				: [];
+			const results = Array.isArray( json.results ) ? json.results : [];
 
 			return {
 				results: results.map( ( result: any ) => ( {

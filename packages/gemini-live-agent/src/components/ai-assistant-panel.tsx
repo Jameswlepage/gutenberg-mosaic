@@ -77,8 +77,9 @@ const TOOL_NICE_NAMES: Record< string, string > = {
 };
 
 type MarkdownSegment = {
-	kind: 'text' | 'strong' | 'em' | 'code';
+	kind: 'text' | 'strong' | 'em' | 'code' | 'strikethrough' | 'mark' | 'link';
 	text: string;
+	href?: string;
 };
 
 const messageVisibleTextLengthById = new Map< number, number >();
@@ -106,14 +107,57 @@ function parseInlineMarkdown( text: string ): MarkdownSegment[] {
 
 	while ( cursor < text.length ) {
 		const doubleMarker = text.slice( cursor, cursor + 2 );
-		const isStrongMarker =
-			doubleMarker === '**' || doubleMarker === '__';
+		const isStrongMarker = doubleMarker === '**' || doubleMarker === '__';
 
-		if ( isStrongMarker ) {
-			const end = text.indexOf( doubleMarker, cursor + 2 );
-			if ( end > cursor + 2 ) {
+		// ── <mark>highlighted</mark> ──
+		if ( text.slice( cursor, cursor + 6 ) === '<mark>' ) {
+			const closeTag = '</mark>';
+			const end = text.indexOf( closeTag, cursor + 6 );
+			if ( end > cursor + 6 ) {
 				segments.push( {
-					kind: 'strong',
+					kind: 'mark',
+					text: text.slice( cursor + 6, end ),
+				} );
+				cursor = end + closeTag.length;
+				continue;
+			}
+		}
+
+		// ── [link text](url) ──
+		if ( text[ cursor ] === '[' ) {
+			const closeBracket = text.indexOf( ']', cursor + 1 );
+			if (
+				closeBracket > cursor + 1 &&
+				text[ closeBracket + 1 ] === '(' &&
+				! text.slice( cursor + 1, closeBracket ).includes( '\n' )
+			) {
+				const closeParen = text.indexOf( ')', closeBracket + 2 );
+				if (
+					closeParen > closeBracket + 2 &&
+					! text
+						.slice( closeBracket + 2, closeParen )
+						.includes( '\n' )
+				) {
+					segments.push( {
+						kind: 'link',
+						text: text.slice( cursor + 1, closeBracket ),
+						href: text.slice( closeBracket + 2, closeParen ).trim(),
+					} );
+					cursor = closeParen + 1;
+					continue;
+				}
+			}
+		}
+
+		// ── ~~strikethrough~~ ──
+		if ( text.slice( cursor, cursor + 2 ) === '~~' ) {
+			const end = text.indexOf( '~~', cursor + 2 );
+			if (
+				end > cursor + 2 &&
+				! text.slice( cursor + 2, end ).includes( '\n' )
+			) {
+				segments.push( {
+					kind: 'strikethrough',
 					text: text.slice( cursor + 2, end ),
 				} );
 				cursor = end + 2;
@@ -121,8 +165,29 @@ function parseInlineMarkdown( text: string ): MarkdownSegment[] {
 			}
 		}
 
+		// ── **bold** / __bold__ ──
+		if ( isStrongMarker ) {
+			const afterMarker = text[ cursor + 2 ];
+			if ( afterMarker && afterMarker !== ' ' && afterMarker !== '\n' ) {
+				const end = text.indexOf( doubleMarker, cursor + 2 );
+				if (
+					end > cursor + 2 &&
+					text[ end - 1 ] !== ' ' &&
+					! text.slice( cursor + 2, end ).includes( '\n' )
+				) {
+					segments.push( {
+						kind: 'strong',
+						text: text.slice( cursor + 2, end ),
+					} );
+					cursor = end + 2;
+					continue;
+				}
+			}
+		}
+
 		const current = text[ cursor ];
 
+		// ── `code` ──
 		if ( current === '`' ) {
 			const end = text.indexOf( '`', cursor + 1 );
 			if ( end > cursor + 1 ) {
@@ -135,21 +200,30 @@ function parseInlineMarkdown( text: string ): MarkdownSegment[] {
 			}
 		}
 
+		// ── *italic* / _italic_ ──
 		if (
 			( current === '*' && text[ cursor + 1 ] !== '*' ) ||
 			( current === '_' && text[ cursor + 1 ] !== '_' )
 		) {
-			const end = text.indexOf( current, cursor + 1 );
-			if ( end > cursor + 1 ) {
-				segments.push( {
-					kind: 'em',
-					text: text.slice( cursor + 1, end ),
-				} );
-				cursor = end + 1;
-				continue;
+			const nextChar = text[ cursor + 1 ];
+			if ( nextChar && nextChar !== ' ' && nextChar !== '\n' ) {
+				const end = text.indexOf( current, cursor + 1 );
+				if (
+					end > cursor + 1 &&
+					text[ end - 1 ] !== ' ' &&
+					! text.slice( cursor + 1, end ).includes( '\n' )
+				) {
+					segments.push( {
+						kind: 'em',
+						text: text.slice( cursor + 1, end ),
+					} );
+					cursor = end + 1;
+					continue;
+				}
 			}
 		}
 
+		// ── Plain text run ──
 		let plainEnd = cursor + 1;
 		while ( plainEnd < text.length ) {
 			const twoChars = text.slice( plainEnd, plainEnd + 2 );
@@ -157,9 +231,12 @@ function parseInlineMarkdown( text: string ): MarkdownSegment[] {
 			const mayStartMarkdownMarker =
 				twoChars === '**' ||
 				twoChars === '__' ||
+				twoChars === '~~' ||
 				oneChar === '`' ||
 				oneChar === '*' ||
-				oneChar === '_';
+				oneChar === '_' ||
+				oneChar === '[' ||
+				text.slice( plainEnd, plainEnd + 6 ) === '<mark>';
 			if ( mayStartMarkdownMarker ) {
 				break;
 			}
@@ -174,7 +251,10 @@ function parseInlineMarkdown( text: string ): MarkdownSegment[] {
 }
 
 function getToolNiceName( toolName: string ): string {
-	return TOOL_NICE_NAMES[ toolName ] || toolName.replace( /^agent_/, '' ).replace( /_/g, ' ' );
+	return (
+		TOOL_NICE_NAMES[ toolName ] ||
+		toolName.replace( /^agent_/, '' ).replace( /_/g, ' ' )
+	);
 }
 
 function appendTranscriptChunk( existingText: string, chunk: string ): string {
@@ -218,9 +298,9 @@ const BackgroundAura = memo(
 		isStreaming: boolean;
 	} ) => (
 		<div
-			className={ `gemini-aura${
-				isActive ? ' is-active' : ''
-			}${ isStreaming ? ' is-streaming' : '' }` }
+			className={ `gemini-aura${ isActive ? ' is-active' : '' }${
+				isStreaming ? ' is-streaming' : ''
+			}` }
 		>
 			<div className="gemini-aura__pool" />
 			<div className="gemini-aura__pulse" />
@@ -259,14 +339,15 @@ const MessageBubble = memo(
 				),
 			[ markdownSegments ]
 		);
-		const knownCharacterCount =
-			messageVisibleTextLengthById.get( message.id );
-		const previousCharacterCount =
-			knownCharacterCount !== undefined
-				? Math.min( knownCharacterCount, visibleCharacterCount )
-				: isStreaming
-				? 0
-				: visibleCharacterCount;
+		const knownCharacterCount = messageVisibleTextLengthById.get(
+			message.id
+		);
+		const previousCharacterCount = ( () => {
+			if ( knownCharacterCount !== undefined ) {
+				return Math.min( knownCharacterCount, visibleCharacterCount );
+			}
+			return isStreaming ? 0 : visibleCharacterCount;
+		} )();
 
 		useEffect( () => {
 			messageVisibleTextLengthById.set(
@@ -282,8 +363,7 @@ const MessageBubble = memo(
 				const characters = segment.text.split( '' );
 				const animatedCharacters = characters.map(
 					( char, characterIndex ) => {
-						const absoluteIndex =
-							characterOffset + characterIndex;
+						const absoluteIndex = characterOffset + characterIndex;
 						const delay =
 							absoluteIndex >= previousCharacterCount
 								? ( absoluteIndex -
@@ -328,6 +408,35 @@ const MessageBubble = memo(
 					);
 				}
 
+				if ( segment.kind === 'strikethrough' ) {
+					return (
+						<s key={ `segment-${ segmentIndex }` }>
+							{ animatedCharacters }
+						</s>
+					);
+				}
+
+				if ( segment.kind === 'mark' ) {
+					return (
+						<mark key={ `segment-${ segmentIndex }` }>
+							{ animatedCharacters }
+						</mark>
+					);
+				}
+
+				if ( segment.kind === 'link' && segment.href ) {
+					return (
+						<a
+							key={ `segment-${ segmentIndex }` }
+							href={ segment.href }
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							{ animatedCharacters }
+						</a>
+					);
+				}
+
 				return (
 					<span key={ `segment-${ segmentIndex }` }>
 						{ animatedCharacters }
@@ -353,31 +462,31 @@ const MessageBubble = memo(
 						const isInProgress =
 							isToolCallInProgress &&
 							i === message.toolCalls!.length - 1;
-							return (
-								<span
-									key={ i }
-									className={ `gemini-message__tool-call${
-										isInProgress ? ' is-in-progress' : ''
-									}` }
+						return (
+							<span
+								key={ i }
+								className={ `gemini-message__tool-call${
+									isInProgress ? ' is-in-progress' : ''
+								}` }
+							>
+								<svg
+									width="12"
+									height="12"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+									strokeLinecap="round"
+									strokeLinejoin="round"
 								>
-									<svg
-										width="12"
-										height="12"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										strokeWidth="2"
-										strokeLinecap="round"
-										strokeLinejoin="round"
-									>
-										<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-									</svg>
-									<span className="gemini-message__tool-call-text">
-										{ getToolNiceName( name ) }
-									</span>
+									<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+								</svg>
+								<span className="gemini-message__tool-call-text">
+									{ getToolNiceName( name ) }
 								</span>
-							);
-						} ) }
+							</span>
+						);
+					} ) }
 				{ visibleCharacterCount > 0 && (
 					<div className="gemini-message__text">
 						{ renderedMessageText }
@@ -414,29 +523,27 @@ const ConversationTranscript = memo(
 			return () => clearTimeout( timer );
 		}, [ messages ] );
 
-			return (
-				<div className="gemini-transcript" ref={ scrollRef }>
-					<div className="gemini-transcript__messages">
-						{ messages.map( ( msg ) => (
-							<MessageBubble
-								key={ msg.id }
-								message={ msg }
-								isToolCallInProgress={ pendingToolCallMessageIds.includes(
-									msg.id
-								) }
-								isStreaming={
-									streamingRole === msg.role &&
-									msg ===
-										messages
-											.filter(
-												( m ) => m.role === msg.role
-											)
-											.at( -1 )
-								}
-							/>
-						) ) }
-					</div>
+		return (
+			<div className="gemini-transcript" ref={ scrollRef }>
+				<div className="gemini-transcript__messages">
+					{ messages.map( ( msg ) => (
+						<MessageBubble
+							key={ msg.id }
+							message={ msg }
+							isToolCallInProgress={ pendingToolCallMessageIds.includes(
+								msg.id
+							) }
+							isStreaming={
+								streamingRole === msg.role &&
+								msg ===
+									messages
+										.filter( ( m ) => m.role === msg.role )
+										.at( -1 )
+							}
+						/>
+					) ) }
 				</div>
+			</div>
 		);
 	}
 );
@@ -465,6 +572,8 @@ let nextMessageId = 1;
  * Idle — centred "Start" button.
  * Connected — scrollable conversation history with blur-reveal
  *   messages from both user and AI, bottom "End" control.
+ *
+ * @param {AIAssistantPanelProps} props Component props.
  */
 export function AIAssistantPanel( {
 	apiKey,
@@ -481,8 +590,7 @@ export function AIAssistantPanel( {
 
 	// Conversation from store (persists across tab switches)
 	const messages = useSelect(
-		( select ) =>
-			select( geminiAgentStore ).getConversationMessages(),
+		( select ) => select( geminiAgentStore ).getConversationMessages(),
 		[]
 	);
 	const {
@@ -492,8 +600,9 @@ export function AIAssistantPanel( {
 	} = useDispatch( geminiAgentStore );
 
 	const [ isUserSpeaking, setIsUserSpeaking ] = useState( false );
-	const userSpeakingTimerRef =
-		useRef< ReturnType< typeof setTimeout > | null >( null );
+	const userSpeakingTimerRef = useRef< ReturnType<
+		typeof setTimeout
+	> | null >( null );
 
 	// Track current streaming message IDs
 	const currentAiMessageIdRef = useRef< number | null >( null );
@@ -515,8 +624,9 @@ export function AIAssistantPanel( {
 
 	// Whether the model is currently streaming a response
 	const [ isAiSpeaking, setIsAiSpeaking ] = useState( false );
-	const aiSpeakingTimerRef =
-		useRef< ReturnType< typeof setTimeout > | null >( null );
+	const aiSpeakingTimerRef = useRef< ReturnType< typeof setTimeout > | null >(
+		null
+	);
 
 	// Streaming role for animation
 	const streamingRole = isAiSpeaking ? 'assistant' : null;
@@ -701,11 +811,7 @@ export function AIAssistantPanel( {
 			}
 			textSinceLastToolCallRef.current = false;
 		},
-		[
-			addConversationMessage,
-			markToolCallStart,
-			updateConversationMessage,
-		]
+		[ addConversationMessage, markToolCallStart, updateConversationMessage ]
 	);
 
 	const {
@@ -863,7 +969,7 @@ export function AIAssistantPanel( {
 							}` }
 						>
 							<ShimmeringText
-								text={ __( 'Connecting...' ) }
+								text={ __( 'Connecting…' ) }
 								className="gemini-live-agent-panel__shimmer-lg"
 							/>
 						</div>
@@ -879,22 +985,20 @@ export function AIAssistantPanel( {
 							}` }
 						>
 							<ShimmeringText
-								text={ __( 'Listening...' ) }
+								text={ __( 'Listening…' ) }
 								className="gemini-live-agent-panel__shimmer-lg"
 							/>
 						</div>
 
 						<div
 							className={ `gemini-live-agent-panel__status-msg${
-								isConnected &&
-								! hasContent &&
-								! isUserSpeaking
+								isConnected && ! hasContent && ! isUserSpeaking
 									? ' is-visible'
 									: ''
 							}` }
 						>
 							<ShimmeringText
-								text={ __( 'Say something...' ) }
+								text={ __( 'Say something…' ) }
 								className="gemini-live-agent-panel__shimmer-xl"
 							/>
 						</div>
@@ -913,6 +1017,7 @@ export function AIAssistantPanel( {
 								className="gemini-live-agent-panel__start-btn"
 								onClick={ handleConnect }
 								disabled={ isConnecting }
+								accessibleWhenDisabled
 							>
 								{ __( 'Start' ) }
 							</Button>
@@ -924,9 +1029,7 @@ export function AIAssistantPanel( {
 							>
 								{ isError
 									? error || __( 'Connection error' )
-									: __(
-											'Tap to connect to AI assistant'
-									  ) }
+									: __( 'Tap to connect to AI assistant' ) }
 							</span>
 						</div>
 					</div>

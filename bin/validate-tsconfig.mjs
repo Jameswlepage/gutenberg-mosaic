@@ -14,6 +14,12 @@ const rootTsconfigJson = JSON.parse( readFileSync( 'tsconfig.json', 'utf8' ) );
 
 const packagesWithTypes = glob
 	.sync( 'packages/*/tsconfig.json' )
+	.filter( ( tsconfigPath ) => {
+		// Exclude packages that disable emit (noEmit: true) since they
+		// cannot be used as project references.
+		const config = JSONC.parse( readFileSync( tsconfigPath, 'utf8' ) );
+		return ! config?.compilerOptions?.noEmit;
+	} )
 	.map( ( tsconfigPath ) => basename( dirname( tsconfigPath ) ) );
 
 for ( const packageName of packagesWithTypes ) {

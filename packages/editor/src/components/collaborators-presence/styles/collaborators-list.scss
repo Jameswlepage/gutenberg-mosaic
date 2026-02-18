@@ -46,6 +46,12 @@
 		}
 	}
 
+	// Override Avatar's blue accent background for transparent images.
+	.components-avatar,
+	.components-avatar__image {
+		background-color: $white;
+	}
+
 	// List of collaborators
 	.editor-collaborators-presence__list-items {
 		display: flex;

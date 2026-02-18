@@ -15,12 +15,47 @@ import { useGeminiAgentPresence } from '@wordpress/gemini-live-agent';
  */
 import { unlock } from '../../lock-unlock';
 import { store as editorStore } from '../../store';
-import { getStableCollaboratorColor } from '../../utils/collaborator-colors';
+import { getAvatarBorderColor } from '../../components/collab-sidebar/utils';
 
 const coreDataApis = coreDataPrivateApis ? unlock( coreDataPrivateApis ) : {};
 const { useActiveUsers } = coreDataApis;
 const useActiveUsersSafe =
 	typeof useActiveUsers === 'function' ? useActiveUsers : () => [];
+
+function getCollaboratorInfo( user ) {
+	if ( ! user ) {
+		return null;
+	}
+
+	return user.collaboratorInfo || user.userInfo || null;
+}
+
+function getCollaboratorId( user ) {
+	const collaboratorInfo = getCollaboratorInfo( user );
+
+	if ( collaboratorInfo?.id !== undefined ) {
+		return collaboratorInfo.id;
+	}
+
+	return user?.clientId;
+}
+
+function getCollaboratorColor( user ) {
+	const collaboratorInfo = getCollaboratorInfo( user );
+	if ( collaboratorInfo?.color ) {
+		return collaboratorInfo.color;
+	}
+
+	const numericUserId = Number( getCollaboratorId( user ) );
+
+	return Number.isFinite( numericUserId )
+		? getAvatarBorderColor( numericUserId )
+		: getAvatarBorderColor( 0 );
+}
+
+function getCollaboratorName( user ) {
+	return getCollaboratorInfo( user )?.name || __( 'Collaborator' );
+}
 
 const SELECTION_TYPE = {
 	None: 'none',
@@ -91,7 +126,7 @@ function dedupeUsers( users ) {
 	const unique = [];
 
 	for ( const user of users ) {
-		const userId = user?.userInfo?.id ?? user?.clientId;
+		const userId = getCollaboratorId( user );
 		if ( seen.has( userId ) ) {
 			continue;
 		}
@@ -226,14 +261,13 @@ const withCollaboratorCursors = createHigherOrderComponent(
 			}
 
 			const primaryUser = uniqueUsers[ 0 ];
-			const primaryName =
-				primaryUser?.userInfo?.name || __( 'Collaborator' );
+			const primaryName = getCollaboratorName( primaryUser );
 			const labelSuffix =
 				uniqueUsers.length > 1 ? ` +${ uniqueUsers.length - 1 }` : '';
 			const label = `${ primaryName }${ labelSuffix }`;
-			const color = getStableCollaboratorColor( primaryUser, '#3858e9' );
+			const color = getCollaboratorColor( primaryUser );
 			const names = uniqueUsers
-				.map( ( user ) => user?.userInfo?.name )
+				.map( ( user ) => getCollaboratorInfo( user )?.name )
 				.filter( Boolean )
 				.join( ', ' );
 
