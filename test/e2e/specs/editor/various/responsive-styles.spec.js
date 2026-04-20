@@ -50,9 +50,7 @@ test.describe( 'Responsive Styles (experimental)', () => {
 		// Baseline: set a font-size at Desktop. Reads/writes should land on
 		// attributes.style.typography.fontSize — no `responsive` key yet.
 		await editor.openDocumentSettingsSidebar();
-		await page
-			.getByRole( 'tab', { name: 'Styles', exact: true } )
-			.click();
+		await page.getByRole( 'tab', { name: 'Styles', exact: true } ).click();
 
 		const fontSizeInput = page
 			.getByRole( 'region', { name: 'Editor settings' } )
@@ -71,9 +69,7 @@ test.describe( 'Responsive Styles (experimental)', () => {
 		).toBeFalsy();
 
 		// Switch to Mobile via the header selector, then edit font-size.
-		await page
-			.getByRole( 'radio', { name: 'Mobile' } )
-			.click();
+		await page.getByRole( 'radio', { name: 'Mobile' } ).click();
 
 		await fontSizeInput.fill( '14' );
 		await fontSizeInput.press( 'Tab' );
@@ -90,9 +86,7 @@ test.describe( 'Responsive Styles (experimental)', () => {
 		).toBe( '14px' );
 
 		// Switching back to Desktop should surface the base again.
-		await page
-			.getByRole( 'radio', { name: 'Desktop' } )
-			.click();
+		await page.getByRole( 'radio', { name: 'Desktop' } ).click();
 		await expect( fontSizeInput ).toHaveValue( '32' );
 	} );
 
@@ -114,9 +108,7 @@ test.describe( 'Responsive Styles (experimental)', () => {
 		} );
 
 		await editor.openDocumentSettingsSidebar();
-		await page
-			.getByRole( 'tab', { name: 'Styles', exact: true } )
-			.click();
+		await page.getByRole( 'tab', { name: 'Styles', exact: true } ).click();
 
 		await page.getByRole( 'radio', { name: 'Mobile' } ).click();
 
@@ -160,6 +152,8 @@ test.describe( 'Responsive Styles (experimental)', () => {
 		expect(
 			html,
 			'mobile override emitted inside max-width media query'
-		).toMatch( /@media\s*\(max-width:\s*480px\)[^{]*\{[^}]*font-size:14px/ );
+		).toMatch(
+			/@media\s*\(max-width:\s*480px\)[^{]*\{[^}]*font-size:14px/
+		);
 	} );
 } );

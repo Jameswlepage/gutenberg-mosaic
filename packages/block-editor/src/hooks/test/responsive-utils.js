@@ -29,12 +29,8 @@ describe( 'responsive-utils', () => {
 		} );
 
 		it( 'detects differing keys in either tree', () => {
-			expect(
-				deepEqual( { a: 1 }, { a: 1, b: 2 } )
-			).toBe( false );
-			expect(
-				deepEqual( { a: 1, b: 2 }, { a: 1 } )
-			).toBe( false );
+			expect( deepEqual( { a: 1 }, { a: 1, b: 2 } ) ).toBe( false );
+			expect( deepEqual( { a: 1, b: 2 }, { a: 1 } ) ).toBe( false );
 		} );
 	} );
 
@@ -62,7 +58,10 @@ describe( 'responsive-utils', () => {
 		it( 'preserves unchanged branches from base', () => {
 			expect(
 				deepMerge(
-					{ typography: { fontSize: '18px' }, spacing: { padding: '20px' } },
+					{
+						typography: { fontSize: '18px' },
+						spacing: { padding: '20px' },
+					},
 					{ spacing: { padding: '10px' } }
 				)
 			).toEqual( {
@@ -117,9 +116,9 @@ describe( 'responsive-utils', () => {
 		} );
 
 		it( 'treats primitive-vs-object as a full replacement', () => {
-			expect(
-				computeDelta( 'red', { value: 'blue' } )
-			).toEqual( { value: 'blue' } );
+			expect( computeDelta( 'red', { value: 'blue' } ) ).toEqual( {
+				value: 'blue',
+			} );
 		} );
 
 		it( 'preserves added keys not in base', () => {
@@ -137,9 +136,7 @@ describe( 'responsive-utils', () => {
 
 	describe( 'removePath', () => {
 		it( 'removes a leaf key', () => {
-			expect(
-				removePath( { a: 1, b: 2 }, 'a' )
-			).toEqual( { b: 2 } );
+			expect( removePath( { a: 1, b: 2 }, 'a' ) ).toEqual( { b: 2 } );
 		} );
 
 		it( 'removes a nested leaf and prunes the now-empty branch', () => {
@@ -164,13 +161,13 @@ describe( 'responsive-utils', () => {
 
 		it( 'is a no-op for nonexistent paths', () => {
 			const tree = { typography: { fontSize: '14px' } };
-			expect(
-				removePath( tree, 'spacing.padding' )
-			).toEqual( tree );
+			expect( removePath( tree, 'spacing.padding' ) ).toEqual( tree );
 		} );
 
 		it( 'does not mutate the input tree', () => {
-			const tree = { typography: { fontSize: '14px', lineHeight: '1.5' } };
+			const tree = {
+				typography: { fontSize: '14px', lineHeight: '1.5' },
+			};
 			removePath( tree, 'typography.fontSize' );
 			expect( tree.typography.fontSize ).toBe( '14px' );
 		} );

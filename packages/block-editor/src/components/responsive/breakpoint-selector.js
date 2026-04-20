@@ -106,9 +106,7 @@ export default function ResponsiveBreakpointSelector() {
 						value={ slug }
 						icon={ breakpoint.icon }
 						label={ breakpoint.label }
-						data-has-override={
-							hasOverride ? 'true' : undefined
-						}
+						data-has-override={ hasOverride ? 'true' : undefined }
 						data-override-breakpoint={
 							hasOverride ? slug : undefined
 						}

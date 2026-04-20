@@ -28,6 +28,9 @@ export function deepEqual( a, b ) {
 /**
  * Deep merge: `override` wins where defined; primitives and arrays replace
  * wholesale (no element-wise merge for arrays).
+ * @param {*} base
+ * @param {*} override
+ * @return {*} Merged tree.
  */
 export function deepMerge( base, override ) {
 	if ( ! isPlainObject( override ) ) {
@@ -50,6 +53,8 @@ export function deepMerge( base, override ) {
  *
  * Keys set to `undefined` in `next` are dropped (reset semantics). Empty
  * subtrees prune — no breadcrumbs left behind in the override store.
+ * @param base
+ * @param next
  */
 export function computeDelta( base, next ) {
 	if ( deepEqual( base, next ) ) {
@@ -74,6 +79,8 @@ export function computeDelta( base, next ) {
 /**
  * Remove a single dot-path from a nested tree. Empty subtrees prune.
  * Non-existent paths are a no-op.
+ * @param tree
+ * @param path
  */
 export function removePath( tree, path ) {
 	if ( ! tree || ! path ) {
@@ -99,6 +106,8 @@ export function removePath( tree, path ) {
  * Merge base + a sparse override tree, returning a new tree. Used by the
  * attribute interceptor when presenting `attributes.style` at a non-base
  * breakpoint.
+ * @param base
+ * @param override
  */
 export function applyOverride( base, override ) {
 	if ( ! override || Object.keys( override ).length === 0 ) {

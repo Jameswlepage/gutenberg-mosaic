@@ -172,45 +172,44 @@ function mergeResponsiveBreakpointDeep( base, override ) {
  * identically to the raw read.
  */
 export const getBlockAttributes = createRegistrySelector(
-	( select ) =>
-		( state, clientId ) => {
-			const block = state.blocks.byClientId.get( clientId );
-			if ( ! block ) {
-				return null;
-			}
-			const raw = state.blocks.attributes.get( clientId );
-			if (
-				typeof window === 'undefined' ||
-				! window.__experimentalResponsiveStyles ||
-				! raw?.responsive
-			) {
-				return raw;
-			}
-			const editorStore = select( 'core/editor' );
-			const deviceType = editorStore?.getDeviceType?.() ?? 'Desktop';
-			const bp = DEVICE_TO_BP[ deviceType ];
-			if ( ! bp || bp === 'desktop' ) {
-				return raw;
-			}
-			const override = raw.responsive?.[ bp ];
-			if ( ! override || Object.keys( override ).length === 0 ) {
-				return raw;
-			}
-			const merged = { ...raw };
-			if ( override.style ) {
-				merged.style = mergeResponsiveBreakpointDeep(
-					raw.style ?? {},
-					override.style
-				);
-			}
-			for ( const key of Object.keys( override ) ) {
-				if ( key === 'style' ) {
-					continue;
-				}
-				merged[ key ] = override[ key ];
-			}
-			return merged;
+	( select ) => ( state, clientId ) => {
+		const block = state.blocks.byClientId.get( clientId );
+		if ( ! block ) {
+			return null;
 		}
+		const raw = state.blocks.attributes.get( clientId );
+		if (
+			typeof window === 'undefined' ||
+			! window.__experimentalResponsiveStyles ||
+			! raw?.responsive
+		) {
+			return raw;
+		}
+		const editorStore = select( 'core/editor' );
+		const deviceType = editorStore?.getDeviceType?.() ?? 'Desktop';
+		const bp = DEVICE_TO_BP[ deviceType ];
+		if ( ! bp || bp === 'desktop' ) {
+			return raw;
+		}
+		const override = raw.responsive?.[ bp ];
+		if ( ! override || Object.keys( override ).length === 0 ) {
+			return raw;
+		}
+		const merged = { ...raw };
+		if ( override.style ) {
+			merged.style = mergeResponsiveBreakpointDeep(
+				raw.style ?? {},
+				override.style
+			);
+		}
+		for ( const key of Object.keys( override ) ) {
+			if ( key === 'style' ) {
+				continue;
+			}
+			merged[ key ] = override[ key ];
+		}
+		return merged;
+	}
 );
 
 /**
@@ -222,6 +221,8 @@ export const getBlockAttributes = createRegistrySelector(
  * Private because UI code should always go through `getBlockAttributes`; the
  * merge is precisely the point of that selector. This is here so the
  * interceptor doesn't have to fight its own wrapping.
+ * @param state
+ * @param clientId
  */
 export function __experimentalGetRawBlockAttributes( state, clientId ) {
 	const block = state.blocks.byClientId.get( clientId );

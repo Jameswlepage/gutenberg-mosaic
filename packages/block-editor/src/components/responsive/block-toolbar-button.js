@@ -40,6 +40,9 @@ function countOverrides( tree ) {
  * overrides. Mirrors the Figma "status pill" pattern: a compact icon that
  * expands into a menu of the breakpoints with overrides, with jump-to-bp
  * and per-bp reset actions.
+ * @param root0
+ * @param root0.responsive
+ * @param root0.onResetBreakpoint
  */
 export default function ResponsiveBlockToolbarButton( {
 	responsive,
@@ -91,8 +94,7 @@ export default function ResponsiveBlockToolbarButton( {
 							className="block-editor-responsive-toolbar-button__menu"
 						>
 							{ entries.map( ( [ bpSlug, bpTree ] ) => {
-								const bpMeta =
-									RESPONSIVE_BREAKPOINTS[ bpSlug ];
+								const bpMeta = RESPONSIVE_BREAKPOINTS[ bpSlug ];
 								if ( ! bpMeta ) {
 									return null;
 								}
@@ -108,9 +110,7 @@ export default function ResponsiveBlockToolbarButton( {
 											icon={ bpMeta.icon }
 											className="block-editor-responsive-toolbar-button__row-switch"
 											onClick={ () => {
-												setSelectedBreakpoint(
-													bpSlug
-												);
+												setSelectedBreakpoint( bpSlug );
 												onClose();
 											} }
 										>
@@ -151,9 +151,7 @@ export default function ResponsiveBlockToolbarButton( {
 							} ) }
 							{ selectedBreakpoint !== DEFAULT_BREAKPOINT && (
 								<Button
-									icon={
-										RESPONSIVE_BREAKPOINTS.desktop.icon
-									}
+									icon={ RESPONSIVE_BREAKPOINTS.desktop.icon }
 									className="block-editor-responsive-toolbar-button__back"
 									onClick={ () => {
 										setSelectedBreakpoint(

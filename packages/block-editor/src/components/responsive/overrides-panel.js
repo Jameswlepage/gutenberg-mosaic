@@ -28,6 +28,8 @@ import { RESPONSIVE_BREAKPOINTS, DEFAULT_BREAKPOINT } from './constants';
  * →
  *   [ { path: 'style.typography.fontSize', value: '14px' },
  *     { path: 'fontSize', value: 'small' } ]
+ * @param tree
+ * @param prefix
  */
 function collectOverridePaths( tree, prefix = '' ) {
 	if ( ! tree || typeof tree !== 'object' ) {
@@ -46,6 +48,7 @@ function collectOverridePaths( tree, prefix = '' ) {
  * Translate the attribute-path into something a content author can read.
  * Keeps the dot-notation approachable ("spacing.padding") but strips the
  * implementation prefix ("style.") and humanizes scalar presets.
+ * @param path
  */
 function labelForPath( path ) {
 	return path.replace( /^style\./, '' );
@@ -53,6 +56,8 @@ function labelForPath( path ) {
 
 /**
  * Remove a single dot-path from a nested tree, pruning empty subtrees.
+ * @param tree
+ * @param path
  */
 function removePath( tree, path ) {
 	if ( ! tree || ! path ) {
@@ -74,6 +79,8 @@ function removePath( tree, path ) {
 /**
  * Inspector panel listing overrides for the current editing breakpoint,
  * with per-row reset and a reset-all action. Renders nothing at base.
+ * @param root0
+ * @param root0.clientId
  */
 export default function ResponsiveOverridesPanel( { clientId } ) {
 	const { selectedBreakpoint } = useResponsiveBreakpoint();

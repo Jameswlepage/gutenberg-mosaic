@@ -45,7 +45,8 @@ const ROUTABLE_KEYS = [
 
 function isEnabled() {
 	return (
-		typeof window !== 'undefined' && !! window.__experimentalResponsiveStyles
+		typeof window !== 'undefined' &&
+		!! window.__experimentalResponsiveStyles
 	);
 }
 
@@ -55,6 +56,7 @@ function isEnabled() {
  * this is intentional: the feature is cross-cutting by default, and opting
  * out is a per-block decision (e.g. for blocks that already do their own
  * breakpoint handling).
+ * @param settings
  */
 function addResponsiveAttribute( settings ) {
 	if ( ! isEnabled() ) {
@@ -102,9 +104,7 @@ const withResponsiveBreakpointAttributes = createHigherOrderComponent(
 				props.clientId
 					? select(
 							blockEditorStore
-					  ).__experimentalGetRawBlockAttributes(
-							props.clientId
-					  )
+					  ).__experimentalGetRawBlockAttributes( props.clientId )
 					: props.attributes,
 			[ props.clientId ]
 		);
@@ -179,12 +179,7 @@ const withResponsiveBreakpointAttributes = createHigherOrderComponent(
 						: undefined;
 				return props.setAttributes( finalUpdates );
 			},
-			[
-				rawAttributes,
-				props.setAttributes,
-				selectedBreakpoint,
-				isBase,
-			]
+			[ rawAttributes, props.setAttributes, selectedBreakpoint, isBase ]
 		);
 
 		const onResetBreakpoint = useCallback(
@@ -211,16 +206,11 @@ const withResponsiveBreakpointAttributes = createHigherOrderComponent(
 			<>
 				{ props.isSelected && (
 					<ResponsiveBlockToolbarButton
-						responsive={
-							rawAttributes?.[ RESPONSIVE_ATTRIBUTE ]
-						}
+						responsive={ rawAttributes?.[ RESPONSIVE_ATTRIBUTE ] }
 						onResetBreakpoint={ onResetBreakpoint }
 					/>
 				) }
-				<BlockEdit
-					{ ...props }
-					setAttributes={ viewSetAttributes }
-				/>
+				<BlockEdit { ...props } setAttributes={ viewSetAttributes } />
 			</>
 		);
 	},
@@ -259,7 +249,8 @@ const withResponsiveBlockClassName = createHigherOrderComponent(
 			return <BlockListBlock { ...props } />;
 		}
 		const breakpoints = Object.keys( responsive ).filter(
-			( bp ) => responsive[ bp ] && Object.keys( responsive[ bp ] ).length > 0
+			( bp ) =>
+				responsive[ bp ] && Object.keys( responsive[ bp ] ).length > 0
 		);
 		if ( breakpoints.length === 0 ) {
 			return <BlockListBlock { ...props } />;

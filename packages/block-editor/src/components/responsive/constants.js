@@ -79,6 +79,7 @@ export const RESPONSIVE_BREAKPOINT_ORDER = Object.keys(
  * to smallest, matching Webflow / Figma-Sites conventions for breakpoint
  * switchers. Computed by sorting non-base breakpoints by numeric pixel size
  * (largest first) and prepending Desktop.
+ * @param size
  */
 function parseSize( size ) {
 	if ( ! size ) {

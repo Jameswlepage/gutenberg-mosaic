@@ -1,7 +1,12 @@
 /**
  * WordPress dependencies
  */
-import { createContext, useContext, useCallback, useMemo } from '@wordpress/element';
+import {
+	createContext,
+	useContext,
+	useCallback,
+	useMemo,
+} from '@wordpress/element';
 import { useSelect, useDispatch } from '@wordpress/data';
 
 /**
@@ -38,6 +43,8 @@ const DEVICE_TO_BP = {
  * fire and preview correctly). Setting the breakpoint dispatches
  * `setDeviceType` — one concept, not two. If the editor store isn't loaded
  * (e.g. standalone block-editor host), the provider degrades to local state.
+ * @param root0
+ * @param root0.children
  */
 export function ResponsiveBreakpointProvider( { children } ) {
 	const deviceType = useSelect( ( select ) => {
@@ -47,8 +54,7 @@ export function ResponsiveBreakpointProvider( { children } ) {
 
 	const dispatch = useDispatch();
 
-	const selectedBreakpoint =
-		DEVICE_TO_BP[ deviceType ] ?? DEFAULT_BREAKPOINT;
+	const selectedBreakpoint = DEVICE_TO_BP[ deviceType ] ?? DEFAULT_BREAKPOINT;
 
 	const setSelectedBreakpoint = useCallback(
 		( bp ) => {
@@ -81,5 +87,8 @@ export function useResponsiveBreakpoint() {
 }
 
 export function useIsBaseBreakpoint() {
-	return useContext( ResponsiveBreakpointContext ).selectedBreakpoint === DEFAULT_BREAKPOINT;
+	return (
+		useContext( ResponsiveBreakpointContext ).selectedBreakpoint ===
+		DEFAULT_BREAKPOINT
+	);
 }
