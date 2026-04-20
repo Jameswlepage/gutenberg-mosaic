@@ -1,7 +1,6 @@
 /**
  * WordPress dependencies
  */
-import { useSelect } from '@wordpress/data';
 import { __, sprintf } from '@wordpress/i18n';
 import { Button } from '@wordpress/components';
 import { closeSmall } from '@wordpress/icons';
@@ -9,26 +8,47 @@ import { closeSmall } from '@wordpress/icons';
 /**
  * Internal dependencies
  */
-import { useResponsiveBreakpoint } from './breakpoint-context';
+import {
+	ResponsiveBreakpointProvider,
+	useResponsiveBreakpoint,
+} from './breakpoint-context';
 import {
 	RESPONSIVE_BREAKPOINTS,
 	RESPONSIVE_BREAKPOINT_DISPLAY_ORDER,
 } from './constants';
+import { ExperimentalBlockCanvas as BlockCanvas } from '../block-canvas';
 
 /**
- * Shift+click on the breakpoint selector opens this view: three frontend
- * previews of the current post side-by-side, each rendered at its own
- * device width so every breakpoint's responsive overrides fire for real
- * against real CSS (no canvas simulation).
+ * Compute a target canvas width for a breakpoint slug. For non-base
+ * breakpoints we use a value slightly under the upper bound of the bp
+ * range, so the media query inside the iframe fires without hugging the
+ * edge. Desktop uses a generous preview width that still fits the
+ * multi-frame row.
+ * @param {string} slug
+ * @return {number} Pixel width.
+ */
+function widthFor( slug ) {
+	const bp = RESPONSIVE_BREAKPOINTS[ slug ];
+	if ( bp?.isBase ) {
+		return 1280;
+	}
+	const size = parseInt( bp?.size, 10 );
+	if ( ! Number.isFinite( size ) ) {
+		return 480;
+	}
+	return Math.max( 320, size - 60 );
+}
+
+/**
+ * Render a BlockCanvas for each breakpoint currently in the canvas set,
+ * side-by-side. Each canvas shares the same `core/block-editor` store so
+ * edits propagate instantly between frames; the only thing that differs
+ * is the `overrideBreakpoint` we feed each one's ResponsiveBreakpointProvider,
+ * which is what the responsive interceptor reads to decide which merged view
+ * to present AND where `setAttributes({ style: … })` writes routed-by-bp.
  *
- * Rendering the frontend permalink in an iframe (rather than re-rendering
- * the block tree three times) keeps this cheap — one React root, three
- * <iframe>s, the responsive-styles `@media` rules do the rest.
- *
- * Widths are the *authoring* widths for each band:
- *   Mobile  — 420px  (fires @media (width <= 480px))
- *   Tablet  — 680px  (fires @media (480px < width <= 782px))
- *   Desktop — 1280px (falls through both — base styles only)
+ * Rendered at all only when `canvasBreakpoints.length > 1`; a single entry
+ * falls through to the normal single BlockCanvas owned by visual-editor.
  *
  * @return {Element|null}
  */
@@ -36,22 +56,6 @@ export default function ResponsiveMultiDeviceCanvas() {
 	const { canvasBreakpoints, resetCanvasBreakpoints, selectedBreakpoint } =
 		useResponsiveBreakpoint();
 	const isMultiPreview = canvasBreakpoints.length > 1;
-
-	const previewUrl = useSelect( ( select ) => {
-		const editorStore = select( 'core/editor' );
-		if ( ! editorStore ) {
-			return null;
-		}
-		const postId = editorStore.getCurrentPostId?.();
-		if ( ! postId ) {
-			return null;
-		}
-		// Frontend permalink — the rendered page with real responsive CSS.
-		// Cache-bust so iframe reloads reflect latest saved state without
-		// forcing a full reload on every toggle.
-		return `/?p=${ postId }&crown_preview=1`;
-	}, [] );
-
 	if ( ! isMultiPreview ) {
 		return null;
 	}
@@ -62,15 +66,17 @@ export default function ResponsiveMultiDeviceCanvas() {
 				<span className="block-editor-responsive-multi-device__title">
 					{ sprintf(
 						/* translators: %d: number of breakpoints currently shown. */
-						__( 'Live preview · %d breakpoints' ),
+						__( 'Live editing · %d breakpoints' ),
 						canvasBreakpoints.length
 					) }
 				</span>
 				<Button
 					icon={ closeSmall }
 					size="small"
-					onClick={ () => resetCanvasBreakpoints( selectedBreakpoint ) }
-					label={ __( 'Exit multi-device preview' ) }
+					onClick={ () =>
+						resetCanvasBreakpoints( selectedBreakpoint )
+					}
+					label={ __( 'Exit multi-device editing' ) }
 				/>
 			</div>
 			<div className="block-editor-responsive-multi-device__frames">
@@ -78,14 +84,15 @@ export default function ResponsiveMultiDeviceCanvas() {
 					canvasBreakpoints.includes( slug )
 				).map( ( slug ) => {
 					const bp = RESPONSIVE_BREAKPOINTS[ slug ];
-					const width = bp.isBase
-						? 1280
-						: Math.max( 320, parseInt( bp.size, 10 ) - 60 );
+					const width = widthFor( slug );
 					return (
 						<figure
 							key={ slug }
 							className="block-editor-responsive-multi-device__frame"
 							data-breakpoint={ slug }
+							data-focused={
+								slug === selectedBreakpoint ? 'true' : undefined
+							}
 							style={ { width: `${ width }px` } }
 						>
 							<figcaption className="block-editor-responsive-multi-device__caption">
@@ -98,23 +105,16 @@ export default function ResponsiveMultiDeviceCanvas() {
 									) }
 								</span>
 							</figcaption>
-							{ previewUrl ? (
-								<iframe
-									src={ previewUrl }
-									title={ sprintf(
-										/* translators: %s: breakpoint label. */
-										__( 'Frontend preview at %s' ),
-										bp.label
-									) }
-									loading="lazy"
-								/>
-							) : (
-								<div className="block-editor-responsive-multi-device__empty">
-									{ __(
-										'Save the post once to enable preview.'
-									) }
-								</div>
-							) }
+							<div className="block-editor-responsive-multi-device__body">
+								<ResponsiveBreakpointProvider
+									overrideBreakpoint={ slug }
+								>
+									<BlockCanvas
+										shouldIframe
+										height="100%"
+									/>
+								</ResponsiveBreakpointProvider>
+							</div>
 						</figure>
 					);
 				} ) }

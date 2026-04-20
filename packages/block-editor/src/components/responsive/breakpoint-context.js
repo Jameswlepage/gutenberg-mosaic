@@ -47,10 +47,20 @@ const DEVICE_TO_BP = {
  * fire and preview correctly). Setting the breakpoint dispatches
  * `setDeviceType` — one concept, not two. If the editor store isn't loaded
  * (e.g. standalone block-editor host), the provider degrades to local state.
+ *
+ * When `overrideBreakpoint` is set, the provider reports THAT bp as the
+ * "selected" one instead of whatever the editor store has. Used by the
+ * multi-device canvas to give each stacked BlockCanvas its own effective bp
+ * so the responsive interceptor merges the right overrides per frame.
+ * Per-canvas overrides do NOT touch the editor's global deviceType.
  * @param root0
  * @param root0.children
+ * @param root0.overrideBreakpoint
  */
-export function ResponsiveBreakpointProvider( { children } ) {
+export function ResponsiveBreakpointProvider( {
+	children,
+	overrideBreakpoint,
+} ) {
 	const deviceType = useSelect( ( select ) => {
 		const store = select( EDITOR_STORE_NAME );
 		return store?.getDeviceType?.() ?? 'Desktop';
@@ -58,7 +68,9 @@ export function ResponsiveBreakpointProvider( { children } ) {
 
 	const dispatch = useDispatch();
 
-	const selectedBreakpoint = DEVICE_TO_BP[ deviceType ] ?? DEFAULT_BREAKPOINT;
+	const storeSelectedBreakpoint =
+		DEVICE_TO_BP[ deviceType ] ?? DEFAULT_BREAKPOINT;
+	const selectedBreakpoint = overrideBreakpoint ?? storeSelectedBreakpoint;
 
 	const setSelectedBreakpoint = useCallback(
 		( bp ) => {
