@@ -10,7 +10,10 @@ import { closeSmall } from '@wordpress/icons';
  * Internal dependencies
  */
 import { useResponsiveBreakpoint } from './breakpoint-context';
-import { RESPONSIVE_BREAKPOINTS, RESPONSIVE_BREAKPOINT_DISPLAY_ORDER } from './constants';
+import {
+	RESPONSIVE_BREAKPOINTS,
+	RESPONSIVE_BREAKPOINT_DISPLAY_ORDER,
+} from './constants';
 
 /**
  * Shift+click on the breakpoint selector opens this view: three frontend
@@ -30,7 +33,9 @@ import { RESPONSIVE_BREAKPOINTS, RESPONSIVE_BREAKPOINT_DISPLAY_ORDER } from './c
  * @return {Element|null}
  */
 export default function ResponsiveMultiDeviceCanvas() {
-	const { isMultiPreview, setMultiPreview } = useResponsiveBreakpoint();
+	const { canvasBreakpoints, resetCanvasBreakpoints, selectedBreakpoint } =
+		useResponsiveBreakpoint();
+	const isMultiPreview = canvasBreakpoints.length > 1;
 
 	const previewUrl = useSelect( ( select ) => {
 		const editorStore = select( 'core/editor' );
@@ -55,17 +60,23 @@ export default function ResponsiveMultiDeviceCanvas() {
 		<div className="block-editor-responsive-multi-device">
 			<div className="block-editor-responsive-multi-device__toolbar">
 				<span className="block-editor-responsive-multi-device__title">
-					{ __( 'All breakpoints · live frontend preview' ) }
+					{ sprintf(
+						/* translators: %d: number of breakpoints currently shown. */
+						__( 'Live preview · %d breakpoints' ),
+						canvasBreakpoints.length
+					) }
 				</span>
 				<Button
 					icon={ closeSmall }
 					size="small"
-					onClick={ () => setMultiPreview( false ) }
+					onClick={ () => resetCanvasBreakpoints( selectedBreakpoint ) }
 					label={ __( 'Exit multi-device preview' ) }
 				/>
 			</div>
 			<div className="block-editor-responsive-multi-device__frames">
-				{ RESPONSIVE_BREAKPOINT_DISPLAY_ORDER.map( ( slug ) => {
+				{ RESPONSIVE_BREAKPOINT_DISPLAY_ORDER.filter( ( slug ) =>
+					canvasBreakpoints.includes( slug )
+				).map( ( slug ) => {
 					const bp = RESPONSIVE_BREAKPOINTS[ slug ];
 					const width = bp.isBase
 						? 1280

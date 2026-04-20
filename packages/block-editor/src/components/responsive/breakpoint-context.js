@@ -18,9 +18,9 @@ import { DEFAULT_BREAKPOINT } from './constants';
 const ResponsiveBreakpointContext = createContext( {
 	selectedBreakpoint: DEFAULT_BREAKPOINT,
 	setSelectedBreakpoint: () => {},
-	isMultiPreview: false,
-	toggleMultiPreview: () => {},
-	setMultiPreview: () => {},
+	canvasBreakpoints: [ DEFAULT_BREAKPOINT ],
+	toggleCanvasBreakpoint: () => {},
+	resetCanvasBreakpoints: () => {},
 } );
 
 // 'core/editor' lives above us in the package layering; reading from/writing
@@ -74,29 +74,46 @@ export function ResponsiveBreakpointProvider( { children } ) {
 		[ dispatch ]
 	);
 
-	// Multi-preview mode replaces the single canvas with stacked per-breakpoint
-	// iframes of the page's frontend permalink — all three devices visible at
-	// once. Kept in local state because it's an editor-session affordance, not
-	// persisted content. Shift+clicking any breakpoint button toggles it.
-	const [ isMultiPreview, setMultiPreview ] = useState( false );
-	const toggleMultiPreview = useCallback(
-		() => setMultiPreview( ( v ) => ! v ),
-		[]
-	);
+	// `canvasBreakpoints` is the set of breakpoint slugs currently rendered in
+	// the canvas area. Single-member = normal single-canvas mode (the current
+	// `selectedBreakpoint` drives the existing canvas). Multi-member = stacked
+	// iframe preview in visual-editor. Regular clicks reset to a single entry;
+	// shift+clicks toggle that bp in/out of the set while preserving the rest.
+	// Always keeps at least one entry so we never render an empty canvas.
+	const [ canvasBreakpoints, setCanvasBreakpoints ] = useState( [
+		selectedBreakpoint,
+	] );
+
+	const toggleCanvasBreakpoint = useCallback( ( bp ) => {
+		setCanvasBreakpoints( ( prev ) => {
+			if ( prev.includes( bp ) ) {
+				if ( prev.length === 1 ) {
+					return prev; // never empty
+				}
+				return prev.filter( ( s ) => s !== bp );
+			}
+			return [ ...prev, bp ];
+		} );
+	}, [] );
+
+	const resetCanvasBreakpoints = useCallback( ( bp ) => {
+		setCanvasBreakpoints( [ bp ] );
+	}, [] );
 
 	const value = useMemo(
 		() => ( {
 			selectedBreakpoint,
 			setSelectedBreakpoint,
-			isMultiPreview,
-			toggleMultiPreview,
-			setMultiPreview,
+			canvasBreakpoints,
+			toggleCanvasBreakpoint,
+			resetCanvasBreakpoints,
 		} ),
 		[
 			selectedBreakpoint,
 			setSelectedBreakpoint,
-			isMultiPreview,
-			toggleMultiPreview,
+			canvasBreakpoints,
+			toggleCanvasBreakpoint,
+			resetCanvasBreakpoints,
 		]
 	);
 
@@ -119,5 +136,9 @@ export function useIsBaseBreakpoint() {
 }
 
 export function useIsMultiDevicePreview() {
-	return useContext( ResponsiveBreakpointContext ).isMultiPreview;
+	return useContext( ResponsiveBreakpointContext ).canvasBreakpoints.length > 1;
+}
+
+export function useCanvasBreakpoints() {
+	return useContext( ResponsiveBreakpointContext ).canvasBreakpoints;
 }

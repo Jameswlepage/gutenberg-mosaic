@@ -31,25 +31,40 @@ export default function ResponsiveBreakpointSelector() {
 	const {
 		selectedBreakpoint,
 		setSelectedBreakpoint,
-		isMultiPreview,
-		toggleMultiPreview,
+		canvasBreakpoints,
+		toggleCanvasBreakpoint,
+		resetCanvasBreakpoints,
 	} = useResponsiveBreakpoint();
 
-	// Shift+click on ANY breakpoint button toggles multi-device preview.
-	// Capturing the click before ToggleGroupControl's own handler runs means
-	// we can swallow the native bp-change and treat the shift-modified click
-	// as an orthogonal "show me all three" gesture.
+	const isMultiPreview = canvasBreakpoints.length > 1;
+
+	// Shift+click toggles that specific breakpoint in/out of the canvas set.
+	// Normal click resets the set to just that breakpoint AND drives the
+	// editor's deviceType. Capturing the event before ToggleGroupControl's
+	// own handler lets us distinguish the two gestures cleanly.
 	const handleClickCapture = ( event ) => {
-		if ( ! event.shiftKey ) {
-			return;
-		}
 		const target = event.target.closest( 'button, [role="radio"]' );
 		if ( ! target ) {
 			return;
 		}
-		event.preventDefault();
-		event.stopPropagation();
-		toggleMultiPreview();
+		// Map the DOM button back to a breakpoint slug by index within the
+		// selector wrap — cheap and doesn't require threading refs.
+		const buttons = Array.from(
+			event.currentTarget.querySelectorAll( 'button, [role="radio"]' )
+		);
+		const idx = buttons.indexOf( target );
+		const slug = RESPONSIVE_BREAKPOINT_DISPLAY_ORDER[ idx ];
+		if ( ! slug ) {
+			return;
+		}
+		if ( event.shiftKey ) {
+			event.preventDefault();
+			event.stopPropagation();
+			toggleCanvasBreakpoint( slug );
+			return;
+		}
+		// Plain click: make the single-canvas mode the new normal.
+		resetCanvasBreakpoints( slug );
 	};
 
 	// Read the currently-selected block's raw responsive overrides so we can
@@ -132,6 +147,7 @@ export default function ResponsiveBreakpointSelector() {
 			{ RESPONSIVE_BREAKPOINT_DISPLAY_ORDER.map( ( slug ) => {
 				const breakpoint = RESPONSIVE_BREAKPOINTS[ slug ];
 				const hasOverride = !! selectedBlockOverrides[ slug ];
+				const inCanvas = canvasBreakpoints.includes( slug );
 				return (
 					<ToggleGroupControlOptionIcon
 						key={ slug }
@@ -142,6 +158,7 @@ export default function ResponsiveBreakpointSelector() {
 						data-override-breakpoint={
 							hasOverride ? slug : undefined
 						}
+						data-in-canvas={ inCanvas ? 'true' : undefined }
 					/>
 				);
 			} ) }
