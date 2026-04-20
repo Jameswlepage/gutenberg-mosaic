@@ -6,7 +6,6 @@ import {
 	useContext,
 	useCallback,
 	useMemo,
-	useState,
 } from '@wordpress/element';
 import { useSelect, useDispatch } from '@wordpress/data';
 
@@ -18,9 +17,6 @@ import { DEFAULT_BREAKPOINT } from './constants';
 const ResponsiveBreakpointContext = createContext( {
 	selectedBreakpoint: DEFAULT_BREAKPOINT,
 	setSelectedBreakpoint: () => {},
-	canvasBreakpoints: [ DEFAULT_BREAKPOINT ],
-	toggleCanvasBreakpoint: () => {},
-	resetCanvasBreakpoints: () => {},
 } );
 
 // 'core/editor' lives above us in the package layering; reading from/writing
@@ -47,20 +43,10 @@ const DEVICE_TO_BP = {
  * fire and preview correctly). Setting the breakpoint dispatches
  * `setDeviceType` — one concept, not two. If the editor store isn't loaded
  * (e.g. standalone block-editor host), the provider degrades to local state.
- *
- * When `overrideBreakpoint` is set, the provider reports THAT bp as the
- * "selected" one instead of whatever the editor store has. Used by the
- * multi-device canvas to give each stacked BlockCanvas its own effective bp
- * so the responsive interceptor merges the right overrides per frame.
- * Per-canvas overrides do NOT touch the editor's global deviceType.
  * @param root0
  * @param root0.children
- * @param root0.overrideBreakpoint
  */
-export function ResponsiveBreakpointProvider( {
-	children,
-	overrideBreakpoint,
-} ) {
+export function ResponsiveBreakpointProvider( { children } ) {
 	const deviceType = useSelect( ( select ) => {
 		const store = select( EDITOR_STORE_NAME );
 		return store?.getDeviceType?.() ?? 'Desktop';
@@ -68,9 +54,7 @@ export function ResponsiveBreakpointProvider( {
 
 	const dispatch = useDispatch();
 
-	const storeSelectedBreakpoint =
-		DEVICE_TO_BP[ deviceType ] ?? DEFAULT_BREAKPOINT;
-	const selectedBreakpoint = overrideBreakpoint ?? storeSelectedBreakpoint;
+	const selectedBreakpoint = DEVICE_TO_BP[ deviceType ] ?? DEFAULT_BREAKPOINT;
 
 	const setSelectedBreakpoint = useCallback(
 		( bp ) => {
@@ -86,47 +70,9 @@ export function ResponsiveBreakpointProvider( {
 		[ dispatch ]
 	);
 
-	// `canvasBreakpoints` is the set of breakpoint slugs currently rendered in
-	// the canvas area. Single-member = normal single-canvas mode (the current
-	// `selectedBreakpoint` drives the existing canvas). Multi-member = stacked
-	// iframe preview in visual-editor. Regular clicks reset to a single entry;
-	// shift+clicks toggle that bp in/out of the set while preserving the rest.
-	// Always keeps at least one entry so we never render an empty canvas.
-	const [ canvasBreakpoints, setCanvasBreakpoints ] = useState( [
-		selectedBreakpoint,
-	] );
-
-	const toggleCanvasBreakpoint = useCallback( ( bp ) => {
-		setCanvasBreakpoints( ( prev ) => {
-			if ( prev.includes( bp ) ) {
-				if ( prev.length === 1 ) {
-					return prev; // never empty
-				}
-				return prev.filter( ( s ) => s !== bp );
-			}
-			return [ ...prev, bp ];
-		} );
-	}, [] );
-
-	const resetCanvasBreakpoints = useCallback( ( bp ) => {
-		setCanvasBreakpoints( [ bp ] );
-	}, [] );
-
 	const value = useMemo(
-		() => ( {
-			selectedBreakpoint,
-			setSelectedBreakpoint,
-			canvasBreakpoints,
-			toggleCanvasBreakpoint,
-			resetCanvasBreakpoints,
-		} ),
-		[
-			selectedBreakpoint,
-			setSelectedBreakpoint,
-			canvasBreakpoints,
-			toggleCanvasBreakpoint,
-			resetCanvasBreakpoints,
-		]
+		() => ( { selectedBreakpoint, setSelectedBreakpoint } ),
+		[ selectedBreakpoint, setSelectedBreakpoint ]
 	);
 
 	return (
@@ -145,12 +91,4 @@ export function useIsBaseBreakpoint() {
 		useContext( ResponsiveBreakpointContext ).selectedBreakpoint ===
 		DEFAULT_BREAKPOINT
 	);
-}
-
-export function useIsMultiDevicePreview() {
-	return useContext( ResponsiveBreakpointContext ).canvasBreakpoints.length > 1;
-}
-
-export function useCanvasBreakpoints() {
-	return useContext( ResponsiveBreakpointContext ).canvasBreakpoints;
 }

@@ -28,58 +28,8 @@ import { store as blockEditorStore } from '../../store';
  * matching the convention used by Webflow/Figma-Sites for breakpoint switching.
  */
 export default function ResponsiveBreakpointSelector() {
-	const {
-		selectedBreakpoint,
-		setSelectedBreakpoint,
-		canvasBreakpoints,
-		toggleCanvasBreakpoint,
-		resetCanvasBreakpoints,
-	} = useResponsiveBreakpoint();
-
-	const isMultiPreview = canvasBreakpoints.length > 1;
-
-	// Shift+click toggles that specific breakpoint in/out of the canvas set.
-	// Normal click resets the set to just that breakpoint AND drives the
-	// editor's deviceType. Capturing the event before ToggleGroupControl's
-	// own handler lets us distinguish the two gestures cleanly.
-	const handleClickCapture = ( event ) => {
-		const target = event.target.closest( 'button, [role="radio"]' );
-		if ( ! target ) {
-			return;
-		}
-		// Map the DOM button back to a breakpoint slug by index within the
-		// selector wrap — cheap and doesn't require threading refs.
-		const buttons = Array.from(
-			event.currentTarget.querySelectorAll( 'button, [role="radio"]' )
-		);
-		const idx = buttons.indexOf( target );
-		const slug = RESPONSIVE_BREAKPOINT_DISPLAY_ORDER[ idx ];
-		if ( ! slug ) {
-			return;
-		}
-		if ( event.shiftKey ) {
-			event.preventDefault();
-			event.stopPropagation();
-			toggleCanvasBreakpoint( slug );
-			return;
-		}
-		// Plain click behaviour depends on whether we're in multi-mode:
-		//
-		//   single canvas (set.size === 1): set canvas + deviceType to clicked
-		//   multi canvas  (set.size > 1):   only shift focus (deviceType) to
-		//                                   the clicked bp, keep frames as-is
-		//
-		// The "shift focus" branch lets the author move their "currently
-		// editing" device within the multi-frame view without collapsing
-		// back to a single canvas — matches the user's mental model from
-		// Webflow/Figma-Sites multi-select workflow.
-		if ( canvasBreakpoints.length <= 1 ) {
-			resetCanvasBreakpoints( slug );
-		}
-		// In multi-mode: let the normal ToggleGroupControl handler through;
-		// it calls onChange → setSelectedBreakpoint → setDeviceType, which
-		// updates the selected-radio indicator without touching the canvas set.
-	};
+	const { selectedBreakpoint, setSelectedBreakpoint } =
+		useResponsiveBreakpoint();
 
 	// Read the currently-selected block's raw responsive overrides so we can
 	// paint a dot on each breakpoint button that actually has overrides for
@@ -135,17 +85,6 @@ export default function ResponsiveBreakpointSelector() {
 	}, [ setSelectedBreakpoint ] );
 
 	return (
-		<div
-			onClickCapture={ handleClickCapture }
-			className={
-				isMultiPreview
-					? 'block-editor-responsive-breakpoint-selector__wrap is-multi-preview'
-					: 'block-editor-responsive-breakpoint-selector__wrap'
-			}
-			title={ __(
-				'Shift+click any breakpoint to show all three side-by-side'
-			) }
-		>
 		<ToggleGroupControl
 			__nextHasNoMarginBottom
 			__next40pxDefaultSize
@@ -161,7 +100,6 @@ export default function ResponsiveBreakpointSelector() {
 			{ RESPONSIVE_BREAKPOINT_DISPLAY_ORDER.map( ( slug ) => {
 				const breakpoint = RESPONSIVE_BREAKPOINTS[ slug ];
 				const hasOverride = !! selectedBlockOverrides[ slug ];
-				const inCanvas = canvasBreakpoints.includes( slug );
 				return (
 					<ToggleGroupControlOptionIcon
 						key={ slug }
@@ -172,11 +110,9 @@ export default function ResponsiveBreakpointSelector() {
 						data-override-breakpoint={
 							hasOverride ? slug : undefined
 						}
-						data-in-canvas={ inCanvas ? 'true' : undefined }
 					/>
 				);
 			} ) }
 		</ToggleGroupControl>
-		</div>
 	);
 }

@@ -49,8 +49,6 @@ const {
 	useLayoutStyles,
 	ExperimentalBlockCanvas: BlockCanvas,
 	useFlashEditableBlocks,
-	ResponsiveMultiDeviceCanvas,
-	useIsMultiDevicePreview,
 } = unlock( blockEditorPrivateApis );
 
 /**
@@ -216,21 +214,7 @@ function VisualEditor( {
 	}, [] );
 
 	const localRef = useRef();
-	// Multi-device preview mode renders three frontend previews side-by-side
-	// in place of the normal single canvas. Toggled via shift+click on the
-	// responsive breakpoint selector in the header.
-	const isMultiDevicePreview = useIsMultiDevicePreview
-		? useIsMultiDevicePreview()
-		: false;
-	// deviceType-based resize styles are what zooms/scales the outer canvas
-	// wrapper (tablet/mobile Preview mode). In multi-device mode the visible
-	// area is replaced by our stacked BlockCanvas frames — each frame is
-	// already sized explicitly to its bp width — so applying the editor-wide
-	// resize transform on top creates a second, unwanted scale. Bypass the
-	// resize styles whenever multi-device is active.
-	const deviceStyles = useResizeCanvas(
-		isMultiDevicePreview ? 'Desktop' : deviceType
-	);
+	const deviceStyles = useResizeCanvas( deviceType );
 	const [ globalLayoutSettings ] = useSettings( 'layout' );
 
 	// fallbackLayout is used if there is no Post Content,
@@ -466,14 +450,10 @@ function VisualEditor( {
 					'has-padding': isFocusedEntity || enableResizing,
 					'is-resizable': enableResizing,
 					'is-iframed': ! disableIframe,
-					'is-multi-device-preview': isMultiDevicePreview,
 				}
 			) }
 		>
 			<SyncConnectionErrorModal />
-			{ isMultiDevicePreview && ResponsiveMultiDeviceCanvas && (
-				<ResponsiveMultiDeviceCanvas />
-			) }
 			<ResizableEditor enableResizing={ enableResizing } height="100%">
 				<BlockCanvas
 					shouldIframe={ ! disableIframe }
