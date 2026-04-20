@@ -4,6 +4,7 @@
 import { __, sprintf } from '@wordpress/i18n';
 import { Button } from '@wordpress/components';
 import { closeSmall } from '@wordpress/icons';
+import { useEffect, useRef } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -56,12 +57,103 @@ export default function ResponsiveMultiDeviceCanvas() {
 	const { canvasBreakpoints, resetCanvasBreakpoints, selectedBreakpoint } =
 		useResponsiveBreakpoint();
 	const isMultiPreview = canvasBreakpoints.length > 1;
+	const containerRef = useRef( null );
+
+	/*
+	 * Scroll-sync across frames. Each BlockCanvas renders its block list in
+	 * its own iframe (so css-in-iframe works per-breakpoint). Scrolling one
+	 * should scroll the others proportionally — otherwise comparing across
+	 * devices means constantly re-scrolling each. We sync by scroll ratio
+	 * (0..1 of scrollable height) rather than raw pixels, since each frame
+	 * has a different total scrollHeight. A `syncing` flag breaks the
+	 * feedback loop: when we write scrollTop on siblings, their scroll
+	 * handlers fire too, but skip forwarding while syncing is true.
+	 *
+	 * Re-attaches whenever the set of visible breakpoints changes, since
+	 * new iframes appear and old ones detach.
+	 */
+	useEffect( () => {
+		if ( ! isMultiPreview || ! containerRef.current ) {
+			return;
+		}
+		let cleanup = () => {};
+		const tryAttach = () => {
+			const iframes = Array.from(
+				containerRef.current.querySelectorAll(
+					'.block-editor-responsive-multi-device__frames iframe'
+				)
+			);
+			const docs = iframes
+				.map( ( f ) => f.contentDocument )
+				.filter( Boolean );
+			if (
+				docs.length < 2 ||
+				docs.some( ( d ) => d.readyState !== 'complete' )
+			) {
+				return false;
+			}
+			let syncing = false;
+			const handlers = docs.map( ( doc ) => {
+				const handler = () => {
+					if ( syncing ) {
+						return;
+					}
+					const elt =
+						doc.scrollingElement || doc.documentElement;
+					const max = Math.max(
+						1,
+						elt.scrollHeight - elt.clientHeight
+					);
+					const ratio = elt.scrollTop / max;
+					syncing = true;
+					for ( const otherDoc of docs ) {
+						if ( otherDoc === doc ) {
+							continue;
+						}
+						const otherElt =
+							otherDoc.scrollingElement ||
+							otherDoc.documentElement;
+						const otherMax = Math.max(
+							0,
+							otherElt.scrollHeight - otherElt.clientHeight
+						);
+						otherElt.scrollTop = ratio * otherMax;
+					}
+					requestAnimationFrame( () => {
+						syncing = false;
+					} );
+				};
+				doc.addEventListener( 'scroll', handler, { passive: true } );
+				return { doc, handler };
+			} );
+			cleanup = () => {
+				for ( const h of handlers ) {
+					h.doc.removeEventListener( 'scroll', h.handler );
+				}
+			};
+			return true;
+		};
+		// Poll until every BlockCanvas iframe is loaded — they mount async.
+		const interval = setInterval( () => {
+			if ( tryAttach() ) {
+				clearInterval( interval );
+			}
+		}, 200 );
+		return () => {
+			clearInterval( interval );
+			cleanup();
+		};
+	}, [ isMultiPreview, canvasBreakpoints.join( ',' ) ] );
+
 	if ( ! isMultiPreview ) {
 		return null;
 	}
 
 	return (
-		<div className="block-editor-responsive-multi-device">
+		<div
+			ref={ containerRef }
+			className="block-editor-responsive-multi-device"
+		>
 			<div className="block-editor-responsive-multi-device__toolbar">
 				<span className="block-editor-responsive-multi-device__title">
 					{ sprintf(

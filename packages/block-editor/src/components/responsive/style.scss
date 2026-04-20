@@ -69,16 +69,21 @@ body.is-editing-responsive {
 	}
 }
 
-/* Multi-device preview — fills the canvas area with three scrolled-wide
- * frontend previews. Hides the normal block canvas behind it.
+/* Multi-device preview — fills the canvas area with stacked live
+ * BlockCanvas frames. Hides the normal single canvas behind it and clamps
+ * the visual-editor box so no outer scroll appears when a frame is wider
+ * than the available area (scroll stays inside the __frames strip).
  */
 .editor-visual-editor.is-multi-device-preview {
+	position: relative;
+	overflow: hidden;
+
+	> .components-resizable-box__container,
 	.edit-site-layout__canvas,
 	.block-editor-block-canvas,
 	.wp-block-post-content,
 	.editor-visual-editor__post-title-wrapper,
-	.is-root-container,
-	> .components-resizable-box__container {
+	.is-root-container {
 		visibility: hidden;
 	}
 }

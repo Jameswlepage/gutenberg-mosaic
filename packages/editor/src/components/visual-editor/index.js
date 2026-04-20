@@ -216,7 +216,21 @@ function VisualEditor( {
 	}, [] );
 
 	const localRef = useRef();
-	const deviceStyles = useResizeCanvas( deviceType );
+	// Multi-device preview mode renders three frontend previews side-by-side
+	// in place of the normal single canvas. Toggled via shift+click on the
+	// responsive breakpoint selector in the header.
+	const isMultiDevicePreview = useIsMultiDevicePreview
+		? useIsMultiDevicePreview()
+		: false;
+	// deviceType-based resize styles are what zooms/scales the outer canvas
+	// wrapper (tablet/mobile Preview mode). In multi-device mode the visible
+	// area is replaced by our stacked BlockCanvas frames — each frame is
+	// already sized explicitly to its bp width — so applying the editor-wide
+	// resize transform on top creates a second, unwanted scale. Bypass the
+	// resize styles whenever multi-device is active.
+	const deviceStyles = useResizeCanvas(
+		isMultiDevicePreview ? 'Desktop' : deviceType
+	);
 	const [ globalLayoutSettings ] = useSettings( 'layout' );
 
 	// fallbackLayout is used if there is no Post Content,
@@ -440,13 +454,6 @@ function VisualEditor( {
 		paddingAppenderRef,
 		useEditContentOnlySectionExit(),
 	] );
-
-	// Multi-device preview mode renders three frontend previews side-by-side
-	// in place of the normal single canvas. Toggled via shift+click on the
-	// responsive breakpoint selector in the header.
-	const isMultiDevicePreview = useIsMultiDevicePreview
-		? useIsMultiDevicePreview()
-		: false;
 
 	return (
 		<div
