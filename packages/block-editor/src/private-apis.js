@@ -74,6 +74,12 @@ import {
 	isHashLink,
 	isRelativePath,
 } from './components/link-control/is-url-like';
+import {
+	ResponsiveBreakpointSelector,
+	ResponsiveCanvasIndicator,
+	useResponsiveBreakpoint,
+	useIsBaseBreakpoint,
+} from './components/responsive';
 
 /**
  * Private @wordpress/block-editor APIs.
@@ -141,4 +147,8 @@ lock( privateApis, {
 	useListViewPanelState,
 	isHashLink,
 	isRelativePath,
+	ResponsiveBreakpointSelector,
+	ResponsiveCanvasIndicator,
+	useResponsiveBreakpoint,
+	useIsBaseBreakpoint,
 } );

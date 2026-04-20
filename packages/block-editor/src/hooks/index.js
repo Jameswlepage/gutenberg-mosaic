@@ -38,6 +38,7 @@ import blockBindingsPanel from './block-bindings';
 import listView from './list-view';
 import './block-renaming';
 import './grid-visualizer';
+import { registerResponsiveBlockEditFilter } from './responsive';
 import AutoRegisterControls from './auto-inspector-controls';
 
 createBlockEditFilter(
@@ -92,6 +93,11 @@ createBlockSaveFilter( [
 	fontFamily,
 	fontSize,
 ] );
+
+// Must run AFTER createBlockEditFilter so the responsive HOC wraps the
+// core feature-hook render instead of being wrapped by it. See
+// registerResponsiveBlockEditFilter() for the rationale.
+registerResponsiveBlockEditFilter();
 
 export { useCustomSides } from './dimensions';
 export { getDimensionsClassesAndStyles } from './use-dimensions-props';

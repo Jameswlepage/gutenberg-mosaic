@@ -39,6 +39,7 @@ module.exports = {
 	testPathIgnorePatterns: [
 		'/.git/',
 		'/node_modules/',
+		'/.claude/',
 		'/packages/e2e-tests',
 		'/packages/e2e-test-utils-playwright/src/test.ts',
 		'<rootDir>/.*/build/',
@@ -48,6 +49,7 @@ module.exports = {
 		'<rootDir>/.+.native.js$',
 		'/packages/react-native-*',
 	],
+	modulePathIgnorePatterns: [ '<rootDir>/.claude/' ],
 	resolver: '<rootDir>/test/unit/scripts/resolver.js',
 	transform: {
 		'^.+\\.m?[jt]sx?$': '<rootDir>/test/unit/scripts/babel-transformer.js',

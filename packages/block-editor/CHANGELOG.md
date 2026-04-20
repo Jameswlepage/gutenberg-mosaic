@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New Feature
+
+-   Responsive Styles (experimental): per-breakpoint editing of block style attributes. Introduces an `attributes.responsive = { [breakpointSlug]: styleOverrides }` shape applied to every block with style supports, wraps `BlockEdit` to route style reads/writes through the active breakpoint, and emits cascading `@media (max-width)` CSS via the Style Engine. Gated behind the `gutenberg-responsive-styles` experiment. Adds a header breakpoint selector, canvas indicator, block-list corner dot, block toolbar affordance, and Inspector overrides panel. Breakpoints configurable via `theme.json` `settings.custom.responsive.breakpoints`.
+
 ### Enhancements
 
 -   Use `--wpds-cursor-control` for interactive cursor styling and replace all instances ([#77354](https://github.com/WordPress/gutenberg/pull/77354)).

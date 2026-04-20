@@ -1,7 +1,10 @@
 /**
  * WordPress dependencies
  */
-import { store as blockEditorStore } from '@wordpress/block-editor';
+import {
+	store as blockEditorStore,
+	privateApis as blockEditorPrivateApis,
+} from '@wordpress/block-editor';
 import { useSelect } from '@wordpress/data';
 import { useMediaQuery, useViewportMatch } from '@wordpress/compose';
 import { store as preferencesStore } from '@wordpress/preferences';
@@ -31,6 +34,10 @@ import {
 } from '../../store/constants';
 import { CollaboratorsPresence } from '../collaborators-presence/index';
 import { unlock } from '../../lock-unlock';
+
+const { ResponsiveBreakpointSelector, ResponsiveCanvasIndicator } = unlock(
+	blockEditorPrivateApis
+);
 
 function Header( {
 	customSaveButton,
@@ -149,6 +156,23 @@ function Header( {
 					) }
 
 					<PostViewLink />
+
+					{ !! window.__experimentalResponsiveStyles &&
+						! isTextEditor && (
+							/*
+							 * Deliberately not gated on `disablePreviewOption` —
+							 * that flag is about the "View Post" preview which
+							 * has no meaning for patterns/template parts, but
+							 * per-breakpoint editing of those blocks is
+							 * exactly the case we want to support. The
+							 * selector only needs a visual editor to be
+							 * active.
+							 */
+							<>
+								<ResponsiveBreakpointSelector />
+								<ResponsiveCanvasIndicator />
+							</>
+						) }
 
 					<PreviewDropdown
 						forceIsAutosaveable={ forceIsDirty }

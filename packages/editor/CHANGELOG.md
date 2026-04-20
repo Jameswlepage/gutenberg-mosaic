@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### New Feature
+
+-   Responsive Styles (experimental): mounts the breakpoint selector and canvas indicator in the editor header when the `gutenberg-responsive-styles` experiment is enabled. Works for posts, pages, synced patterns, and template parts.
+
 ## 14.44.0 (2026-04-15)
 
 ## 14.43.0 (2026-04-01)

@@ -37,6 +37,16 @@ function gutenberg_enable_experiments() {
 	if ( gutenberg_is_experiment_enabled( 'gutenberg-media-editor' ) ) {
 		wp_add_inline_script( 'wp-block-editor', 'window.__experimentalMediaEditor = true', 'before' );
 	}
+	if ( gutenberg_is_experiment_enabled( 'gutenberg-responsive-styles' ) ) {
+		wp_add_inline_script( 'wp-block-editor', 'window.__experimentalResponsiveStyles = true', 'before' );
+		if ( function_exists( 'gutenberg_get_responsive_breakpoints' ) ) {
+			wp_add_inline_script(
+				'wp-block-editor',
+				'window.__experimentalResponsiveBreakpoints = ' . wp_json_encode( gutenberg_get_responsive_breakpoints() ),
+				'before'
+			);
+		}
+	}
 }
 
 add_action( 'admin_init', 'gutenberg_enable_experiments' );

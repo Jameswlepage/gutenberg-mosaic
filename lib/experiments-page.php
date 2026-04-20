@@ -221,6 +221,18 @@ function gutenberg_initialize_experiments_settings() {
 		)
 	);
 
+	add_settings_field(
+		'gutenberg-responsive-styles',
+		__( 'Responsive Styles', 'gutenberg' ),
+		'gutenberg_display_experiment_field',
+		'gutenberg-experiments',
+		'gutenberg_experiments_section',
+		array(
+			'label' => __( 'Enables per-breakpoint editing of block style attributes (typography, spacing, colors, etc.) across all blocks that support them. Builds on the block visibility foundation.', 'gutenberg' ),
+			'id'    => 'gutenberg-responsive-styles',
+		)
+	);
+
 	register_setting(
 		'gutenberg-experiments',
 		'gutenberg-experiments'

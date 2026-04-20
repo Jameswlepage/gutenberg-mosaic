@@ -5,6 +5,8 @@
  * @package gutenberg
  */
 
+require_once __DIR__ . '/responsive-breakpoints.php';
+
 /**
  * Render nothing if the block is hidden, or add viewport visibility styles.
  *
@@ -35,59 +37,19 @@ function gutenberg_render_block_visibility_support( $block_content, $block ) {
 		}
 
 		/*
-		 * Viewport size definitions are in several places in WordPress packages.
-		 * The following are taken from: https://github.com/WordPress/gutenberg/blob/trunk/packages/base-styles/_breakpoints.scss
-		 * The array is in a future, potential JSON format, and will be centralized
-		 * as the feature is developed.
-		 *
-		 * Viewport sizes as array items are defined sequentially. The first item's size is the max value.
-		 * Each subsequent item starts after the previous size (using > operator), and its size is the max.
-		 * The last item starts after the previous size (using > operator), and it has no max.
+		 * Breakpoint sizes + media-query construction now come from the
+		 * shared module (`responsive-breakpoints.php`), which both block
+		 * visibility and responsive-styles consume. Block visibility also
+		 * needs an unbounded "desktop" upper band for "hide on desktop"
+		 * to work — appended here without polluting the shared defaults
+		 * that responsive-styles consumes.
 		 */
-		$viewport_sizes = array(
-			array(
-				'name' => 'Mobile',
-				'slug' => 'mobile',
-				'size' => '480px',
-			),
-			array(
-				'name' => 'Tablet',
-				'slug' => 'tablet',
-				'size' => '782px',
-			),
-			array(
-				'name' => 'Desktop',
-				'slug' => 'desktop',
-				/*
-				 * Note: the last item in the $viewport_sizes array does not technically require a 'size' key,
-				 * as the last item's media query is calculated using `width > previous size`.
-				 * The last item is present for validating the attribute values, and in order to indicate
-				 * that this is the final viewport size, and to calculate the previous media query accordingly.
-				 */
-			),
+		$viewport_sizes = gutenberg_get_responsive_breakpoints();
+		$viewport_sizes['desktop'] = array(
+			'name' => 'Desktop',
+			'size' => null,
 		);
-
-		/*
-		 * Build media queries from viewport size definitions using the CSS range syntax.
-		 * Could be absorbed into the style engine,
-		 * as well as classname building, and declaration of the display property, if required.
-		 */
-		$viewport_media_queries = array();
-		$previous_size          = null;
-		foreach ( $viewport_sizes as $index => $viewport_size ) {
-			// First item: width <= size.
-			if ( 0 === $index ) {
-				$viewport_media_queries[ $viewport_size['slug'] ] = "@media (width <= {$viewport_size['size']})";
-			} elseif ( count( $viewport_sizes ) - 1 === $index && $previous_size ) {
-				// Last item: width > previous size.
-				$viewport_media_queries[ $viewport_size['slug'] ] = "@media (width > $previous_size)";
-			} else {
-				// Middle items: previous size < width <= size.
-				$viewport_media_queries[ $viewport_size['slug'] ] = "@media ({$previous_size} < width <= {$viewport_size['size']})";
-			}
-
-			$previous_size = $viewport_size['size'] ?? null;
-		}
+		$viewport_media_queries = gutenberg_build_responsive_media_queries( $viewport_sizes );
 
 		$hidden_on = array();
 

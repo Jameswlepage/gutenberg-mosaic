@@ -2,6 +2,15 @@
 
 class WP_Icons_Registry_Gutenberg extends WP_Icons_Registry {
 	/**
+	 * Registered icons array. Declared locally because the parent class in
+	 * WordPress Core does not declare it, which trips PHP 8.2's dynamic
+	 * property deprecation.
+	 *
+	 * @var array[]
+	 */
+	protected $registered_icons = array();
+
+	/**
 	 * Modified to point $manifest_path to Gutenberg packages
 	 */
 	protected function __construct() {
