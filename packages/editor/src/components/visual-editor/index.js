@@ -49,6 +49,8 @@ const {
 	useLayoutStyles,
 	ExperimentalBlockCanvas: BlockCanvas,
 	useFlashEditableBlocks,
+	ResponsiveMultiDeviceCanvas,
+	useIsMultiDevicePreview,
 } = unlock( blockEditorPrivateApis );
 
 /**
@@ -439,6 +441,13 @@ function VisualEditor( {
 		useEditContentOnlySectionExit(),
 	] );
 
+	// Multi-device preview mode renders three frontend previews side-by-side
+	// in place of the normal single canvas. Toggled via shift+click on the
+	// responsive breakpoint selector in the header.
+	const isMultiDevicePreview = useIsMultiDevicePreview
+		? useIsMultiDevicePreview()
+		: false;
+
 	return (
 		<div
 			className={ clsx(
@@ -450,10 +459,14 @@ function VisualEditor( {
 					'has-padding': isFocusedEntity || enableResizing,
 					'is-resizable': enableResizing,
 					'is-iframed': ! disableIframe,
+					'is-multi-device-preview': isMultiDevicePreview,
 				}
 			) }
 		>
 			<SyncConnectionErrorModal />
+			{ isMultiDevicePreview && ResponsiveMultiDeviceCanvas && (
+				<ResponsiveMultiDeviceCanvas />
+			) }
 			<ResizableEditor enableResizing={ enableResizing } height="100%">
 				<BlockCanvas
 					shouldIframe={ ! disableIframe }

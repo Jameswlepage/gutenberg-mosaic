@@ -77,8 +77,10 @@ import {
 import {
 	ResponsiveBreakpointSelector,
 	ResponsiveCanvasIndicator,
+	ResponsiveMultiDeviceCanvas,
 	useResponsiveBreakpoint,
 	useIsBaseBreakpoint,
+	useIsMultiDevicePreview,
 } from './components/responsive';
 
 /**
@@ -149,6 +151,8 @@ lock( privateApis, {
 	isRelativePath,
 	ResponsiveBreakpointSelector,
 	ResponsiveCanvasIndicator,
+	ResponsiveMultiDeviceCanvas,
 	useResponsiveBreakpoint,
 	useIsBaseBreakpoint,
+	useIsMultiDevicePreview,
 } );

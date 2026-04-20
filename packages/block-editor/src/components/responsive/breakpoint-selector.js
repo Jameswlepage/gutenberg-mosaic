@@ -28,8 +28,29 @@ import { store as blockEditorStore } from '../../store';
  * matching the convention used by Webflow/Figma-Sites for breakpoint switching.
  */
 export default function ResponsiveBreakpointSelector() {
-	const { selectedBreakpoint, setSelectedBreakpoint } =
-		useResponsiveBreakpoint();
+	const {
+		selectedBreakpoint,
+		setSelectedBreakpoint,
+		isMultiPreview,
+		toggleMultiPreview,
+	} = useResponsiveBreakpoint();
+
+	// Shift+click on ANY breakpoint button toggles multi-device preview.
+	// Capturing the click before ToggleGroupControl's own handler runs means
+	// we can swallow the native bp-change and treat the shift-modified click
+	// as an orthogonal "show me all three" gesture.
+	const handleClickCapture = ( event ) => {
+		if ( ! event.shiftKey ) {
+			return;
+		}
+		const target = event.target.closest( 'button, [role="radio"]' );
+		if ( ! target ) {
+			return;
+		}
+		event.preventDefault();
+		event.stopPropagation();
+		toggleMultiPreview();
+	};
 
 	// Read the currently-selected block's raw responsive overrides so we can
 	// paint a dot on each breakpoint button that actually has overrides for
@@ -85,6 +106,17 @@ export default function ResponsiveBreakpointSelector() {
 	}, [ setSelectedBreakpoint ] );
 
 	return (
+		<div
+			onClickCapture={ handleClickCapture }
+			className={
+				isMultiPreview
+					? 'block-editor-responsive-breakpoint-selector__wrap is-multi-preview'
+					: 'block-editor-responsive-breakpoint-selector__wrap'
+			}
+			title={ __(
+				'Shift+click any breakpoint to show all three side-by-side'
+			) }
+		>
 		<ToggleGroupControl
 			__nextHasNoMarginBottom
 			__next40pxDefaultSize
@@ -114,5 +146,6 @@ export default function ResponsiveBreakpointSelector() {
 				);
 			} ) }
 		</ToggleGroupControl>
+		</div>
 	);
 }

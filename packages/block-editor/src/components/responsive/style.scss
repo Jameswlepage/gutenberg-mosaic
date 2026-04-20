@@ -56,6 +56,114 @@ body.is-editing-responsive {
 	min-width: 120px;
 }
 
+.block-editor-responsive-breakpoint-selector__wrap {
+	display: inline-flex;
+	position: relative;
+	&.is-multi-preview::after {
+		content: "";
+		position: absolute;
+		inset: -2px;
+		border-radius: $radius-medium;
+		box-shadow: 0 0 0 2px $responsive-mobile-accent;
+		pointer-events: none;
+	}
+}
+
+/* Multi-device preview — fills the canvas area with three scrolled-wide
+ * frontend previews. Hides the normal block canvas behind it.
+ */
+.editor-visual-editor.is-multi-device-preview {
+	.edit-site-layout__canvas,
+	.block-editor-block-canvas,
+	.wp-block-post-content,
+	.editor-visual-editor__post-title-wrapper,
+	.is-root-container,
+	> .components-resizable-box__container {
+		visibility: hidden;
+	}
+}
+
+.block-editor-responsive-multi-device {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	background: $gray-100;
+	display: flex;
+	flex-direction: column;
+
+	&__toolbar {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 8px 16px;
+		background: $white;
+		border-bottom: 1px solid $gray-200;
+		font-size: 12px;
+		font-weight: 500;
+	}
+
+	&__title {
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: $gray-700;
+	}
+
+	&__frames {
+		display: flex;
+		gap: 24px;
+		padding: 24px;
+		overflow-x: auto;
+		overflow-y: hidden;
+		flex: 1;
+		align-items: flex-start;
+	}
+
+	&__frame {
+		margin: 0;
+		flex: 0 0 auto;
+		background: $white;
+		border-radius: $radius-small;
+		box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		max-height: calc(100vh - 160px);
+
+		iframe {
+			width: 100%;
+			flex: 1;
+			border: 0;
+			display: block;
+		}
+	}
+
+	&__caption {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 6px 12px;
+		font-size: 11px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: $gray-700;
+		background: $gray-100;
+		border-bottom: 1px solid $gray-200;
+	}
+
+	&__size {
+		color: $gray-600;
+		font-variant-numeric: tabular-nums;
+	}
+
+	&__empty {
+		padding: 40px 16px;
+		color: $gray-600;
+		text-align: center;
+		font-size: 13px;
+	}
+}
+
 // A small corner dot on each per-bp segmented-control option when the
 // currently-selected block has an override for that breakpoint. Target by
 // data attribute so we don't couple to the generated WP component class name.

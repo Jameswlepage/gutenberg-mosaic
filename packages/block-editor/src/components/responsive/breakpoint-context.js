@@ -6,6 +6,7 @@ import {
 	useContext,
 	useCallback,
 	useMemo,
+	useState,
 } from '@wordpress/element';
 import { useSelect, useDispatch } from '@wordpress/data';
 
@@ -17,6 +18,9 @@ import { DEFAULT_BREAKPOINT } from './constants';
 const ResponsiveBreakpointContext = createContext( {
 	selectedBreakpoint: DEFAULT_BREAKPOINT,
 	setSelectedBreakpoint: () => {},
+	isMultiPreview: false,
+	toggleMultiPreview: () => {},
+	setMultiPreview: () => {},
 } );
 
 // 'core/editor' lives above us in the package layering; reading from/writing
@@ -70,9 +74,30 @@ export function ResponsiveBreakpointProvider( { children } ) {
 		[ dispatch ]
 	);
 
+	// Multi-preview mode replaces the single canvas with stacked per-breakpoint
+	// iframes of the page's frontend permalink — all three devices visible at
+	// once. Kept in local state because it's an editor-session affordance, not
+	// persisted content. Shift+clicking any breakpoint button toggles it.
+	const [ isMultiPreview, setMultiPreview ] = useState( false );
+	const toggleMultiPreview = useCallback(
+		() => setMultiPreview( ( v ) => ! v ),
+		[]
+	);
+
 	const value = useMemo(
-		() => ( { selectedBreakpoint, setSelectedBreakpoint } ),
-		[ selectedBreakpoint, setSelectedBreakpoint ]
+		() => ( {
+			selectedBreakpoint,
+			setSelectedBreakpoint,
+			isMultiPreview,
+			toggleMultiPreview,
+			setMultiPreview,
+		} ),
+		[
+			selectedBreakpoint,
+			setSelectedBreakpoint,
+			isMultiPreview,
+			toggleMultiPreview,
+		]
 	);
 
 	return (
@@ -91,4 +116,8 @@ export function useIsBaseBreakpoint() {
 		useContext( ResponsiveBreakpointContext ).selectedBreakpoint ===
 		DEFAULT_BREAKPOINT
 	);
+}
+
+export function useIsMultiDevicePreview() {
+	return useContext( ResponsiveBreakpointContext ).isMultiPreview;
 }
