@@ -63,8 +63,22 @@ export default function ResponsiveBreakpointSelector() {
 			toggleCanvasBreakpoint( slug );
 			return;
 		}
-		// Plain click: make the single-canvas mode the new normal.
-		resetCanvasBreakpoints( slug );
+		// Plain click behaviour depends on whether we're in multi-mode:
+		//
+		//   single canvas (set.size === 1): set canvas + deviceType to clicked
+		//   multi canvas  (set.size > 1):   only shift focus (deviceType) to
+		//                                   the clicked bp, keep frames as-is
+		//
+		// The "shift focus" branch lets the author move their "currently
+		// editing" device within the multi-frame view without collapsing
+		// back to a single canvas — matches the user's mental model from
+		// Webflow/Figma-Sites multi-select workflow.
+		if ( canvasBreakpoints.length <= 1 ) {
+			resetCanvasBreakpoints( slug );
+		}
+		// In multi-mode: let the normal ToggleGroupControl handler through;
+		// it calls onChange → setSelectedBreakpoint → setDeviceType, which
+		// updates the selected-radio indicator without touching the canvas set.
 	};
 
 	// Read the currently-selected block's raw responsive overrides so we can
