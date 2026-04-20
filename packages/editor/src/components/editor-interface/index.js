@@ -10,7 +10,11 @@ import { InterfaceSkeleton, ComplementaryArea } from '@wordpress/interface';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
 import { store as preferencesStore } from '@wordpress/preferences';
-import { BlockBreadcrumb, BlockToolbar } from '@wordpress/block-editor';
+import {
+	BlockBreadcrumb,
+	BlockToolbar,
+	privateApis as blockEditorPrivateApis,
+} from '@wordpress/block-editor';
 import { useViewportMatch } from '@wordpress/compose';
 import { useState, useCallback } from '@wordpress/element';
 import { decodeEntities } from '@wordpress/html-entities';
@@ -21,6 +25,8 @@ import { InlineNotices } from '@wordpress/notices';
  */
 import { store as editorStore } from '../../store';
 import { unlock } from '../../lock-unlock';
+
+const { ResponsiveCanvasIndicator } = unlock( blockEditorPrivateApis );
 import TemplateValidationNotice from '../template-validation-notice';
 import Header from '../header';
 import InserterSidebar from '../inserter-sidebar';
@@ -254,15 +260,25 @@ export default function EditorInterface( {
 				! isPreviewMode &&
 				! isDistractionFree &&
 				isLargeViewport &&
-				showBlockBreadcrumbs &&
 				mode === 'visual' && (
-					<BlockBreadcrumb
-						rootLabelText={
-							postTypeLabel
-								? decodeEntities( postTypeLabel )
-								: undefined
-						}
-					/>
+					<div className="editor-footer-bar">
+						<div className="editor-footer-bar__start">
+							{ showBlockBreadcrumbs && (
+								<BlockBreadcrumb
+									rootLabelText={
+										postTypeLabel
+											? decodeEntities( postTypeLabel )
+											: undefined
+									}
+								/>
+							) }
+						</div>
+						<div className="editor-footer-bar__end">
+							{ ResponsiveCanvasIndicator && (
+								<ResponsiveCanvasIndicator />
+							) }
+						</div>
+					</div>
 				)
 			}
 			actions={

@@ -13,25 +13,39 @@
 $responsive-tablet-accent: #3858e9;
 $responsive-mobile-accent: #8a46ff;
 
+/*
+ * Footer badge. Sits inline next to the block breadcrumb in the editor's
+ * InterfaceSkeleton footer row, aligned right via its parent's flex layout.
+ * Neutral gray pill — the tint-by-bp treatment the old top-right pill used
+ * is dropped here in favour of fitting quietly into the existing bottom bar.
+ * A small colored dot keeps the breakpoint identifiable at a glance.
+ */
 .block-editor-responsive-canvas-indicator {
-	position: fixed;
-	top: calc(#{$header-height} + 8px);
-	right: 16px;
-	z-index: z-index(".block-editor-block-popover");
-	padding: 6px 12px;
-	border-radius: $radius-medium;
-	background: var(--wp-admin-theme-color, #{$gray-900});
-	color: $white;
-	font-size: 12px;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 10px;
+	border-radius: 999px;
+	background: $gray-100;
+	color: $gray-700;
+	font-size: 11px;
 	font-weight: 500;
+	line-height: 1.6;
+	white-space: nowrap;
 	pointer-events: none;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
 
-	.is-editing-responsive-tablet & {
-		background: $responsive-tablet-accent;
+	&::before {
+		content: "";
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: $gray-600;
 	}
 
-	.is-editing-responsive-mobile & {
+	&[data-breakpoint="tablet"]::before {
+		background: $responsive-tablet-accent;
+	}
+	&[data-breakpoint="mobile"]::before {
 		background: $responsive-mobile-accent;
 	}
 }

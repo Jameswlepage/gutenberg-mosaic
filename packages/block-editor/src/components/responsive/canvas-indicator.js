@@ -11,12 +11,16 @@ import { useResponsiveBreakpoint } from './breakpoint-context';
 import { RESPONSIVE_BREAKPOINTS, DEFAULT_BREAKPOINT } from './constants';
 
 /**
- * Paints a body-level class so editor CSS can outline the canvas, and
- * renders a corner pill identifying the active editing breakpoint.
+ * Small neutral badge identifying the active editing breakpoint, intended to
+ * render in the editor's bottom bar next to the block breadcrumb rather than
+ * floating at the top-right of the canvas.
  *
- * Direct response to the discoverability feedback on PR #73888 — without a
- * canvas-visible indicator, users silently routed edits into a non-desktop
- * breakpoint and got confused.
+ * Also toggles a body-level class (`is-editing-responsive-*`) so other CSS
+ * can key off the active bp — preserved from the original top-right pill so
+ * existing selectors don't break.
+ *
+ * Mounting site (the editor's InterfaceSkeleton footer) takes care of layout;
+ * this component is inline and assumes its container decides placement.
  */
 export default function ResponsiveCanvasIndicator() {
 	const { selectedBreakpoint } = useResponsiveBreakpoint();
@@ -41,8 +45,9 @@ export default function ResponsiveCanvasIndicator() {
 	}
 
 	return (
-		<div
+		<span
 			className="block-editor-responsive-canvas-indicator"
+			data-breakpoint={ selectedBreakpoint }
 			aria-live="polite"
 		>
 			{ sprintf(
@@ -50,6 +55,6 @@ export default function ResponsiveCanvasIndicator() {
 				__( 'Editing styles for %s' ),
 				breakpoint.label
 			) }
-		</div>
+		</span>
 	);
 }
