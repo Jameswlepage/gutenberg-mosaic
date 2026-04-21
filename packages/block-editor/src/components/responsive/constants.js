@@ -6,8 +6,13 @@ import { desktop, tablet, mobile } from '@wordpress/icons';
 
 /**
  * Breakpoints available for responsive style editing. `desktop` is the base
- * (no media query); each other entry is an override emitted as a max-width
- * media query in source-order cascade.
+ * (renders without a media query; its styles apply whenever no narrower
+ * bp rule matches). Non-base entries are emitted by the PHP side as
+ * non-overlapping CSS range-syntax media queries — e.g. `@media (width <= 480px)`
+ * for mobile and `@media (480px < width <= 782px)` for tablet — so a style
+ * set at tablet applies to tablet widths only and does NOT cascade into
+ * mobile. See `gutenberg_build_responsive_media_queries()` in
+ * `lib/block-supports/responsive-breakpoints.php` for the emitted form.
  *
  * Sizes come from `window.__experimentalResponsiveBreakpoints` when
  * available (injected by PHP after reading theme.json — see

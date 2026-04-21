@@ -4,9 +4,13 @@
  *
  * Applies per-breakpoint style overrides stored on the `responsive` block
  * attribute. The base `style` attribute renders unconditionally (desktop);
- * each breakpoint in `responsive` emits a max-width media query that overrides
- * the base via CSS source-order cascade. Sparse: a breakpoint only contains
- * deltas from the base.
+ * each breakpoint in `responsive` emits a non-overlapping CSS range-syntax
+ * media query ("@media (width <= 480px)" for mobile,
+ * "@media (480px < width <= 782px)" for tablet) so a style set at tablet
+ * applies to tablet widths only — it does NOT cascade into mobile. See
+ * `gutenberg_build_responsive_media_queries()` in the shared
+ * responsive-breakpoints module for the emitted form. Sparse: a breakpoint
+ * only contains deltas from the base.
  *
  * Behind the `gutenberg-responsive-styles` experiment.
  *

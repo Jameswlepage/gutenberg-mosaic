@@ -8,14 +8,14 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  *   1. Editor-side: base vs. per-breakpoint style edits route into the right
  *      place on the block's attributes (style vs. responsive[bp]).
  *   2. Serialization round-trip: save → reopen → overrides intact.
- *   3. Frontend render: the block support emits a max-width media query
+ *   3. Frontend render: the block support emits a range-syntax media query
  *      carrying the override, with the base value unscoped.
  *
  * Pre-requisite: the `gutenberg-responsive-styles` experiment is enabled
- * in beforeAll (and disabled in afterAll). Any failure to enable the
- * experiment will manifest as the attribute filter not registering and
- * overrides silently falling back to base-only edits — hence the explicit
- * guard against that in the first assertion below.
+ * in beforeAll (and disabled in afterAll). The first assertion in each
+ * editor-side test checks `window.__experimentalResponsiveStyles` directly,
+ * so the suite fails loudly if the flag didn't reach the browser rather
+ * than silently passing against a feature-off editor.
  */
 
 test.describe( 'Responsive Styles (experimental)', () => {
@@ -37,10 +37,17 @@ test.describe( 'Responsive Styles (experimental)', () => {
 		editor,
 		page,
 	} ) => {
-		await expect(
-			page,
+		// Verify the experiment global actually reached the editor before
+		// exercising any of the routing behaviour. Without this, a missing
+		// flag would silently degrade the attribute filter to a no-op and
+		// every assertion below would "pass" against a feature-off build.
+		const experimentEnabled = await page.evaluate(
+			() => !! window.__experimentalResponsiveStyles
+		);
+		expect(
+			experimentEnabled,
 			'window.__experimentalResponsiveStyles must be set for this test to make sense'
-		).toHaveURL( /post-new\.php/ );
+		).toBe( true );
 
 		await editor.insertBlock( {
 			name: 'core/paragraph',
@@ -112,6 +119,9 @@ test.describe( 'Responsive Styles (experimental)', () => {
 
 		await page.getByRole( 'radio', { name: 'Mobile' } ).click();
 
+		// The overrides panel labels reset buttons with the user-facing
+		// path (the `style.` prefix is stripped in `labelForPath`), so the
+		// selector matches `typography.fontSize`, not `style.typography.fontSize`.
 		await page
 			.getByRole( 'button', {
 				name: /Reset typography\.fontSize to base/,
@@ -128,8 +138,7 @@ test.describe( 'Responsive Styles (experimental)', () => {
 		);
 	} );
 
-	test( 'frontend render emits a max-width media query carrying the override', async ( {
-		editor,
+	test( 'frontend render emits a range-syntax media query carrying the override', async ( {
 		page,
 		requestUtils,
 	} ) => {
@@ -149,11 +158,15 @@ test.describe( 'Responsive Styles (experimental)', () => {
 			'base font-size still applied (block-supports inline style)'
 		).toMatch( /font-size:32px/ );
 
+		// The shared responsive-breakpoint builder emits CSS range syntax
+		// (`@media (width <= 480px)`), not legacy `max-width`. See
+		// `gutenberg_build_responsive_media_queries()` in
+		// `lib/block-supports/responsive-breakpoints.php`.
 		expect(
 			html,
-			'mobile override emitted inside max-width media query'
+			'mobile override emitted inside (width <= 480px) media query'
 		).toMatch(
-			/@media\s*\(max-width:\s*480px\)[^{]*\{[^}]*font-size:14px/
+			/@media\s*\(\s*width\s*<=\s*480px\s*\)[^{]*\{[^}]*font-size:\s*14px/
 		);
 	} );
 } );

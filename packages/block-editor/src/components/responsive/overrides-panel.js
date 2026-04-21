@@ -17,6 +17,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { store as blockEditorStore } from '../../store';
 import { useResponsiveBreakpoint } from './breakpoint-context';
 import { RESPONSIVE_BREAKPOINTS, DEFAULT_BREAKPOINT } from './constants';
+import { removePath } from '../../hooks/responsive-utils';
 
 /**
  * Flatten an override bundle into dot-path leaves. Handles both the nested
@@ -52,28 +53,6 @@ function collectOverridePaths( tree, prefix = '' ) {
  */
 function labelForPath( path ) {
 	return path.replace( /^style\./, '' );
-}
-
-/**
- * Remove a single dot-path from a nested tree, pruning empty subtrees.
- * @param tree
- * @param path
- */
-function removePath( tree, path ) {
-	if ( ! tree || ! path ) {
-		return tree;
-	}
-	const [ head, ...rest ] = path.split( '.' );
-	if ( rest.length === 0 ) {
-		const { [ head ]: _removed, ...remainder } = tree;
-		return remainder;
-	}
-	const child = removePath( tree[ head ], rest.join( '.' ) );
-	const next = { ...tree, [ head ]: child };
-	if ( ! child || Object.keys( child ).length === 0 ) {
-		delete next[ head ];
-	}
-	return next;
 }
 
 /**
@@ -200,7 +179,7 @@ export default function ResponsiveOverridesPanel( { clientId } ) {
 								label={ sprintf(
 									/* translators: %s: style property path. */
 									__( 'Reset %s to base' ),
-									path
+									labelForPath( path )
 								) }
 								__next40pxDefaultSize={ false }
 							>
