@@ -1,7 +1,10 @@
 /**
  * WordPress dependencies
  */
-import { store as blockEditorStore } from '@wordpress/block-editor';
+import {
+	store as blockEditorStore,
+	privateApis as blockEditorPrivateApis,
+} from '@wordpress/block-editor';
 import { useSelect } from '@wordpress/data';
 import { useMediaQuery, useViewportMatch } from '@wordpress/compose';
 import { store as preferencesStore } from '@wordpress/preferences';
@@ -20,7 +23,8 @@ import PostPreviewButton from '../post-preview-button';
 import PostPublishButtonOrToggle from '../post-publish-button/post-publish-button-or-toggle';
 import PostSavedState from '../post-saved-state';
 import PostViewLink from '../post-view-link';
-import PreviewDropdown from '../preview-dropdown';
+// PreviewDropdown intentionally removed while Responsive Styles experiment
+// is active — the breakpoint selector replaces its device-switch role.
 import ZoomOutToggle from '../zoom-out-toggle';
 import { store as editorStore } from '../../store';
 import {
@@ -31,6 +35,10 @@ import {
 } from '../../store/constants';
 import { CollaboratorsPresence } from '../collaborators-presence/index';
 import { unlock } from '../../lock-unlock';
+
+const { ResponsiveBreakpointSelector } = unlock(
+	blockEditorPrivateApis
+);
 
 function Header( {
 	customSaveButton,
@@ -150,10 +158,30 @@ function Header( {
 
 					<PostViewLink />
 
-					<PreviewDropdown
-						forceIsAutosaveable={ forceIsDirty }
-						disabled={ disablePreviewOption }
-					/>
+					{ !! window.__experimentalResponsiveStyles &&
+						! isTextEditor && (
+							/*
+							 * Deliberately not gated on `disablePreviewOption` —
+							 * that flag is about the "View Post" preview which
+							 * has no meaning for patterns/template parts, but
+							 * per-breakpoint editing of those blocks is
+							 * exactly the case we want to support. The
+							 * selector only needs a visual editor to be
+							 * active.
+							 */
+							<ResponsiveBreakpointSelector />
+						) }
+
+					{ /*
+					 * PreviewDropdown (Desktop/Tablet/Mobile device preview
+					 * popover) is removed while the responsive breakpoint
+					 * selector is the primary device switcher for this
+					 * experiment. The selector drives core/editor deviceType
+					 * directly, so having two overlapping controls for the
+					 * same state was confusing. Restore this if the
+					 * experiment ships behind a flag and the legacy preview
+					 * is still needed for non-experiment users.
+					 */ }
 
 					<PostPreviewButton
 						className="editor-header__post-preview-button"

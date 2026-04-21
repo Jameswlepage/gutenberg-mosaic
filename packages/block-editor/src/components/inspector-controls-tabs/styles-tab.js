@@ -9,6 +9,7 @@ import { useDispatch, useSelect } from '@wordpress/data';
  */
 import BlockStyles from '../block-styles';
 import InspectorControls from '../inspector-controls';
+import ResponsiveOverridesPanel from '../responsive/overrides-panel';
 import { useBorderPanelLabel } from '../../hooks/border';
 import { useBlockSettings } from '../../hooks/utils';
 import { store as blockEditorStore } from '../../store';
@@ -70,6 +71,9 @@ const StylesTab = ( {
 
 	return (
 		<>
+			{ !! window.__experimentalResponsiveStyles && (
+				<ResponsiveOverridesPanel clientId={ clientId } />
+			) }
 			{ hasBlockStyles && <BlockStyles clientId={ clientId } /> }
 			{ isSectionBlock && (
 				<SectionBlockColorControls

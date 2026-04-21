@@ -113,6 +113,7 @@ function VisualEditor( {
 		isPreview,
 		styles,
 		canvasMinHeight,
+		shouldRenderCanvasPostTitle,
 	} = useSelect( ( select ) => {
 		const {
 			getCurrentPostId,
@@ -146,6 +147,26 @@ function VisualEditor( {
 			  )
 			: undefined;
 
+		/*
+		 * Canvas post-title visibility. If the active template does not
+		 * include a `<!-- wp:post-title /-->` block, the post title will
+		 * not be rendered on the frontend — so rendering it in the editor
+		 * chrome above the block canvas creates a misleading "ghost" title
+		 * that can't be edited and doesn't ship. Infer from template
+		 * content instead and hide the chrome title in that case.
+		 *
+		 * TODO (before shipping): surface this as an explicit Document-panel
+		 * toggle (e.g. "Show title in editor canvas") so authors can override
+		 * the inference in both directions. Right now the auto-detect is
+		 * good enough for the responsive-styles experiment's blank-landing
+		 * template, which is the primary use case we hit.
+		 */
+		const templateContent = template?.content;
+		const templateHasPostTitle =
+			typeof templateContent === 'string'
+				? templateContent.includes( 'wp:post-title' )
+				: true;
+
 		return {
 			renderingMode: _renderingMode,
 			postContentAttributes: editorSettings.postContentAttributes,
@@ -164,6 +185,11 @@ function VisualEditor( {
 			isPreview: editorSettings.isPreviewMode,
 			styles: editorSettings.styles,
 			canvasMinHeight: getCanvasMinHeight(),
+			// If we can't read the template content (classic theme, no
+			// supportsTemplateMode, pattern editor, etc.) default to showing
+			// the title so we don't regress existing flows.
+			shouldRenderCanvasPostTitle:
+				! currentTemplateId || templateHasPostTitle,
 		};
 	}, [] );
 	const { isCleanNewPost } = useSelect( editorStore );
@@ -464,29 +490,31 @@ function VisualEditor( {
 								) }
 							</>
 						) }
-					{ renderingMode === 'post-only' && ! isDesignPostType && (
-						<div
-							className={ clsx(
-								'editor-visual-editor__post-title-wrapper',
-								// The following class is only here for backward compatibility
-								// some themes might be using it to style the post title.
-								'edit-post-visual-editor__post-title-wrapper',
-								{
-									'has-global-padding':
-										hasRootPaddingAwareAlignments,
-								}
-							) }
-							contentEditable={ false }
-							ref={ observeTypingRef }
-							style={ {
-								// This is using inline styles
-								// so it's applied for both iframed and non iframed editors.
-								marginTop: '4rem',
-							} }
-						>
-							<PostTitle ref={ titleRef } />
-						</div>
-					) }
+					{ renderingMode === 'post-only' &&
+						! isDesignPostType &&
+						shouldRenderCanvasPostTitle && (
+							<div
+								className={ clsx(
+									'editor-visual-editor__post-title-wrapper',
+									// The following class is only here for backward compatibility
+									// some themes might be using it to style the post title.
+									'edit-post-visual-editor__post-title-wrapper',
+									{
+										'has-global-padding':
+											hasRootPaddingAwareAlignments,
+									}
+								) }
+								contentEditable={ false }
+								ref={ observeTypingRef }
+								style={ {
+									// This is using inline styles
+									// so it's applied for both iframed and non iframed editors.
+									marginTop: '4rem',
+								} }
+							>
+								<PostTitle ref={ titleRef } />
+							</div>
+						) }
 					<RecursionProvider
 						blockName={ wrapperBlockName }
 						uniqueId={ wrapperUniqueId }

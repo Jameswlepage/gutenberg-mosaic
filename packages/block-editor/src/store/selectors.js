@@ -134,12 +134,101 @@ export function isBlockValid( state, clientId ) {
  *
  * @return {?Object} Block attributes.
  */
-export function getBlockAttributes( state, clientId ) {
+const DEVICE_TO_BP = {
+	Desktop: 'desktop',
+	Tablet: 'tablet',
+	Mobile: 'mobile',
+};
+
+function mergeResponsiveBreakpointDeep( base, override ) {
+	if ( ! override || typeof override !== 'object' ) {
+		return base;
+	}
+	if ( ! base || typeof base !== 'object' ) {
+		return override;
+	}
+	const out = { ...base };
+	for ( const key of Object.keys( override ) ) {
+		const value = override[ key ];
+		if ( value && typeof value === 'object' && ! Array.isArray( value ) ) {
+			out[ key ] = mergeResponsiveBreakpointDeep( base[ key ], value );
+		} else if ( value !== undefined ) {
+			out[ key ] = value;
+		}
+	}
+	return out;
+}
+
+/**
+ * Returns a block's attributes merged with its responsive overrides for the
+ * currently-active editing breakpoint. The underlying state is untouched —
+ * the tree-backed read paths (`getBlock`, `getBlocks`) and save serialization
+ * continue to see raw attributes. Only UI reads via `getBlockAttributes`
+ * observe the merge, so inspectors and controls display the effective value
+ * at the active breakpoint without the save pipeline collapsing overrides
+ * into the base.
+ *
+ * Gated behind `window.__experimentalResponsiveStyles`; otherwise behaves
+ * identically to the raw read.
+ */
+export const getBlockAttributes = createRegistrySelector(
+	( select ) => ( state, clientId ) => {
+		const block = state.blocks.byClientId.get( clientId );
+		if ( ! block ) {
+			return null;
+		}
+		const raw = state.blocks.attributes.get( clientId );
+		if (
+			typeof window === 'undefined' ||
+			! window.__experimentalResponsiveStyles ||
+			! raw?.responsive
+		) {
+			return raw;
+		}
+		const editorStore = select( 'core/editor' );
+		const deviceType = editorStore?.getDeviceType?.() ?? 'Desktop';
+		const bp = DEVICE_TO_BP[ deviceType ];
+		if ( ! bp || bp === 'desktop' ) {
+			return raw;
+		}
+		const override = raw.responsive?.[ bp ];
+		if ( ! override || Object.keys( override ).length === 0 ) {
+			return raw;
+		}
+		const merged = { ...raw };
+		if ( override.style ) {
+			merged.style = mergeResponsiveBreakpointDeep(
+				raw.style ?? {},
+				override.style
+			);
+		}
+		for ( const key of Object.keys( override ) ) {
+			if ( key === 'style' ) {
+				continue;
+			}
+			merged[ key ] = override[ key ];
+		}
+		return merged;
+	}
+);
+
+/**
+ * Raw (un-merged) attribute read, used by the responsive interceptor to
+ * compute the correct delta against the base when writing a new override.
+ * Returns exactly what the reducer put into `state.blocks.attributes` — no
+ * breakpoint awareness, no other transforms.
+ *
+ * Private because UI code should always go through `getBlockAttributes`; the
+ * merge is precisely the point of that selector. This is here so the
+ * interceptor doesn't have to fight its own wrapping.
+ * @param state
+ * @param clientId
+ */
+export function __experimentalGetRawBlockAttributes( state, clientId ) {
 	const block = state.blocks.byClientId.get( clientId );
 	if ( ! block ) {
 		return null;
 	}
-
 	return state.blocks.attributes.get( clientId );
 }
 

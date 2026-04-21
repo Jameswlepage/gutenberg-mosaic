@@ -19,6 +19,7 @@ import { store as blockEditorStore } from '../../store';
 import { BlockRefsProvider } from './block-refs-provider';
 import { unlock } from '../../lock-unlock';
 import KeyboardShortcuts from '../keyboard-shortcuts';
+import { ResponsiveBreakpointProvider } from '../responsive';
 import useMediaUploadSettings from './use-media-upload-settings';
 import { mediaUploadOnSuccessKey } from '../../store/private-keys';
 import { SelectionContext } from './selection-context';
@@ -228,7 +229,9 @@ export const ExperimentalBlockEditorProvider = withRegistryProvider(
 		const children = (
 			<SlotFillProvider passthrough>
 				{ ! settings?.isPreviewMode && <KeyboardShortcuts.Register /> }
-				<BlockRefsProvider>{ props.children }</BlockRefsProvider>
+				<ResponsiveBreakpointProvider>
+					<BlockRefsProvider>{ props.children }</BlockRefsProvider>
+				</ResponsiveBreakpointProvider>
 			</SlotFillProvider>
 		);
 

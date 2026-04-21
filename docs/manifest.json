@@ -420,6 +420,12 @@
 		"parent": "block-api"
 	},
 	{
+		"title": "Responsive Styles (experimental)",
+		"slug": "block-responsive-styles",
+		"markdown_source": "../docs/reference-guides/block-api/block-responsive-styles.md",
+		"parent": "block-api"
+	},
+	{
 		"title": "Selectors",
 		"slug": "block-selectors",
 		"markdown_source": "../docs/reference-guides/block-api/block-selectors.md",
